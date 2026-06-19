@@ -46,7 +46,7 @@ export default function App() {
     };
   }, [postMessage, setBoardData, setLoading, setError]);
 
-  const handleMoveItem = (itemId: string, columnId: string) => {
+  const handleMoveItem = (itemId: string, columnId: string, columnName: string) => {
     const item = useBoardStore.getState().items.find((i) => i.id === itemId);
     if (!item) {
       return;
@@ -54,10 +54,10 @@ export default function App() {
 
     const originalStatus = item.status;
 
-    // Optimistic update
-    optimisticMove(itemId, columnId);
+    // Optimistic update - use column name for status (matching how items are filtered in KanbanBoard)
+    optimisticMove(itemId, columnName);
 
-    // Send to extension host
+    // Send to extension host with column ID (GitHub option ID for GraphQL mutation)
     postMessage('moveItem', { itemId, columnId });
 
     // Listen for error to revert — with timeout to prevent memory leak

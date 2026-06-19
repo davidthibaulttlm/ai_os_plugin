@@ -33,11 +33,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // Register ALL commands first — they check auth internally
     context.subscriptions.push(
       vscode.commands.registerCommand('aiOs.openBoard', () => handleOpenBoard(context)),
+      vscode.commands.registerCommand('aiOs.openBoardFromTree', (boardId: string, boardName: string) =>
+        handleOpenBoardFromTree(context, boardId, boardName)
+      ),
       vscode.commands.registerCommand('aiOs.assignAgent', () => handleAssignAgent()),
       vscode.commands.registerCommand('aiOs.refreshBoard', () => {
         panel?.refresh();
         boardTreeProvider?.refresh();
       }),
+      vscode.commands.registerCommand('aiOs.fetchBoards', () => handleFetchBoards()),
       vscode.commands.registerCommand('aiOs.selectBoard', () => handleSelectBoard()),
       vscode.commands.registerCommand('aiOs.moveToAISpec', () =>
         vscode.window.showInformationMessage('Use drag-and-drop on the kanban board to move items')
@@ -129,28 +133,129 @@ async function handleAssignAgent(): Promise<void> {
   await assignAgent(graphql, agentService!);
 }
 
+/** Fetch boards and populate the tree view (no quick pick) */
+async function handleFetchBoards(): Promise<void> {
+  if (!graphql) {
+    vscode.window.showErrorMessage('AI OS not initialized — please authenticate with GitHub first');
+    return;
+  }
+
+  try {
+    boardTreeProvider?.setLoading(true);
+    const projects = await graphql.listProjects();
+
+    if (projects.length === 0) {
+      boardTreeProvider?.setLoading(false);
+      vscode.window.showInformationMessage(
+        'No GitHub Projects found. Create one at https://github.com/projects'
+      );
+      return;
+    }
+
+    boardTreeProvider?.setBoards(
+      projects.map((p) => ({ id: p.id, name: p.title, number: p.number, url: p.url }))
+    );
+  } catch (error) {
+    boardTreeProvider?.setLoading(false);
+    vscode.window.showErrorMessage(`Failed to load projects: ${(error as Error).message}`);
+  }
+}
+
+/** Select a board via quick pick (command palette only) */
 async function handleSelectBoard(): Promise<void> {
   if (!graphql) {
     vscode.window.showErrorMessage('AI OS not initialized — please authenticate with GitHub first');
     return;
   }
 
-  const boardId = await vscode.window.showInputBox({
-    prompt: 'Enter your GitHub Project (kanban) board ID',
-    placeHolder: 'PVT_kw_DoeGm484A',
-    ignoreFocusOut: true,
-  });
+  try {
+    const projects = await graphql.listProjects();
 
-  if (!boardId) {
+    if (projects.length === 0) {
+      vscode.window.showInformationMessage(
+        'No GitHub Projects found. Create one at https://github.com/projects'
+      );
+      return;
+    }
+
+    // Also populate the tree view
+    boardTreeProvider?.setBoards(
+      projects.map((p) => ({ id: p.id, name: p.title, number: p.number, url: p.url }))
+    );
+
+    const picks: vscode.QuickPickItem[] = projects.map((p) => ({
+      label: p.title,
+      description: `#${p.number}`,
+      detail: p.url,
+    }));
+
+    const selected = await vscode.window.showQuickPick(picks, {
+      placeHolder: 'Select a GitHub Project to open as a kanban board',
+    });
+
+    if (!selected) {
+      return;
+    }
+
+    const project = projects.find((p) => p.title === selected.label);
+    if (!project) {
+      return;
+    }
+
+    await stateManager?.setLastBoardId(project.id);
+
+    if (poller) {
+      poller.stop();
+      poller.start(graphql, project.id, (events) => {
+        for (const event of events) {
+          if (event.type === 'item_moved') {
+            const toStatus = event.data.to as string;
+            if (PollerService.isAiTriggerColumn(toStatus)) {
+              agentService?.onAgentTrigger(String(event.issueId), toStatus);
+            }
+          } else if (event.type === 'item_added') {
+            const status = event.data.status as string;
+            if (PollerService.isAiTriggerColumn(status)) {
+              agentService?.onAgentTrigger(String(event.issueId), status);
+            }
+          } else if (event.type === 'item_removed') {
+            agentService?.cancelAgent(String(event.issueId));
+          }
+        }
+        panel?.refresh();
+      });
+    }
+
+    vscode.window.showInformationMessage(`Board "${project.title}" selected and polling started`);
+  } catch (error) {
+    vscode.window.showErrorMessage(`Failed to load projects: ${(error as Error).message}`);
+  }
+}
+
+async function handleOpenBoardFromTree(
+  context: vscode.ExtensionContext,
+  boardId: string,
+  boardName: string
+): Promise<void> {
+  if (!graphql) {
+    vscode.window.showErrorMessage('AI OS not initialized — please authenticate with GitHub first');
     return;
   }
 
-  stateManager?.setLastBoardId(boardId);
-  boardTreeProvider?.setBoards([{ id: boardId, name: `Board ${boardId.slice(-6)}` }]);
+  await stateManager?.setLastBoardId(boardId);
 
+  // Dispose existing panel to switch boards — refresh() only reloads the same board
   if (panel) {
-    panel.refresh();
+    panel.dispose();
+    panel = undefined;
   }
+
+  const p = KanbanPanel.createOrShow(context.extensionUri, graphql, boardId);
+  panel = p;
+  p.onDispose(() => {
+    poller?.stop();
+    console.log('[AI OS] Poller stopped on panel dispose');
+  });
 
   if (poller) {
     poller.stop();
@@ -174,7 +279,7 @@ async function handleSelectBoard(): Promise<void> {
     });
   }
 
-  vscode.window.showInformationMessage(`Board ${boardId} selected and polling started`);
+  vscode.window.showInformationMessage(`Opened board "${boardName}"`);
 }
 
 export function deactivate(): void {

@@ -10,23 +10,30 @@ export class BoardTreeProvider implements vscode.TreeDataProvider<BoardTreeItem>
   public readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
   private boards: BoardTreeItem[] = [];
+  private isLoading = false;
 
   refresh(): void {
     this._onDidChangeTreeData.fire();
   }
 
-  setBoards(boards: { id: string; name: string }[]): void {
+  setLoading(loading: boolean): void {
+    this.isLoading = loading;
+    this.refresh();
+  }
+
+  setBoards(boards: { id: string; name: string; number?: number; url?: string }[]): void {
     this.boards = boards.map((b) => ({
-      label: b.name,
-      id: b.id,
-      tooltip: `Open board: ${b.name}`,
+      label: `${b.name} (#${b.number ?? '?'})`,
+      description: b.url,
+      tooltip: `Open board: ${b.name}\n${b.url}`,
       command: {
-        command: 'aiOs.openBoard',
+        command: 'aiOs.openBoardFromTree',
         title: 'Open Board',
-        arguments: [b.id],
+        arguments: [b.id, b.name],
       },
       contextValue: 'board',
     }));
+    this.isLoading = false;
     this.refresh();
   }
 
@@ -38,11 +45,20 @@ export class BoardTreeProvider implements vscode.TreeDataProvider<BoardTreeItem>
     if (element) {
       return Promise.resolve([]);
     }
+    if (this.isLoading) {
+      return Promise.resolve([
+        {
+          label: 'Loading projects...',
+          tooltip: 'Fetching your GitHub Projects...',
+          contextValue: 'loading',
+        } as BoardTreeItem,
+      ]);
+    }
     if (this.boards.length === 0) {
       return Promise.resolve([
         {
-          label: 'No board selected',
-          tooltip: 'Run "AI OS: Select Board" to connect to a GitHub Project',
+          label: 'No boards loaded',
+          tooltip: 'Click the list icon to fetch your GitHub Projects',
           contextValue: 'empty',
         } as BoardTreeItem,
       ]);

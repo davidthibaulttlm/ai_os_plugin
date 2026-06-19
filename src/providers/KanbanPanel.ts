@@ -387,7 +387,10 @@ export class KanbanPanel {
     }
 
     await this._graphql.moveItem(projectId, itemId, statusField.id, columnId);
-    return { id: itemId, status: columnId };
+
+    // Resolve the column name from the option ID for the response
+    const columnName = statusField.options?.find((o) => o.id === columnId)?.name ?? columnId;
+    return { id: itemId, status: columnName };
   }
 
   /**

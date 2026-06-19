@@ -21,6 +21,7 @@
     "onCommand:aiOs.refreshBoard",
     "onCommand:aiOs.moveToAISpec",
     "onCommand:aiOs.moveToAICode",
+    "onCommand:aiOs.fetchBoards",
     "onCommand:aiOs.selectBoard",
     "onView:aiOs.boardSelector"
   ],
@@ -56,6 +57,12 @@
         "category": "AI OS"
       },
       {
+        "command": "aiOs.fetchBoards",
+        "title": "Fetch Boards",
+        "category": "AI OS",
+        "icon": "$(list-unordered)"
+      },
+      {
         "command": "aiOs.selectBoard",
         "title": "Select Board",
         "category": "AI OS",
@@ -83,7 +90,7 @@
     "menus": {
       "view/title": [
         {
-          "command": "aiOs.selectBoard",
+          "command": "aiOs.fetchBoards",
           "when": "view == aiOs.boardSelector",
           "group": "navigation"
         },

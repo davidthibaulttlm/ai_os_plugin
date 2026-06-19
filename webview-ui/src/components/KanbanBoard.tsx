@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   DndContext,
-  closestCorners,
+  pointerWithin,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -16,7 +16,7 @@ import KanbanColumn from './KanbanColumn';
 import IssueCard from './IssueCard';
 
 interface KanbanBoardProps {
-  onMoveItem: (itemId: string, columnId: string) => void;
+  onMoveItem: (itemId: string, columnId: string, columnName: string) => void;
 }
 
 export default function KanbanBoard({ onMoveItem }: KanbanBoardProps) {
@@ -56,8 +56,8 @@ export default function KanbanBoard({ onMoveItem }: KanbanBoardProps) {
     }
 
     if (droppedColumn) {
-      // Send the GitHub option ID, not the name
-      onMoveItem(activeId, droppedColumn.id);
+      // Send the GitHub option ID for the mutation, and the column name for optimistic update
+      onMoveItem(activeId, droppedColumn.id, droppedColumn.name);
     }
   };
 
@@ -84,7 +84,7 @@ export default function KanbanBoard({ onMoveItem }: KanbanBoardProps) {
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={pointerWithin}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
