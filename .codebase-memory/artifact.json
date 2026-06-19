@@ -1,11 +1,11 @@
 {
     "schema_version": 1,
-    "commit": "HEAD",
-    "indexed_at": "2026-06-18T23:07:20Z",
+    "commit": "e2b20284e2876e76ace4dc23ca68a603ef909a90",
+    "indexed_at": "2026-06-19T19:56:16Z",
     "project": "home-splashxxx-ai_os_plugin",
-    "nodes": 154,
-    "edges": 147,
-    "original_size": 1769472,
-    "compressed_size": 23231,
+    "nodes": 0,
+    "edges": 0,
+    "original_size": 102400,
+    "compressed_size": 1396,
     "compression_level": 3
 }

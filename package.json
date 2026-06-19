@@ -1,0 +1,123 @@
+{
+  "name": "ai-os-plugin",
+  "displayName": "AI OS",
+  "description": "AI-powered kanban automation for GitHub Projects v2",
+  "version": "0.1.0",
+  "publisher": "ai-os",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "extensionKind": [
+    "ui",
+    "workspace"
+  ],
+  "categories": [
+    "Other",
+    "SCM Providers"
+  ],
+  "activationEvents": [
+    "onCommand:aiOs.openBoard",
+    "onCommand:aiOs.assignAgent",
+    "onCommand:aiOs.refreshBoard",
+    "onCommand:aiOs.moveToAISpec",
+    "onCommand:aiOs.moveToAICode",
+    "onCommand:aiOs.selectBoard",
+    "onView:aiOs.boardSelector"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "aiOs.openBoard",
+        "title": "Open Board",
+        "category": "AI OS",
+        "icon": "$(kanban)"
+      },
+      {
+        "command": "aiOs.assignAgent",
+        "title": "Assign Agent",
+        "category": "AI OS",
+        "icon": "$(robot)"
+      },
+      {
+        "command": "aiOs.refreshBoard",
+        "title": "Refresh Board",
+        "category": "AI OS",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "aiOs.moveToAISpec",
+        "title": "Move to AI_SPEC",
+        "category": "AI OS"
+      },
+      {
+        "command": "aiOs.moveToAICode",
+        "title": "Move to AI_CODE",
+        "category": "AI OS"
+      },
+      {
+        "command": "aiOs.selectBoard",
+        "title": "Select Board",
+        "category": "AI OS",
+        "icon": "$(list-unordered)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "ai-os",
+          "title": "AI OS",
+          "icon": "resources/icons/ai-os.svg"
+        }
+      ]
+    },
+    "views": {
+      "ai-os": [
+        {
+          "id": "aiOs.boardSelector",
+          "name": "Boards",
+          "type": "tree"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "aiOs.selectBoard",
+          "when": "view == aiOs.boardSelector",
+          "group": "navigation"
+        },
+        {
+          "command": "aiOs.refreshBoard",
+          "when": "view == aiOs.boardSelector",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "compile": "node esbuild.js --production",
+    "watch": "node esbuild.js --watch",
+    "build": "node esbuild.js --production",
+    "build:webview": "cd webview-ui && npm run build",
+    "dev:webview": "cd webview-ui && npm run dev",
+    "package": "vsce package",
+    "publish": "vsce publish",
+    "lint": "eslint src --ext ts",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/test-cli": "^0.0.4",
+    "@vscode/test-electron": "^2.3.8",
+    "@vscode/vsce": "^2.21.0",
+    "chokidar": "^5.0.0",
+    "esbuild": "^0.19.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "@vscode/webview-ui-toolkit": "^1.0.0"
+  }
+}

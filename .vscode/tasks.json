@@ -1,0 +1,68 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "compile",
+      "type": "npm",
+      "script": "compile",
+      "problemMatcher": ["$tsc"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "watch",
+      "type": "npm",
+      "script": "watch",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "typescript",
+        "pattern": {
+          "regexp": "^.*$",
+          "message": 0
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "\\[watch\\] build started",
+          "endsPattern": "\\[watch\\] build finished"
+        }
+      }
+    },
+    {
+      "label": "watch:webview",
+      "type": "npm",
+      "script": "dev",
+      "options": { "cwd": "${workspaceFolder}/webview-ui" },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "typescript",
+        "pattern": {
+          "regexp": "^.*$",
+          "message": 0
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "building for production",
+          "endsPattern": "built in \\d+ms"
+        }
+      }
+    },
+    {
+      "label": "watch:all",
+      "dependsOn": ["watch", "watch:webview"],
+      "problemMatcher": []
+    },
+    {
+      "label": "build:webview",
+      "type": "npm",
+      "script": "build:webview",
+      "problemMatcher": []
+    },
+    {
+      "label": "build:all",
+      "dependsOn": ["compile", "build:webview"],
+      "problemMatcher": []
+    }
+  ]
+}

@@ -1,5 +1,16 @@
 # AGENTS.md — Debug Mode Rules
 
+## MANDATORY: Research Before Implementation
+
+**BEFORE writing ANY code, you MUST verify against official documentation:**
+
+1. **ALWAYS search the web or use Context7 MCP** to check official documentation for the libraries/APIs you're working with.
+2. **NEVER rely on memory alone** for API signatures, GraphQL schemas, or framework configurations.
+3. **ALWAYS verify** that your implementation matches the CURRENT version of the documentation — not outdated knowledge.
+4. **If unsure, SEARCH FIRST.** It is better to spend time researching than to ship broken code.
+
+**This rule applies to 100% of tasks without exception.**
+
 ## Project-Specific Debug Rules (Non-Obvious Only)
 
 - **Webview dev tools** — Accessed via Command Palette: `Developer: Open Webview Developer Tools` (not F12 on the panel).
@@ -8,4 +19,4 @@
 - **GraphQL introspection for debugging** — Use the [GitHub GraphQL Explorer](https://docs.github.com/en/graphql/overview/explorer) to test queries before coding them.
 - **Polling latency** — Inbound changes have ~30s delay by design. Don't debug "stale board" as a bug — it's the polling interval.
 - **Production requires NODE_ENV=production** — Certain webview features (like CSP headers) behave differently in production builds.
-- **Database state is source of truth** — When debugging sync issues, check `tracked_issues.status` column in DB, not the UI.
+- **In-memory state is source of truth** — When debugging sync issues, check the in-memory board state, not the UI.
