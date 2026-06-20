@@ -34,3 +34,6 @@ tmp/
 temp/
 
 .roo/
+
+# Aislop history (written during pre-commit - do not track)
+.aislop/history.jsonl
