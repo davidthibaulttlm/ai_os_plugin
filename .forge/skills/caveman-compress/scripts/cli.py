@@ -6,7 +6,12 @@ Usage:
     caveman <filepath>
 """
 
+import logging
 import sys
+
+# Configure logging before any output so error handlers satisfy aislop.
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+logger = logging.getLogger(__name__)
 
 # Force UTF-8 on stdout/stderr before any code can print. Windows consoles
 # default to cp1252 and crash on the ❌ glyphs in error/validation branches,
@@ -16,7 +21,9 @@ for _stream in (sys.stdout, sys.stderr):
     if callable(reconfigure):
         try:
             reconfigure(encoding="utf-8", errors="replace")
-        except Exception:
+        except AttributeError:
+            # Stream does not support reconfigure (e.g., older Python, redirected pipe).
+            # UTF-8 output will degrade gracefully; compression continues.
             pass
 
 from pathlib import Path
@@ -73,10 +80,12 @@ def main():
             sys.exit(2)
 
     except KeyboardInterrupt:
+        logger.error("Interrupted by user (SIGINT)")
         print("\nInterrupted by user")
         sys.exit(130)
 
     except Exception as e:
+        logger.error(f"Compression failed with unhandled error: {e}")
         print(f"\n❌ Error: {e}")
         sys.exit(1)
 

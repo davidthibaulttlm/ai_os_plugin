@@ -145,7 +145,8 @@ def call_claude(prompt: str) -> str:
             )
             return strip_llm_wrapper(msg.content[0].text.strip())
         except ImportError:
-            pass  # anthropic not installed, fall back to CLI
+            # anthropic SDK not installed; fall back to `claude --print` CLI below.
+            pass
     # Fallback: use claude CLI (handles desktop auth).
     # Resolve binary via shutil.which so Windows .cmd/.bat shims (e.g.
     # %APPDATA%\npm\claude.CMD) work without shell=True. On POSIX,
@@ -308,7 +309,13 @@ def compress_file(filepath: Path) -> bool:
         try:
             backup_path.unlink()
         except OSError:
-            pass
+            # Best-effort cleanup — if the backup file can't be removed, log and
+            # continue. The user still has the original in-memory and the function
+            # returns False so the input file is untouched.
+            import logging
+            logging.getLogger(__name__).warning(
+                "Failed to remove corrupt backup: %s", backup_path
+            )
         return False
     filepath.write_text(compressed)
 
