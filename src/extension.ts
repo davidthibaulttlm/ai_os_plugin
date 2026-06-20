@@ -39,10 +39,9 @@ function createPollerCallback(): (events: Array<{ type: string; issueId: number;
           agentService?.onAgentTrigger(String(event.issueId), toStatus);
         }
       } else if (event.type === 'item_added') {
-        const status = event.data.status as string;
-        if (PollerService.isAiTriggerColumn(status)) {
-          agentService?.onAgentTrigger(String(event.issueId), status);
-        }
+        // DO NOT trigger agents on item_added — that fires on initial board load
+        // for every existing item. Only item_moved represents an actual column
+        // transition by a user. Agent triggering is manual via "Start Agent" command.
       } else if (event.type === 'item_removed') {
         agentService?.cancelAgent(String(event.issueId));
       }
