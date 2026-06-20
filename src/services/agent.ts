@@ -114,7 +114,7 @@ export class AgentService {
     );
     logger.info(`[AgentService.selectNextIssue] ${eligible.length} items in AI-eligible columns`);
 
-    // Phase 1: Scan ALL eligible columns for bugs first
+    // Scan eligible columns for bugs first
     const bugs = eligible.filter((item) => AgentService.isBug(item.labels));
     if (bugs.length > 0) {
       // Pick bug from highest-priority column
@@ -133,7 +133,7 @@ export class AgentService {
       return null;
     }
 
-    // Phase 2: Scan columns in priority order, return top card
+    // Scan columns in priority order, return top card
     for (const col of AI_ELIGIBLE_COLUMNS) {
       const itemsInCol = eligible.filter((item) => item.status === col);
       if (itemsInCol.length > 0) {
