@@ -96,6 +96,12 @@
         "command": "aiOs.enableAutoWork",
         "title": "Enable Auto-Work",
         "category": "AI OS"
+      },
+      {
+        "command": "aiOs.startAgent",
+        "title": "Start Agent",
+        "category": "AI OS",
+        "icon": "$(play)"
       }
     ],
     "configuration": {
@@ -167,6 +173,11 @@
         },
         {
           "command": "aiOs.refreshBoard",
+          "when": "view == aiOs.boardSelector",
+          "group": "navigation"
+        },
+        {
+          "command": "aiOs.startAgent",
           "when": "view == aiOs.boardSelector",
           "group": "navigation"
         },
