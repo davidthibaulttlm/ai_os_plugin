@@ -137,23 +137,31 @@ export async function loadProjectsAuto(ctx: vscode.ExtensionContext): Promise<vo
 }
 
 export async function handleFetchBoards(): Promise<void> {
+  logger.info('[handleFetchBoards] Fetching boards');
   if (!graphql) {
     vscode.window.showErrorMessage('AI OS not initialized — please authenticate with GitHub first');
     return;
   }
   try {
+    boardTreeProvider?.setLoading(true);
     const projects = await graphql.listProjects();
     if (projects.length === 0) {
+      boardTreeProvider?.setLoading(false);
       vscode.window.showInformationMessage('No GitHub Projects found. Create one at https://github.com/projects');
       return;
     }
-    void projects;
+    boardTreeProvider?.setBoards(
+      projects.map((p: any) => ({ id: p.id, name: p.title, number: p.number, url: p.url }))
+    );
+    boardTreeProvider?.setLoading(false);
   } catch (error) {
+    boardTreeProvider?.setLoading(false);
     vscode.window.showErrorMessage(`Failed to load projects: ${(error as Error).message}`);
   }
 }
 
 export async function handleSelectBoard(): Promise<void> {
+  logger.info('[handleSelectBoard] Selecting board');
   if (!graphql) {
     vscode.window.showErrorMessage('AI OS not initialized — please authenticate with GitHub first');
     return;
@@ -164,6 +172,10 @@ export async function handleSelectBoard(): Promise<void> {
       vscode.window.showInformationMessage('No GitHub Projects found. Create one at https://github.com/projects');
       return;
     }
+    // Also populate the tree view
+    boardTreeProvider?.setBoards(
+      projects.map((p: any) => ({ id: p.id, name: p.title, number: p.number, url: p.url }))
+    );
     const picks: vscode.QuickPickItem[] = projects.map((p) => ({
       label: p.title,
       description: `#${p.number}`,
