@@ -18,6 +18,7 @@ export interface BoardItemState {
   githubId: number;
   status: string;
   title: string;
+  labels: string[];
 }
 
 /**
@@ -36,8 +37,9 @@ export function detectDeltas(
     const githubId = item.databaseId ?? hashToNumber(item.id);
     const status = extractStatus(item);
     const title = item.content?.title ?? 'Unknown';
+    const labels = extractLabels(item);
 
-    currentMap.set(githubId, { githubId, status, title });
+    currentMap.set(githubId, { githubId, status, title, labels });
 
     const last = lastState.get(githubId);
     if (!last) {
@@ -89,6 +91,16 @@ export function extractStatus(item: ProjectItemNode): string {
   }
   logger.warn('[delta.extractStatus] No Status field found, returning UNKNOWN');
   return 'UNKNOWN';
+}
+
+/**
+ * Extract labels from a project item's content.
+ */
+export function extractLabels(item: import('./graphql').ProjectItemNode): string[] {
+  logger.debug(`[delta.extractLabels] Extracting labels for item id=${item.id}`);
+  const labels = item.content?.labels?.nodes?.map((l) => l.name) ?? [];
+  logger.debug(`[delta.extractLabels] Found ${labels.length} labels: ${labels.join(', ')}`);
+  return labels;
 }
 
 /**

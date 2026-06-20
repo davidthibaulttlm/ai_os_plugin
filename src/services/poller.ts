@@ -1,12 +1,10 @@
 /** Background polling service — polls GitHub every 30s for board changes */
 
 import type { GraphQLClient, ProjectItemNode } from './graphql';
-import { detectDeltas, extractStatus, hashToNumber, type BoardItemState, type DeltaEvent } from './delta';
+import { detectDeltas, extractStatus, extractLabels, hashToNumber, type BoardItemState, type DeltaEvent } from './delta';
+import type { AgentService, PrioritizerItem } from './agent';
 import { logger } from './logger';
 import { writeBoardState, type BoardState } from './stateBridge';
-
-/** Columns that trigger AI agent */
-const AI_TRIGGER_COLUMNS = new Set(['AI_SPEC', 'AI_CODE']);
 
 /** Poll interval in milliseconds — configurable via POLL_INTERVAL env var (seconds, default 30) */
 const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL || '30', 10) * 1000;
@@ -27,6 +25,7 @@ export class PollerService {
   private isPolling = false;
   private isStopped = false;
   private stateFilePath: string | undefined;
+  private agentService: AgentService | undefined;
 
   /**
    * Start polling for a specific project.
@@ -100,6 +99,9 @@ export class PollerService {
 
       this.updateState(items);
 
+      // Feed board state to agent service (with labels)
+      this.feedBoardState(items);
+
       if (this.stateFilePath) {
         this.writeStateBridge(items).catch((err) => {
           logger.error(`State bridge write error: ${(err as Error).message}`);
@@ -127,10 +129,36 @@ export class PollerService {
       const githubId = item.databaseId ?? hashToNumber(item.id);
       const status = extractStatus(item);
       const title = item.content?.title ?? 'Unknown';
-      newState.set(githubId, { githubId, status, title });
+      const labels = extractLabels(item);
+      newState.set(githubId, { githubId, status, title, labels });
     }
 
     this.lastState = newState;
+  }
+
+  /**
+   * Feed enriched board state to the agent service for prioritizer.
+   */
+  private feedBoardState(items: ProjectItemNode[]): void {
+    if (!this.agentService) return;
+
+    const prioritizerItems: PrioritizerItem[] = items.map((item) => ({
+      id: item.databaseId ?? hashToNumber(item.id),
+      title: item.content?.title ?? 'Unknown',
+      status: extractStatus(item),
+      labels: extractLabels(item),
+    }));
+
+    logger.debug(`[poller.feedBoardState] Feeding ${prioritizerItems.length} items to agent service`);
+    this.agentService.setBoardState(prioritizerItems);
+  }
+
+  /**
+   * Set the agent service reference for feeding board state.
+   */
+  public setAgentService(agentService: AgentService): void {
+    logger.info('[poller.setAgentService] Setting agent service reference');
+    this.agentService = agentService;
   }
 
   /**
@@ -140,12 +168,6 @@ export class PollerService {
     return this.lastState;
   }
 
-  /**
-   * Check if a column name triggers the AI agent.
-   */
-  public static isAiTriggerColumn(columnName: string): boolean {
-    return AI_TRIGGER_COLUMNS.has(columnName);
-  }
 
   /**
    * Write board state to the shared JSON file for the MCP server.
@@ -160,13 +182,14 @@ export class PollerService {
       const githubId = item.databaseId ?? hashToNumber(item.id);
       const status = extractStatus(item);
       const title = item.content?.title ?? 'Unknown';
+      const labels = extractLabels(item);
 
       if (!columns[status]) {
         columns[status] = [];
       }
-      columns[status].push({ number: githubId, title });
+      columns[status].push({ number: githubId, title, labels });
 
-      issues.push({ number: githubId, title, column: status });
+      issues.push({ number: githubId, title, column: status, labels });
     }
 
     const state: BoardState = {

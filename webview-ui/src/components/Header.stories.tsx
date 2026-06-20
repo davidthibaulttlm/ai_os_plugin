@@ -16,3 +16,10 @@ export const Default: Story = {
     onRefresh: fn(),
   },
 };
+
+export const AgentBusy: Story = {
+  args: {
+    onRefresh: fn(),
+    agentBusy: true,
+  },
+};

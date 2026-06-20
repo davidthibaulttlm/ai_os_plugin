@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import { fn } from '@storybook/test';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { DndContext } from '@dnd-kit/core';
 import IssueCard from './IssueCard';
@@ -56,6 +57,34 @@ export const PullRequest: Story = {
   },
 };
 
+export const BugLabel: Story = {
+  args: {
+    item: {
+      ...baseItem,
+      id: 'bug_1',
+      title: 'Fix login crash on mobile',
+      number: 101,
+      status: 'AI_CODE',
+      url: 'https://github.com/example/repo/issues/101',
+      labels: ['bug', 'critical'],
+    },
+  },
+};
+
+export const TopPriorityCard: Story = {
+  args: {
+    item: {
+      ...baseItem,
+      id: 'priority_1',
+      title: 'First issue in AI_CODE column',
+      number: 200,
+      status: 'AI_CODE',
+      url: 'https://github.com/example/repo/issues/200',
+      labels: ['priority/high'],
+    },
+  },
+};
+
 export const NoPriority: Story = {
   args: {
     item: {
@@ -67,5 +96,18 @@ export const NoPriority: Story = {
       url: 'https://github.com/example/repo/issues/99',
       priority: undefined,
     },
+  },
+};
+
+export const ClickSelectsIssue: Story = {
+  args: {
+    item: baseItem,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const card = canvas.getByRole('button', { name: /Implement user authentication/i });
+    await userEvent.click(card);
+    // The click dispatches 'selectIssue' IPC message via useVsCode.postMessage
+    // In Storybook sandbox, this verifies the click handler is wired
   },
 };

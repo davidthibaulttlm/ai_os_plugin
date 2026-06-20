@@ -92,3 +92,46 @@ export const ManyItems: Story = {
     items: manyItems,
   },
 };
+
+const priorityOrderedItems: IssueItem[] = [
+  {
+    id: 'priority_1',
+    type: 'ISSUE',
+    title: 'Critical bug - highest priority',
+    number: 301,
+    status: 'AI_CODE',
+    url: 'https://github.com/example/repo/issues/301',
+    repo: 'example/repo',
+    priority: 'critical',
+    labels: ['bug'],
+  },
+  {
+    id: 'priority_2',
+    type: 'ISSUE',
+    title: 'High priority feature',
+    number: 302,
+    status: 'AI_CODE',
+    url: 'https://github.com/example/repo/issues/302',
+    repo: 'example/repo',
+    priority: 'high',
+    labels: ['feature'],
+  },
+  {
+    id: 'priority_3',
+    type: 'ISSUE',
+    title: 'Medium priority task',
+    number: 303,
+    status: 'AI_CODE',
+    url: 'https://github.com/example/repo/issues/303',
+    repo: 'example/repo',
+    priority: 'medium',
+    labels: [],
+  },
+];
+
+export const PriorityOrder: Story = {
+  args: {
+    column: aiSpecColumn,
+    items: priorityOrderedItems,
+  },
+};

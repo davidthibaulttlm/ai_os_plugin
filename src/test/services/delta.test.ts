@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { extractStatus, detectDeltas, hashToNumber } from '../../services/delta';
-import type { ProjectItemNode } from '../../services/graphql';
+import { extractStatus, detectDeltas, hashToNumber, extractLabels } from '../../services/delta';
+import type { ProjectItemNode, FieldValue } from '../../services/graphql';
 
 // --- Helper to build a minimal ProjectItemNode ---
 function createItem(options: {
@@ -8,16 +8,15 @@ function createItem(options: {
   databaseId?: number | null;
   status?: string | null;
   title?: string;
+  labels?: string[];
 }): ProjectItemNode {
   const id = options.id ?? 'test-node-id';
   const databaseId = options.databaseId ?? null;
   const title = options.title ?? 'Test Issue';
   const status = options.status;
+  const labels = options.labels ?? [];
 
-  const fieldValuesNodes: Array<{
-    name?: string;
-    field?: { name: string; id: string };
-  }> = [];
+  const fieldValuesNodes: FieldValue[] = [];
 
   if (status !== null && status !== undefined) {
     fieldValuesNodes.push({
@@ -38,7 +37,7 @@ function createItem(options: {
       url: 'https://github.com/test/repo/issues/1',
       state: 'open',
       repository: { id: 'repo-id', name: 'repo', owner: { login: 'owner' } },
-      labels: { nodes: [] },
+      labels: { nodes: labels.map((name) => ({ name, color: 'ffffff' })) },
     },
   };
 }
@@ -134,13 +133,9 @@ describe('hashToNumber', () => {
 
 describe('detectDeltas', () => {
   it('detects new items', () => {
-    const lastState = new Map<number, ReturnType<typeof extractStatus> extends never ? never : any, {
-      githubId: number;
-      status: string;
-      title: string;
-    }>();
+    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[] }>();
     const item = createItem({ databaseId: 42, status: 'AI_SPEC', title: 'New feature' });
-    const events = detectDeltas(lastState as any, [item]);
+    const events = detectDeltas(lastState, [item]);
 
     expect(events).toHaveLength(1);
     expect(events[0].type).toBe('item_added');
@@ -149,8 +144,8 @@ describe('detectDeltas', () => {
   });
 
   it('detects moved items (status changed)', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string }>();
-    lastState.set(1, { githubId: 1, status: 'BRAIN_DUMP', title: 'Move me' });
+    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[] }>();
+    lastState.set(1, { githubId: 1, status: 'BRAIN_DUMP', title: 'Move me', labels: [] });
 
     const item = createItem({ databaseId: 1, status: 'AI_CODE', title: 'Move me' });
     const events = detectDeltas(lastState, [item]);
@@ -162,8 +157,8 @@ describe('detectDeltas', () => {
   });
 
   it('detects removed items', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string }>();
-    lastState.set(99, { githubId: 99, status: 'AI_SPEC', title: 'Removed' });
+    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[] }>();
+    lastState.set(99, { githubId: 99, status: 'AI_SPEC', title: 'Removed', labels: [] });
 
     const events = detectDeltas(lastState, []);
 
@@ -173,8 +168,8 @@ describe('detectDeltas', () => {
   });
 
   it('returns no events when state is unchanged', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string }>();
-    lastState.set(1, { githubId: 1, status: 'AI_SPEC', title: 'Same' });
+    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[] }>();
+    lastState.set(1, { githubId: 1, status: 'AI_SPEC', title: 'Same', labels: [] });
 
     const item = createItem({ databaseId: 1, status: 'AI_SPEC', title: 'Same' });
     const events = detectDeltas(lastState, [item]);
@@ -193,9 +188,9 @@ describe('detectDeltas', () => {
   });
 
   it('detects multiple deltas in one pass', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string }>();
-    lastState.set(1, { githubId: 1, status: 'BRAIN_DUMP', title: 'Moved' });
-    lastState.set(2, { githubId: 2, status: 'AI_SPEC', title: 'Removed' });
+    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[] }>();
+    lastState.set(1, { githubId: 1, status: 'BRAIN_DUMP', title: 'Moved', labels: [] });
+    lastState.set(2, { githubId: 2, status: 'AI_SPEC', title: 'Removed', labels: [] });
 
     const items: ProjectItemNode[] = [
       createItem({ databaseId: 1, status: 'AI_CODE', title: 'Moved' }),
@@ -209,5 +204,31 @@ describe('detectDeltas', () => {
     expect(types).toContain('item_moved');
     expect(types).toContain('item_added');
     expect(types).toContain('item_removed');
+  });
+});
+
+describe('extractLabels', () => {
+  it('extracts label names from item content', () => {
+    const item = createItem({ databaseId: 1, status: 'AI_SPEC', labels: ['bug', 'priority/high'] });
+    const labels = extractLabels(item);
+    expect(labels).toEqual(['bug', 'priority/high']);
+  });
+
+  it('returns empty array when no labels', () => {
+    const item = createItem({ databaseId: 1, status: 'AI_SPEC', labels: [] });
+    const labels = extractLabels(item);
+    expect(labels).toEqual([]);
+  });
+
+  it('returns empty array when content is null', () => {
+    const item: ProjectItemNode = {
+      id: 'x',
+      databaseId: 1,
+      type: 'ISSUE',
+      fieldValues: { nodes: [] },
+      content: null,
+    };
+    const labels = extractLabels(item);
+    expect(labels).toEqual([]);
   });
 });

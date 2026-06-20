@@ -32,20 +32,9 @@ let mcpProviderDisposable: vscode.Disposable | undefined;
 
 function createPollerCallback(): (events: Array<{ type: string; issueId: number; data: Record<string, unknown> }>) => void {
   return (events) => {
-    for (const event of events) {
-      if (event.type === 'item_moved') {
-        const toStatus = event.data.to as string;
-        if (PollerService.isAiTriggerColumn(toStatus)) {
-          agentService?.onAgentTrigger(String(event.issueId), toStatus);
-        }
-      } else if (event.type === 'item_added') {
-        // DO NOT trigger agents on item_added — that fires on initial board load
-        // for every existing item. Only item_moved represents an actual column
-        // transition by a user. Agent triggering is manual via "Start Agent" command.
-      } else if (event.type === 'item_removed') {
-        agentService?.cancelAgent(String(event.issueId));
-      }
-    }
+    void events;
+    // Agent triggering is ONLY via "Start Agent" command — no reactive triggers.
+    // The poller feeds board state to the agent service for prioritizer decisions.
     panel?.refresh();
   };
 }
@@ -127,6 +116,7 @@ function registerCommands(context: vscode.ExtensionContext): void {
       vscode.window.showInformationMessage('Onboarding reset. Reload the extension to see the connect dialog.');
       logger.info('[aiOs.resetOnboarding] Onboarding reset by user');
     }),
+    vscode.commands.registerCommand('aiOs.startAgent', () => handleStartAgent()),
   );
 }
 
@@ -147,6 +137,12 @@ async function initServices(context: vscode.ExtensionContext): Promise<void> {
   agentService = new AgentService();
   setAuthService(authServiceInstance!);
 
+  // Wire agent service with GraphQL client
+  agentService.setGraphql(graphql);
+
+  // Wire poller with agent service for board state
+  poller.setAgentService(agentService);
+
   claudeTrigger = new ClaudeTrigger();
   claudeTrigger.setCallback(async (event) => {
     const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
@@ -161,11 +157,15 @@ async function initServices(context: vscode.ExtensionContext): Promise<void> {
     panel?.notifyWorkingStatus(issueNumber, active);
   });
 
+  // Agent callback — invoked by startAgent(), calls finishAgent on completion
   agentService.setCallback(async (issueId: string, columnName: string) => {
+    logger.info(`[initServices] Agent callback for #${issueId} in ${columnName}`);
     vscode.window.showInformationMessage(
       `AI Agent triggered for issue #${issueId} in column ${columnName}`
     );
     panel?.notifyAgentProgress(issueId, columnName);
+    // When callback completes, signal finish and auto-trigger next
+    await agentService!.finishAgent(issueId);
   });
 
   globalStorageUri = context.globalStorageUri.fsPath;
@@ -217,6 +217,7 @@ async function handleOpenBoard(context: vscode.ExtensionContext): Promise<void> 
     });
     const boardId = stateManager?.getLastBoardId();
     if (boardId && graphql && poller) {
+      agentService?.setProjectId(boardId);
       poller.start(graphql, boardId, createPollerCallback(), getStateFilePath(context.globalStorageUri.fsPath));
     }
   });
@@ -228,6 +229,38 @@ async function handleAssignAgent(): Promise<void> {
     return;
   }
   await assignAgent(graphql, agentService!);
+}
+
+/** Start Agent command handler — runs prioritizer and launches agent */
+async function handleStartAgent(): Promise<void> {
+  logger.info('[handleStartAgent] Start Agent command invoked');
+
+  if (!agentService) {
+    vscode.window.showErrorMessage('AI OS not initialized — please authenticate with GitHub first');
+    return;
+  }
+
+  try {
+    const result = await agentService.startAgent();
+    if (result.started && result.issueId) {
+      vscode.window.showInformationMessage(
+        `AI Agent started for issue #${result.issueId}`
+      );
+    } else if (result.reason === 'busy') {
+      vscode.window.showInformationMessage(
+        `Agent is busy working on #${agentService.getCurrentWip()}`
+      );
+    } else if (result.reason === 'empty') {
+      vscode.window.showInformationMessage('No issues available for AI agent');
+    } else if (result.reason === 'auto_move_failed') {
+      vscode.window.showWarningMessage(
+        `Failed to auto-move issue #${result.issueId} from BRAIN_DUMP to AI_SPEC`
+      );
+    }
+  } catch (error) {
+    logger.error(`[handleStartAgent] Error: ${(error as Error).message}`);
+    vscode.window.showErrorMessage(`Failed to start agent: ${(error as Error).message}`);
+  }
 }
 
 /** Auto-load projects on activation (silent, no error toast) */
@@ -339,6 +372,7 @@ async function handleSelectBoard(): Promise<void> {
     await stateManager?.setLastBoardId(project.id);
 
     if (poller) {
+      agentService?.setProjectId(project.id);
       poller.stop();
       poller.start(graphql, project.id, createPollerCallback(), getStateFilePath(globalStorageUri!));
     }
@@ -375,6 +409,7 @@ async function handleOpenBoardFromTree(
   });
 
   if (poller) {
+    agentService?.setProjectId(boardId);
     poller.stop();
     poller.start(graphql, boardId, createPollerCallback(), getStateFilePath(context.globalStorageUri.fsPath));
   }
