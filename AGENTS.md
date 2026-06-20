@@ -23,7 +23,19 @@ This file provides guidance to agents when working with code in this repository.
 | Backend | FastAPI (Python), `uv` package manager |
 | State | VS Code Memento + in-memory |
 | HTTP | `httpx` (async GraphQL) |
-| Frontend | npm |
+| Frontend | React 18, Vite 5, **Tailwind CSS v4**, `@dnd-kit` |
+| Styling | **Tailwind CSS v4** — CSS-first config via `@theme` directive in CSS. **NO `tailwind.config.js` for colors.** |
+
+## CRITICAL: Tailwind CSS v4 Configuration
+
+**Tailwind v4 uses CSS-first configuration. `tailwind.config.js` is IGNORED for colors/theme.**
+
+- **Colors/theme MUST be defined in CSS via `@theme` directive** in `webview-ui/src/styles/index.css`.
+- Format: `--color-vscode-sideBar-background: var(--vscode-sideBar-background);`
+- Usage in JSX: `bg-vscode-sideBar-background` (Tailwind auto-generates utility classes from `@theme` vars).
+- **DO NOT use `tailwind.config.js` for colors** — it will NOT work. The file exists only for content paths.
+- VS Code theme CSS variables use **camelCase**: `sideBar.background` → `--vscode-sideBar-background` (NOT `--vscode-sidebar-background`).
+- Reference: https://tailwindcss.com/docs/theme and https://code.visualstudio.com/api/references/theme-color
 
 ## Commands
 

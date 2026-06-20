@@ -38,6 +38,7 @@ type Story = StoryObj<typeof meta>;
 export const EmptyBoard: Story = {
   args: {
     onMoveItem: fn(),
+    onReorderItem: fn(),
   },
   parameters: {
     items: [],
@@ -56,6 +57,7 @@ const populatedItems: IssueItem[] = [
 export const PopulatedBoard: Story = {
   args: {
     onMoveItem: fn(),
+    onReorderItem: fn(),
   },
   parameters: {
     items: populatedItems,

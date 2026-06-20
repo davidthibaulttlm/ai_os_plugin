@@ -17,15 +17,15 @@ export default function KanbanColumn({ column, items }: KanbanColumnProps) {
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-col min-w-[280px] max-w-[280px] h-full bg-gray-100 dark:bg-gray-800 rounded-lg p-3 transition-colors ${
-        isOver ? 'ring-2 ring-blue-400 bg-blue-50 dark:bg-blue-900' : ''
+      className={`flex flex-col min-w-[280px] max-w-[280px] h-full bg-vscode-sideBar-background rounded-lg p-3 transition-colors ${
+        isOver ? 'ring-2 ring-vscode-focusBorder bg-vscode-list-hoverBackground' : ''
       }`}
     >
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-sm text-gray-700 dark:text-gray-200">
+        <h3 className="font-semibold text-sm text-vscode-sideBar-foreground">
           {column.name.replace(/_/g, ' ')}
         </h3>
-        <span className="text-xs text-gray-500 dark:text-gray-400">
+        <span className="text-xs text-vscode-descriptionForeground">
           {items.length}
         </span>
       </div>

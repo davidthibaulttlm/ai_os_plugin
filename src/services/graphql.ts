@@ -155,6 +155,18 @@ const UPDATE_ITEM_FIELD_MUTATION = `
   }
 `;
 
+const UPDATE_ITEM_POSITION_MUTATION = `
+  mutation UpdateItemPosition($input: UpdateProjectV2ItemPositionInput!) {
+    updateProjectV2ItemPosition(input: $input) {
+      items(first: 1) {
+        nodes {
+          id
+        }
+      }
+    }
+  }
+`;
+
 // Response types
 export interface ProjectNode {
   id: string;
@@ -234,6 +246,10 @@ export interface GetProjectFieldsResponse {
 
 export interface UpdateItemFieldResponse {
   updateProjectV2ItemFieldValue: { projectV2Item: { id: string } | null };
+}
+
+export interface UpdateItemPositionResponse {
+  updateProjectV2ItemPosition: { items: { nodes: { id: string }[] } };
 }
 
 /** GraphQL error from GitHub API */
@@ -396,5 +412,27 @@ export class GraphQLClient {
     }
 
     return this.moveItem(projectId, itemId, statusField.id, option.id);
+  }
+
+  /**
+   * Reorder an item within the project using updateProjectV2ItemPosition.
+   * `afterId` is the item ID to place this item after. If null/undefined, moves to top.
+   */
+  public async reorderItem(
+    projectId: string,
+    itemId: string,
+    afterId: string | null | undefined
+  ): Promise<boolean> {
+    const result = await this.execute<UpdateItemPositionResponse>(
+      UPDATE_ITEM_POSITION_MUTATION,
+      {
+        input: {
+          projectId,
+          itemId,
+          afterId: afterId ?? null,
+        },
+      }
+    );
+    return result.updateProjectV2ItemPosition.items.nodes.length > 0;
   }
 }

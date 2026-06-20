@@ -36,23 +36,23 @@ export default function IssueCard({ item }: IssueCardProps) {
       {...attributes}
       {...listeners}
       onClick={handleClick}
-      className="bg-white dark:bg-gray-700 rounded-lg p-3 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+      className="bg-vscode-editor-background rounded-lg p-3 shadow-sm cursor-pointer hover:shadow-md transition-shadow border border-vscode-editor-border"
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
+        <span className="text-xs font-mono text-vscode-descriptionForeground">
           #{item.number}
         </span>
         {item.type === 'PULL_REQUEST' && (
-          <span className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded">
+          <span className="text-xs bg-vscode-badge-background text-vscode-badge-foreground px-1.5 py-0.5 rounded">
             PR
           </span>
         )}
       </div>
-      <div className="text-sm font-medium mt-1 text-gray-800 dark:text-gray-200">
+      <div className="text-sm font-medium mt-1 text-vscode-editor-foreground">
         {item.title}
       </div>
       {item.repo && (
-        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+        <div className="text-xs text-vscode-descriptionForeground mt-1">
           {item.repo}
         </div>
       )}
@@ -61,7 +61,7 @@ export default function IssueCard({ item }: IssueCardProps) {
           {item.labels.slice(0, 3).map((label) => (
             <span
               key={label}
-              className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded"
+              className="text-xs bg-vscode-list-hoverBackground text-vscode-list-foreground px-1.5 py-0.5 rounded"
             >
               {label}
             </span>

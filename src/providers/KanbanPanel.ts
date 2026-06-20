@@ -237,7 +237,7 @@ export class KanbanPanel {
    */
   private async _handleMessage(message: WebviewToExtension): Promise<void> {
     // Validate message type against allowed types
-    const allowedTypes = ['loadBoard', 'moveItem', 'refresh', 'selectIssue', 'assignAgent', '__ping__', '__inline_ping__', '__react_ready__'];
+    const allowedTypes = ['loadBoard', 'moveItem', 'reorderItem', 'refresh', 'selectIssue', 'assignAgent', '__ping__', '__inline_ping__', '__react_ready__'];
     if (!allowedTypes.includes(message.type)) {
       logger.warn(`Unknown IPC message type: ${message.type}`);
       return;
@@ -286,6 +286,38 @@ export class KanbanPanel {
             this._panel.webview.postMessage({
               type: 'error',
               data: { message: `Failed to move item: ${errorMsg}` },
+            } as ExtensionToWebview);
+          } catch { /* disposed */ }
+        }
+        break;
+      }
+
+      case 'reorderItem': {
+        logger.info(`reorderItem received: itemId=${message.data?.itemId}, afterId=${message.data?.afterId}, projectId=${this._projectId}`);
+        if (!this._projectId || !message.data?.itemId) {
+          logger.warn('reorderItem: missing required fields');
+          return;
+        }
+        try {
+          await this._reorderItem(
+            this._projectId,
+            message.data.itemId,
+            message.data.afterId ?? null
+          );
+          logger.info(`reorderItem success for ${message.data.itemId}`);
+          try {
+            this._panel.webview.postMessage({
+              type: 'itemReordered',
+              data: { itemId: message.data.itemId },
+            } as ExtensionToWebview);
+          } catch { /* disposed */ }
+        } catch (error) {
+          const errorMsg = (error as Error).message;
+          logger.error(`reorderItem FAILED: ${errorMsg}`);
+          try {
+            this._panel.webview.postMessage({
+              type: 'error',
+              data: { message: `Failed to reorder item: ${errorMsg}` },
             } as ExtensionToWebview);
           } catch { /* disposed */ }
         }
@@ -416,6 +448,21 @@ export class KanbanPanel {
     // Resolve the column name from the option ID for the response
     const columnName = statusField.options?.find((o) => o.id === columnId)?.name ?? columnId;
     return { id: itemId, status: columnName };
+  }
+
+  /**
+   * Reorder an item within the project using updateProjectV2ItemPosition.
+   */
+  private async _reorderItem(
+    projectId: string,
+    itemId: string,
+    afterId: string | null
+  ): Promise<void> {
+    logger.debug(`_reorderItem: projectId=${projectId}, itemId=${itemId}, afterId=${afterId}`);
+    const success = await this._graphql.reorderItem(projectId, itemId, afterId);
+    if (!success) {
+      throw new Error('reorderItem returned no items');
+    }
   }
 
   /**

@@ -17,6 +17,7 @@ let agentService: AgentService | undefined;
 let stateManager: StateManager | undefined;
 let authServiceInstance: AuthService | undefined;
 let boardTreeProvider: BoardTreeProvider | undefined;
+let extensionUri: vscode.Uri | undefined;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   logger.info('Extension activating...');
@@ -77,6 +78,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       panel?.notifyAgentProgress(issueId, columnName);
     });
 
+    // Store extension URI for auto-load
+    extensionUri = context.extensionUri;
+
+    // Auto-load projects on activation
+    loadProjectsAuto(context.extensionUri);
+
     logger.info('Extension activated successfully');
   } catch (error) {
     console.error('[AI OS] Activation error:', error);
@@ -132,6 +139,43 @@ async function handleAssignAgent(): Promise<void> {
     return;
   }
   await assignAgent(graphql, agentService!);
+}
+
+/** Auto-load projects on activation (silent, no error toast) */
+async function loadProjectsAuto(extUri: vscode.Uri): Promise<void> {
+  if (!graphql) {
+    return;
+  }
+
+  try {
+    boardTreeProvider?.setLoading(true);
+    const projects = await graphql.listProjects();
+
+    if (projects.length === 0) {
+      boardTreeProvider?.setLoading(false);
+      return;
+    }
+
+    boardTreeProvider?.setBoards(
+      projects.map((p) => ({ id: p.id, name: p.title, number: p.number, url: p.url }))
+    );
+
+    // Auto-open last used board if exists
+    const lastBoardId = stateManager?.getLastBoardId();
+    if (lastBoardId) {
+      const lastProject = projects.find(p => p.id === lastBoardId);
+      if (lastProject) {
+        handleOpenBoardFromTree(
+          { extensionUri: extUri } as vscode.ExtensionContext,
+          lastBoardId,
+          lastProject.title
+        );
+      }
+    }
+  } catch (error) {
+    boardTreeProvider?.setLoading(false);
+    logger.error(`Failed to auto-load projects: ${(error as Error).message}`);
+  }
 }
 
 /** Fetch boards and populate the tree view (no quick pick) */

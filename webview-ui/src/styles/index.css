@@ -1,35 +1,277 @@
 @import "tailwindcss";
 
+/* VS Code theme colors — exposed as Tailwind theme variables via @theme */
+/* VS Code injects these as CSS custom properties on <html>: --vscode-* */
+/* Theme color names PRESERVE camelCase: sideBar.background → --vscode-sideBar-background */
+/* Reference: https://code.visualstudio.com/api/references/theme-color */
+@theme {
+  /* UI colors */
+  --color-vscode-foreground: var(--vscode-foreground);
+  --color-vscode-focusBorder: var(--vscode-focusBorder);
+  --color-vscode-widget-shadow: var(--vscode-widget-shadow);
+  --color-vscode-selection-background: var(--vscode-selection-background);
+  --color-vscode-descriptionForeground: var(--vscode-descriptionForeground);
+  --color-vscode-errorForeground: var(--vscode-errorForeground);
+
+  /* Input */
+  --color-vscode-input-background: var(--vscode-input-background);
+  --color-vscode-input-foreground: var(--vscode-input-foreground);
+  --color-vscode-input-border: var(--vscode-input-border);
+  --color-vscode-input-placeholderForeground: var(--vscode-input-placeholderForeground);
+
+  /* Button */
+  --color-vscode-button-background: var(--vscode-button-background);
+  --color-vscode-button-foreground: var(--vscode-button-foreground);
+  --color-vscode-button-hoverBackground: var(--vscode-button-hoverBackground);
+  --color-vscode-button-secondaryBackground: var(--vscode-button-secondaryBackground);
+  --color-vscode-button-secondaryForeground: var(--vscode-button-secondaryForeground);
+  --color-vscode-button-secondaryHoverBackground: var(--vscode-button-secondaryHoverBackground);
+
+  /* Badge */
+  --color-vscode-badge-background: var(--vscode-badge-background);
+  --color-vscode-badge-foreground: var(--vscode-badge-foreground);
+
+  /* Dropdown */
+  --color-vscode-dropdown-background: var(--vscode-dropdown-background);
+  --color-vscode-dropdown-foreground: var(--vscode-dropdown-foreground);
+  --color-vscode-dropdown-border: var(--vscode-dropdown-border);
+
+  /* Quick Picker */
+  --color-vscode-quickInput-background: var(--vscode-quickInput-background);
+  --color-vscode-quickInput-foreground: var(--vscode-quickInput-foreground);
+  --color-vscode-quickInputTitle-foreground: var(--vscode-quickInputTitle-foreground);
+
+  /* Editor */
+  --color-vscode-editor-background: var(--vscode-editor-background);
+  --color-vscode-editor-foreground: var(--vscode-editor-foreground);
+  --color-vscode-editor-border: var(--vscode-editor-border);
+  --color-vscode-editor-lineHighlightBackground: var(--vscode-editor-lineHighlightBackground);
+  --color-vscode-editor-selectionBackground: var(--vscode-editor-selectionBackground);
+  --color-vscode-editor-findMatchBackground: var(--vscode-editor-findMatchBackground);
+  --color-vscode-editor-hoverHighlight: var(--vscode-editor-hoverHighlight);
+  --color-vscode-editor-wordHighlightBackground: var(--vscode-editor-wordHighlightBackground);
+  --color-vscode-editorCursor-background: var(--vscode-editorCursor-background);
+
+  /* Sidebar */
+  --color-vscode-sideBar-background: var(--vscode-sideBar-background);
+  --color-vscode-sideBar-foreground: var(--vscode-sideBar-foreground);
+  --color-vscode-sideBar-border: var(--vscode-sideBar-border);
+  --color-vscode-sideBarTitle-foreground: var(--vscode-sideBarTitle-foreground);
+  --color-vscode-sideBarSectionHeader-background: var(--vscode-sideBarSectionHeader-background);
+  --color-vscode-sideBarSectionHeader-foreground: var(--vscode-sideBarSectionHeader-foreground);
+  --color-vscode-sideBarSectionHeader-border: var(--vscode-sideBarSectionHeader-border);
+  --color-vscode-sideBarList-activeSelectionBackground: var(--vscode-sideBarList-activeSelectionBackground);
+  --color-vscode-sideBarList-activeSelectionForeground: var(--vscode-sideBarList-activeSelectionForeground);
+  --color-vscode-sideBarList-hoverBackground: var(--vscode-sideBarList-hoverBackground);
+
+  /* Panel */
+  --color-vscode-panel-background: var(--vscode-panel-background);
+  --color-vscode-panel-foreground: var(--vscode-panel-foreground);
+  --color-vscode-panel-border: var(--vscode-panel-border);
+  --color-vscode-panelTitle-activeBorder: var(--vscode-panelTitle-activeBorder);
+  --color-vscode-panelTitle-activeForeground: var(--vscode-panelTitle-activeForeground);
+  --color-vscode-panelTitle-inactiveForeground: var(--vscode-panelTitle-inactiveForeground);
+
+  /* Status Bar */
+  --color-vscode-statusBar-background: var(--vscode-statusBar-background);
+  --color-vscode-statusBar-foreground: var(--vscode-statusBar-foreground);
+  --color-vscode-statusBar-noFolderBackground: var(--vscode-statusBar-noFolderBackground);
+  --color-vscode-statusBar-noFolderForeground: var(--vscode-statusBar-noFolderForeground);
+  --color-vscode-statusBar-notificationBackground: var(--vscode-statusBar-notificationBackground);
+  --color-vscode-statusBar-notificationForeground: var(--vscode-statusBar-notificationForeground);
+
+  /* Tab */
+  --color-vscode-tab-activeBackground: var(--vscode-tab-activeBackground);
+  --color-vscode-tab-activeForeground: var(--vscode-tab-activeForeground);
+  --color-vscode-tab-inactiveBackground: var(--vscode-tab-inactiveBackground);
+  --color-vscode-tab-inactiveForeground: var(--vscode-tab-inactiveForeground);
+  --color-vscode-tab-border: var(--vscode-tab-border);
+  --color-vscode-tab-unactiveForeground: var(--vscode-tab-unactiveForeground);
+
+  /* Title Bar */
+  --color-vscode-titleBar-activeBackground: var(--vscode-titleBar-activeBackground);
+  --color-vscode-titleBar-activeForeground: var(--vscode-titleBar-activeForeground);
+  --color-vscode-titleBar-inactiveBackground: var(--vscode-titleBar-inactiveBackground);
+  --color-vscode-titleBar-inactiveForeground: var(--vscode-titleBar-inactiveForeground);
+
+  /* Menu */
+  --color-vscode-menu-background: var(--vscode-menu-background);
+  --color-vscode-menu-foreground: var(--vscode-menu-foreground);
+  --color-vscode-menu-selectionBackground: var(--vscode-menu-selectionBackground);
+  --color-vscode-menu-selectionForeground: var(--vscode-menu-selectionForeground);
+  --color-vscode-menu-separatorBackground: var(--vscode-menu-separatorBackground);
+
+  /* List / Tree */
+  --color-vscode-list-background: var(--vscode-list-background);
+  --color-vscode-list-foreground: var(--vscode-list-foreground);
+  --color-vscode-list-activeSelectionBackground: var(--vscode-list-activeSelectionBackground);
+  --color-vscode-list-activeSelectionForeground: var(--vscode-list-activeSelectionForeground);
+  --color-vscode-list-hoverBackground: var(--vscode-list-hoverBackground);
+  --color-vscode-list-hoverForeground: var(--vscode-list-hoverForeground);
+  --color-vscode-list-inactiveSelectionBackground: var(--vscode-list-inactiveSelectionBackground);
+  --color-vscode-list-inactiveSelectionForeground: var(--vscode-list-inactiveSelectionForeground);
+  --color-vscode-list-highlightForeground: var(--vscode-list-highlightForeground);
+  --color-vscode-list-focusBackground: var(--vscode-list-focusBackground);
+  --color-vscode-list-dropBackground: var(--vscode-list-dropBackground);
+
+  /* Progress bar */
+  --color-vscode-progressBar-background: var(--vscode-progressBar-background);
+
+  /* Scrollbar */
+  --color-vscode-scrollbar-shadow: var(--vscode-scrollbar-shadow);
+  --color-vscode-scrollbarSlider-background: var(--vscode-scrollbarSlider-background);
+  --color-vscode-scrollbarSlider-hoverBackground: var(--vscode-scrollbarSlider-hoverBackground);
+  --color-vscode-scrollbarSlider-visibleBackground: var(--vscode-scrollbarSlider-visibleBackground);
+
+  /* Minimap */
+  --color-vscode-minimap-background: var(--vscode-minimap-background);
+
+  /* Terminal */
+  --color-vscode-terminal-background: var(--vscode-terminal-background);
+  --color-vscode-terminal-foreground: var(--vscode-terminal-foreground);
+  --color-vscode-terminal-selectionBackground: var(--vscode-terminal-selectionBackground);
+
+  /* Contrast */
+  --color-vscode-contrastBorder: var(--vscode-contrastBorder);
+
+  /* Diff Editor */
+  --color-vscode-diffEditor-insertedLineBackground: var(--vscode-diffEditor-insertedLineBackground);
+  --color-vscode-diffEditor-insertedTextBackground: var(--vscode-diffEditor-insertedTextBackground);
+  --color-vscode-diffEditor-removedLineBackground: var(--vscode-diffEditor-removedLineBackground);
+  --color-vscode-diffEditor-removedTextBackground: var(--vscode-diffEditor-removedTextBackground);
+
+  /* Activity Bar */
+  --color-vscode-activityBar-background: var(--vscode-activityBar-background);
+  --color-vscode-activityBar-foreground: var(--vscode-activityBar-foreground);
+  --color-vscode-activityBar-inactiveForeground: var(--vscode-activityBar-inactiveForeground);
+  --color-vscode-activityBar-border: var(--vscode-activityBar-border);
+  --color-vscode-activityBar-activeBorder: var(--vscode-activityBar-activeBorder);
+  --color-vscode-activityBarBadge-background: var(--vscode-activityBarBadge-background);
+  --color-vscode-activityBarBadge-foreground: var(--vscode-activityBarBadge-foreground);
+
+  /* Editor Group */
+  --color-vscode-editorGroup-border: var(--vscode-editorGroup-border);
+  --color-vscode-editorGroupHeader-background: var(--vscode-editorGroupHeader-background);
+  --color-vscode-editorGroup-droppedBackground: var(--vscode-editorGroup-droppedBackground);
+
+  /* Editors */
+  --color-vscode-editors-background: var(--vscode-editors-background);
+
+  /* Breadcrumb */
+  --color-vscode-breadcrumb-background: var(--vscode-breadcrumb-background);
+  --color-vscode-breadcrumb-foreground: var(--vscode-breadcrumb-foreground);
+  --color-vscode-breadcrumb-focusForeground: var(--vscode-breadcrumb-focusForeground);
+  --color-vscode-breadcrumb-activeSelectionForeground: var(--vscode-breadcrumb-activeSelectionForeground);
+
+  /* Welcome */
+  --color-vscode-welcomePage-background: var(--vscode-welcomePage-background);
+  --color-vscode-welcomePage-buttonBackground: var(--vscode-welcomePage-buttonBackground);
+  --color-vscode-welcomePage-buttonForeground: var(--vscode-welcomePage-buttonForeground);
+  --color-vscode-welcomePage-buttonHoverBackground: var(--vscode-welcomePage-buttonHoverBackground);
+
+  /* Git decorations */
+  --color-vscode-gitDecoration-addedResourceForeground: var(--vscode-gitDecoration-addedResourceForeground);
+  --color-vscode-gitDecoration-modifiedResourceForeground: var(--vscode-gitDecoration-modifiedResourceForeground);
+  --color-vscode-gitDecoration-deletedResourceForeground: var(--vscode-gitDecoration-deletedResourceForeground);
+  --color-vscode-gitDecoration-renamedResourceForeground: var(--vscode-gitDecoration-renamedResourceForeground);
+  --color-vscode-gitDecoration-untrackedResourceForeground: var(--vscode-gitDecoration-untrackedResourceForeground);
+  --color-vscode-gitDecoration-ignoredResourceForeground: var(--vscode-gitDecoration-ignoredResourceForeground);
+  --color-vscode-gitDecoration-conflictingResourceForeground: var(--vscode-gitDecoration-conflictingResourceForeground);
+
+  /* Charts */
+  --color-vscode-charts-lines: var(--vscode-charts-lines);
+  --color-vscode-charts-foreground: var(--vscode-charts-foreground);
+  --color-vscode-charts-red: var(--vscode-charts-red);
+  --color-vscode-charts-blue: var(--vscode-charts-blue);
+  --color-vscode-charts-yellow: var(--vscode-charts-yellow);
+  --color-vscode-charts-orange: var(--vscode-charts-orange);
+  --color-vscode-charts-green: var(--vscode-charts-green);
+  --color-vscode-charts-purple: var(--vscode-charts-purple);
+
+  /* Notifications */
+  --color-vscode-notifications-border: var(--vscode-notifications-border);
+  --color-vscode-notifications-buttonForeground: var(--vscode-notifications-buttonForeground);
+  --color-vscode-notifications-iconForeground: var(--vscode-notifications-iconForeground);
+  --color-vscode-notificationCenter-border: var(--vscode-notificationCenter-border);
+  --color-vscode-notificationCenter-toastBorder: var(--vscode-notificationCenter-toastBorder);
+  --color-vscode-notificationsErrorIcon-foreground: var(--vscode-notificationsErrorIcon-foreground);
+  --color-vscode-notificationsWarningIcon-foreground: var(--vscode-notificationsWarningIcon-foreground);
+  --color-vscode-notificationsInfoIcon-foreground: var(--vscode-notificationsInfoIcon-foreground);
+
+  /* PeekView */
+  --color-vscode-peekView-border: var(--vscode-peekView-border);
+  --color-vscode-peekViewTitle-background: var(--vscode-peekViewTitle-background);
+  --color-vscode-peekViewTitleLabel-foreground: var(--vscode-peekViewTitleLabel-foreground);
+  --color-vscode-peekViewTitleDescription-foreground: var(--vscode-peekViewTitleDescription-foreground);
+  --color-vscode-peekViewResult-foreground: var(--vscode-peekViewResult-foreground);
+  --color-vscode-peekViewResultLineForeground: var(--vscode-peekViewResultLineForeground);
+  --color-vscode-peekViewResultSelectionBackground: var(--vscode-peekViewResultSelectionBackground);
+  --color-vscode-peekViewResultSelectionForeground: var(--vscode-peekViewResultSelectionForeground);
+
+  /* Debug */
+  --color-vscode-debugToolBar-background: var(--vscode-debugToolBar-background);
+  --color-vscode-editorStackFrameHighlightBackground: var(--vscode-editorStackFrameHighlightBackground);
+  --color-vscode-editorFocusedStackFrameHighlightBackground: var(--vscode-editorFocusedStackFrameHighlightBackground);
+
+  /* Extension */
+  --color-vscode-extension-button-background: var(--vscode-extension-button-background);
+  --color-vscode-extension-button-foreground: var(--vscode-extension-button-foreground);
+  --color-vscode-extension-button-hoverBackground: var(--vscode-extension-button-hoverBackground);
+  --color-vscode-extension-badge-remoteBackground: var(--vscode-extension-badge-remoteBackground);
+  --color-vscode-extension-badge-remoteForeground: var(--vscode-extension-badge-remoteForeground);
+
+  /* Merge conflicts */
+  --color-vscode-merge-currentHeaderBackground: var(--vscode-merge-currentHeaderBackground);
+  --color-vscode-merge-currentContentBackground: var(--vscode-merge-currentContentBackground);
+  --color-vscode-merge-incomingHeaderBackground: var(--vscode-merge-incomingHeaderBackground);
+  --color-vscode-merge-incomingContentBackground: var(--vscode-merge-incomingContentBackground);
+}
+
 #root {
   height: 100vh;
   overflow: hidden;
 }
 
-/* Scrollbar styling */
+/* Base theme colors — use VS Code theme colors as defaults */
+:root {
+  color-scheme: light dark;
+}
+
+/* Dark theme defaults */
+body.vscode-dark,
+body.vscode-high-contrast {
+  color-scheme: dark;
+}
+
+body.vscode-light {
+  color-scheme: light;
+}
+
+/* Scrollbar styling — uses VS Code theme colors */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--vscode-editor-background, transparent);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #d1d5db;
+  background: var(--vscode-scrollbarSlider-background, #d1d5db);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  background: var(--vscode-scrollbarSlider-hoverBackground, #9ca3af);
 }
 
-/* Drag and drop styles */
+/* Drag and drop styles — uses VS Code theme colors */
 .dragging {
   opacity: 0.5;
 }
 
 .drag-over {
-  background-color: #f3f4f6;
-  border: 2px dashed #3b82f6;
+  background-color: var(--vscode-editor-hoverHighlight, var(--vscode-list-hoverBackground, #f3f4f6));
+  border: 2px dashed var(--vscode-button-background, #3b82f6);
 }

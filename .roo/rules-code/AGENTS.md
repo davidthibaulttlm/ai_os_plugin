@@ -26,3 +26,14 @@ YOU ARE SURE OF SOMETHING OR YOU ARE UNSURE ? SEARCH THE WEB!
 - **IPC between extension and webview** — Use `panel.webview.postMessage()` and `webview.onDidReceiveMessage()`. Messages fail silently if not wrapped in try/catch.
 - **Auth uses `gh` CLI token** — Read token via `gh auth token` command, not separate OAuth. No client_id/client_secret needed for extension mode.
 - **State via VS Code Memento** — Use `context.globalState` for persistent state. No database.
+
+## CRITICAL: Tailwind CSS v4 Configuration
+
+**Tailwind v4 uses CSS-first configuration. `tailwind.config.js` is IGNORED for colors/theme.**
+
+- **Colors/theme MUST be defined in CSS via `@theme` directive** in `webview-ui/src/styles/index.css`.
+- Format: `--color-vscode-sideBar-background: var(--vscode-sideBar-background);`
+- Usage in JSX: `bg-vscode-sideBar-background` (Tailwind auto-generates utility classes from `@theme` vars).
+- **DO NOT use `tailwind.config.js` for colors** — it will NOT work.
+- VS Code theme CSS variables use **camelCase**: `sideBar.background` → `--vscode-sideBar-background` (NOT `--vscode-sidebar-background`).
+- Reference: https://tailwindcss.com/docs/theme and https://code.visualstudio.com/api/references/theme-color

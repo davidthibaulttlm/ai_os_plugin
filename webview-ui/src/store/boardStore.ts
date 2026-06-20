@@ -35,6 +35,7 @@ interface BoardState {
   setSelectedItem: (id: string | null) => void;
   optimisticMove: (itemId: string, newStatus: string) => void;
   revertMove: (itemId: string, originalStatus: string) => void;
+  reorderItems: (items: IssueItem[]) => void;
 }
 
 /**
@@ -107,4 +108,7 @@ export const useBoardStore = create<BoardState>()((set) => ({
         item.id === itemId ? { ...item, status: originalStatus } : item
       ),
     })),
+
+  /** Replace the items array with a new ordering */
+  reorderItems: (items: IssueItem[]) => set({ items }),
 }));

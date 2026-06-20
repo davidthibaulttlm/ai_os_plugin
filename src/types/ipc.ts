@@ -7,6 +7,7 @@ export interface IPCMessage {
 export type WebviewToExtension =
   | { type: 'loadBoard'; data: { boardId: string } }
   | { type: 'moveItem'; data: { itemId: string; columnId: string } }
+  | { type: 'reorderItem'; data: { itemId: string; afterId: string | null } }
   | { type: 'refresh'; data?: never }
   | { type: 'selectIssue'; data: { issueId: string } }
   | { type: 'assignAgent'; data: { issueId: string } };
@@ -15,6 +16,7 @@ export type WebviewToExtension =
 export type ExtensionToWebview =
   | { type: 'boardData'; data: BoardData }
   | { type: 'itemMoved'; data: MovedItem }
+  | { type: 'itemReordered'; data: { itemId: string } }
   | { type: 'error'; data: { message: string } }
   | { type: 'agentProgress'; data: { issueId: string; status: string } };
 
