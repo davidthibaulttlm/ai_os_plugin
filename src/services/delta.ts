@@ -1,6 +1,7 @@
 /** Delta detection: compare poll results against in-memory state */
 
 import type { ProjectItemNode } from './graphql';
+import { logger } from './logger';
 
 /** Delta event types */
 export type DeltaEventType = 'item_added' | 'item_moved' | 'item_removed';
@@ -26,6 +27,7 @@ export function detectDeltas(
   lastState: Map<number, BoardItemState>,
   currentItems: ProjectItemNode[]
 ): DeltaEvent[] {
+  logger.debug(`[delta.detectDeltas] Comparing ${currentItems.length} current items against ${lastState.size} last state entries`);
   const events: DeltaEvent[] = [];
 
   // Build current state map
@@ -41,6 +43,7 @@ export function detectDeltas(
     const last = lastState.get(githubId);
     if (!last) {
       // New item
+      logger.info(`[delta.detectDeltas] New item: #${githubId} "${title}" in ${status}`);
       events.push({
         issueId: githubId,
         type: 'item_added',
@@ -48,6 +51,7 @@ export function detectDeltas(
       });
     } else if (last.status !== status) {
       // Status changed (item moved)
+      logger.info(`[delta.detectDeltas] Moved: #${githubId} "${title}" from ${last.status} -> ${status}`);
       events.push({
         issueId: githubId,
         type: 'item_moved',
@@ -59,6 +63,7 @@ export function detectDeltas(
   // Detect removed items
   for (const [githubId, last] of lastState) {
     if (!currentMap.has(githubId)) {
+      logger.info(`[delta.detectDeltas] Removed: #${githubId} "${last.title}" from ${last.status}`);
       events.push({
         issueId: githubId,
         type: 'item_removed',
@@ -67,6 +72,7 @@ export function detectDeltas(
     }
   }
 
+  logger.debug(`[delta.detectDeltas] Detected ${events.length} delta events`);
   return events;
 }
 

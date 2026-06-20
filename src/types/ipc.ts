@@ -18,7 +18,8 @@ export type ExtensionToWebview =
   | { type: 'itemMoved'; data: MovedItem }
   | { type: 'itemReordered'; data: { itemId: string } }
   | { type: 'error'; data: { message: string } }
-  | { type: 'agentProgress'; data: { issueId: string; status: string } };
+  | { type: 'agentProgress'; data: { issueId: string; status: string } }
+  | { type: 'workingStatus'; data: { issueNumber: number; active: boolean } };
 
 export interface BoardData {
   columns: { id: string; name: string; color: string }[];

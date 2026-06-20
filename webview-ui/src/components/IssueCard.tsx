@@ -1,6 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useVsCode } from '../hooks/useVsCode';
+import { useBoardStore } from '../store/boardStore';
 import type { IssueItem } from '../store/boardStore';
 
 interface IssueCardProps {
@@ -24,6 +25,8 @@ export default function IssueCard({ item }: IssueCardProps) {
   };
 
   const { postMessage } = useVsCode();
+  const workingIssues = useBoardStore((state) => state.workingIssues);
+  const isWorking = workingIssues.has(item.number);
 
   const handleClick = () => {
     postMessage('selectIssue', { issueId: item.url });
@@ -66,6 +69,12 @@ export default function IssueCard({ item }: IssueCardProps) {
               {label}
             </span>
           ))}
+        </div>
+      )}
+      {isWorking && (
+        <div className="flex items-center gap-1 mt-2">
+          <div className="w-2 h-2 rounded-full bg-vscode-progressBar-background animate-pulse" />
+          <span className="text-xs text-vscode-descriptionForeground">Claude is working...</span>
         </div>
       )}
     </div>

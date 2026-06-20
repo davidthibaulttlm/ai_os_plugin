@@ -23,7 +23,15 @@
     "onCommand:aiOs.moveToAICode",
     "onCommand:aiOs.fetchBoards",
     "onCommand:aiOs.selectBoard",
-    "onView:aiOs.boardSelector"
+    "onCommand:aiOs.openSettings",
+    "onCommand:aiOs.configureClaude",
+    "onCommand:aiOs.disconnectClaude",
+    "onCommand:aiOs.enableAutoWork",
+    "onView:aiOs.boardSelector",
+    "onLmTool:aiOsGetKanbanBoard",
+    "onLmTool:aiOsGetColumnIssues",
+    "onLmTool:aiOsGetIssueDetails",
+    "onLmTool:aiOsGetProjectStats"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -67,6 +75,69 @@
         "title": "Select Board",
         "category": "AI OS",
         "icon": "$(list-unordered)"
+      },
+      {
+        "command": "aiOs.openSettings",
+        "title": "Open Settings",
+        "category": "AI OS",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "aiOs.configureClaude",
+        "title": "Connect to Claude Code",
+        "category": "AI OS"
+      },
+      {
+        "command": "aiOs.disconnectClaude",
+        "title": "Disconnect from Claude Code",
+        "category": "AI OS"
+      },
+      {
+        "command": "aiOs.enableAutoWork",
+        "title": "Enable Auto-Work",
+        "category": "AI OS"
+      }
+    ],
+    "configuration": {
+      "title": "AI OS",
+      "properties": {
+        "aiOs.autoWorkAssignments": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable auto-work: Claude Code will automatically work on issues assigned to you or moved into trigger columns."
+        },
+        "aiOs.autoWorkMaxTurns": {
+          "type": "number",
+          "default": 50,
+          "minimum": 1,
+          "maximum": 500,
+          "description": "Maximum number of turns Claude Code can execute when auto-working an issue."
+        },
+        "aiOs.autoWorkAllowedTools": {
+          "type": "string",
+          "default": "Read,Edit,Bash",
+          "description": "Comma-separated list of allowed tools for Claude Code auto-work (uses --allowedTools, not --dangerously-skip-permissions)."
+        },
+        "aiOs.autoWorkColumns": {
+          "type": "array",
+          "default": ["AI_SPEC", "AI_CODE"],
+          "items": {
+            "type": "string",
+            "enum": ["BRAIN_DUMP", "AI_SPEC", "HUMAN_SPEC_REVIEW", "AI_CODE", "HUMAN_CODE_REVIEW", "PR_DONE"]
+          },
+          "description": "Kanban columns that trigger auto-work when an issue moves into them."
+        },
+        "aiOs.autoWorkConfirmFirst": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a confirmation notification before spawning Claude Code to work on an issue."
+        }
+      }
+    },
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "aiOsMcpProvider",
+        "label": "AI OS Kanban Board"
       }
     ],
     "viewsContainers": {
@@ -98,6 +169,11 @@
           "command": "aiOs.refreshBoard",
           "when": "view == aiOs.boardSelector",
           "group": "navigation"
+        },
+        {
+          "command": "aiOs.openSettings",
+          "when": "view == aiOs.boardSelector",
+          "group": "navigation"
         }
       ]
     }
@@ -125,6 +201,8 @@
     "typescript": "^5.3.0"
   },
   "dependencies": {
-    "@vscode/webview-ui-toolkit": "^1.0.0"
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@vscode/webview-ui-toolkit": "^1.0.0",
+    "zod": "^3.24.0"
   }
 }

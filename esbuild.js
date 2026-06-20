@@ -101,7 +101,31 @@ async function main() {
   }
 }
 
-main().catch(e => {
+async function buildMcpServer() {
+  const mcpCtx = await esbuild.context({
+    entryPoints: ["src/mcp/server.ts"],
+    bundle: true,
+    platform: "node",
+    target: "node20",
+    format: "cjs",
+    minify: production,
+    sourcemap: !production,
+    outfile: "out/mcp/server.js",
+    external: ["vscode"],
+    logLevel: "silent",
+    plugins: [esbuildProblemMatcherPlugin],
+  });
+
+  await mcpCtx.rebuild();
+  await mcpCtx.dispose();
+  console.log("[watch] MCP server bundle built to out/mcp/server.js");
+}
+
+main().then(() => {
+  buildMcpServer().catch(e => {
+    console.error("[watch] MCP server build failed:", e);
+  });
+}).catch(e => {
   console.error(e);
   process.exit(1);
 });

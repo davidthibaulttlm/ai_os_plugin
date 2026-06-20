@@ -7,6 +7,8 @@
 YOU HAVE TO FIX CODE ? SEARCH THE WEB!
 YOU HAVE TO IMPLEMENT SOMETHING ? SEARCH THE WEB!
 YOU ARE SURE OF SOMETHING OR YOU ARE UNSURE ? SEARCH THE WEB!
+IF YOU DON'T SEARCH THE WEB, YOU WILL CONSUMME USELESSLY AN IMMENSE AMMOUNT OF ENERGY!!! DO NOT WASTE ENERGY!!! 
+IT'S VERY CRITICAL! YOU WILL BE EVALUATED ON YOUR ABILITY TO SEARCH THE WEB TO GET THE BEST INFORMATION BEFORE YOU CODE TO SAVE ENERGY!!!
 
 1. **ALWAYS search the web or use Context7 MCP** to check official documentation for the libraries/APIs you're working with.
 2. **NEVER rely on memory alone** for API signatures, GraphQL schemas, or framework configurations.
@@ -14,6 +16,21 @@ YOU ARE SURE OF SOMETHING OR YOU ARE UNSURE ? SEARCH THE WEB!
 4. **If unsure, SEARCH FIRST.** It is better to spend time researching than to ship broken code.
 
 **This rule applies to 100% of tasks without exception.**
+
+## MANDATORY: Logger in Every File
+
+**EVERY method in EVERY file MUST log with `logger` from `src/services/logger.ts`:**
+
+- **ALWAYS import `logger`** at the top of every file: `import { logger } from './services/logger';`
+- **ALWAYS log at the START of every method**: `logger.info('[ClassName.methodName] Starting...')`
+- **ALWAYS log key parameters**: `logger.info('[ClassName.methodName] param=value')`
+- **ALWAYS log results**: `logger.info('[ClassName.methodName] Result: ...')`
+- **ALWAYS log errors**: `logger.error('[ClassName.methodName] Error: ...')`
+- **ALWAYS log warnings**: `logger.warn('[ClassName.methodName] Warning: ...')`
+- **Use `logger.debug`** for verbose details, `logger.info` for user actions, `logger.warn` for recoverable issues, `logger.error` for failures
+- **NEVER use `console.log`** — use `logger` exclusively. The logger outputs to VS Code's Output panel (View → Output → AI OS).
+
+**This rule applies to 100% of files without exception.**
 
 ## Project-Specific Coding Rules (Non-Obvious Only)
 

@@ -1,6 +1,10 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import { KanbanPanel } from './providers/KanbanPanel';
 import { BoardTreeProvider } from './providers/BoardTreeProvider';
+import { SettingsPanel } from './providers/SettingsPanel';
 import { AuthService } from './services/auth';
 import { StateManager } from './services/state';
 import { GraphQLClient } from './services/graphql';
@@ -9,6 +13,10 @@ import { AgentService } from './services/agent';
 import { openBoard } from './commands/openBoard';
 import { assignAgent } from './commands/assignAgent';
 import { logger } from './services/logger';
+import { writeBoardState, getStateFilePath } from './services/stateBridge';
+import { detectClaudeCode } from './services/claudeDetector';
+import { ClaudeTrigger } from './services/claudeTrigger';
+import { killAllClaudeProcesses, setWorkingStatusCallback } from './services/claudeSpawner';
 
 let panel: KanbanPanel | undefined;
 let graphql: GraphQLClient | undefined;
@@ -18,6 +26,8 @@ let stateManager: StateManager | undefined;
 let authServiceInstance: AuthService | undefined;
 let boardTreeProvider: BoardTreeProvider | undefined;
 let extensionUri: vscode.Uri | undefined;
+let claudeTrigger: ClaudeTrigger | undefined;
+let mcpProviderDisposable: vscode.Disposable | undefined;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   logger.info('Extension activating...');
@@ -50,7 +60,69 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       ),
       vscode.commands.registerCommand('aiOs.moveToAICode', () =>
         vscode.window.showInformationMessage('Use drag-and-drop on the kanban board to move items')
-      )
+      ),
+      // MCP and Settings commands
+      vscode.commands.registerCommand('aiOs.openSettings', () => {
+        if (boardTreeProvider) {
+          const currentMode = (boardTreeProvider as any).mode as string;
+          (boardTreeProvider as any).setMode(currentMode === 'settings' ? 'boards' : 'settings');
+        }
+      }),
+      vscode.commands.registerCommand('aiOs.configureClaude', () => handleConfigureClaude(context)),
+      vscode.commands.registerCommand('aiOs.disconnectClaude', () => handleDisconnectClaude()),
+      vscode.commands.registerCommand('aiOs.enableAutoWork', () => {
+        vscode.workspace.getConfiguration('aiOs').update('autoWorkAssignments', true, vscode.ConfigurationTarget.Global);
+        vscode.window.showInformationMessage('Auto-work enabled. Claude will work on triggered issues.');
+      }),
+      // Settings tree item commands
+      vscode.commands.registerCommand('aiOs.toggleAutoWork', () => {
+        const config = vscode.workspace.getConfiguration('aiOs');
+        const current = config.get<boolean>('autoWorkAssignments', false);
+        config.update('autoWorkAssignments', !current, vscode.ConfigurationTarget.Global);
+        vscode.window.showInformationMessage(`Auto-work ${!current ? 'enabled' : 'disabled'}`);
+        boardTreeProvider?.refresh();
+      }),
+      vscode.commands.registerCommand('aiOs.toggleConfirmFirst', () => {
+        const config = vscode.workspace.getConfiguration('aiOs');
+        const current = config.get<boolean>('autoWorkConfirmFirst', true);
+        config.update('autoWorkConfirmFirst', !current, vscode.ConfigurationTarget.Global);
+        vscode.window.showInformationMessage(`Confirm-first ${!current ? 'enabled' : 'disabled'}`);
+        boardTreeProvider?.refresh();
+      }),
+      vscode.commands.registerCommand('aiOs.setMaxTurns', async () => {
+        const current = vscode.workspace.getConfiguration('aiOs').get<number>('autoWorkMaxTurns', 25);
+        const value = await vscode.window.showInputBox({
+          prompt: 'Set max turns for Claude Code (1-100)',
+          value: String(current),
+          validateInput: (v) => {
+            const n = parseInt(v, 10);
+            if (isNaN(n) || n < 1 || n > 100) return 'Must be 1-100';
+            return null;
+          },
+        });
+        if (value) {
+          vscode.workspace.getConfiguration('aiOs').update('autoWorkMaxTurns', parseInt(value, 10), vscode.ConfigurationTarget.Global);
+          boardTreeProvider?.refresh();
+        }
+      }),
+      vscode.commands.registerCommand('aiOs.setAllowedTools', async () => {
+        const current = vscode.workspace.getConfiguration('aiOs').get<string>('autoWorkAllowedTools', '');
+        const value = await vscode.window.showInputBox({
+          prompt: 'Set allowed tools (comma-separated, empty = all)',
+          value: current,
+          placeHolder: 'fs_read,fs_write,Bash(git *)',
+        });
+        if (value !== undefined) {
+          vscode.workspace.getConfiguration('aiOs').update('autoWorkAllowedTools', value, vscode.ConfigurationTarget.Global);
+          boardTreeProvider?.refresh();
+        }
+      }),
+      // Reset onboarding to show the connect dialog again
+      vscode.commands.registerCommand('aiOs.resetOnboarding', () => {
+        vscode.workspace.getConfiguration('aiOs').update('onboardingDismissed', false, vscode.ConfigurationTarget.Global);
+        vscode.window.showInformationMessage('Onboarding reset. Reload the extension to see the connect dialog.');
+        logger.info('[aiOs.resetOnboarding] Onboarding reset by user');
+      }),
     );
     logger.info('Commands and tree view registered');
 
@@ -71,6 +143,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     poller = new PollerService();
     agentService = new AgentService();
 
+    // Setup Claude trigger
+    claudeTrigger = new ClaudeTrigger();
+    claudeTrigger.setCallback(async (event) => {
+      const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+      if (!workspaceRoot) {
+        logger.warn('No workspace folder — cannot spawn Claude');
+        return;
+      }
+      await claudeTrigger!.handleTrigger(event, token, workspaceRoot);
+    });
+
+    // Setup working status callback for webview spinner
+    setWorkingStatusCallback((issueNumber, active) => {
+      panel?.notifyWorkingStatus(issueNumber, active);
+    });
+
     agentService.setCallback(async (issueId: string, columnName: string) => {
       vscode.window.showInformationMessage(
         `AI Agent triggered for issue #${issueId} in column ${columnName}`
@@ -81,8 +169,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // Store extension URI for auto-load
     extensionUri = context.extensionUri;
 
+    // Register MCP server definition provider
+    registerMcpProvider(context, token);
+
+    // Show onboarding notification if Claude not configured
+    showOnboardingNotification();
+
     // Auto-load projects on activation
-    loadProjectsAuto(context.extensionUri);
+    loadProjectsAuto(context);
 
     logger.info('Extension activated successfully');
   } catch (error) {
@@ -128,7 +222,7 @@ async function handleOpenBoard(context: vscode.ExtensionContext): Promise<void> 
           }
         }
         panel?.refresh();
-      });
+      }, getStateFilePath(context.globalStorageUri.fsPath));
     }
   });
 }
@@ -142,7 +236,7 @@ async function handleAssignAgent(): Promise<void> {
 }
 
 /** Auto-load projects on activation (silent, no error toast) */
-async function loadProjectsAuto(extUri: vscode.Uri): Promise<void> {
+async function loadProjectsAuto(ctx: vscode.ExtensionContext): Promise<void> {
   if (!graphql) {
     return;
   }
@@ -166,7 +260,7 @@ async function loadProjectsAuto(extUri: vscode.Uri): Promise<void> {
       const lastProject = projects.find(p => p.id === lastBoardId);
       if (lastProject) {
         handleOpenBoardFromTree(
-          { extensionUri: extUri } as vscode.ExtensionContext,
+          ctx,
           lastBoardId,
           lastProject.title
         );
@@ -268,7 +362,7 @@ async function handleSelectBoard(): Promise<void> {
           }
         }
         panel?.refresh();
-      });
+      }, getStateFilePath(extensionUri!.fsPath));
     }
 
     vscode.window.showInformationMessage(`Board "${project.title}" selected and polling started`);
@@ -321,7 +415,7 @@ async function handleOpenBoardFromTree(
         }
       }
       panel?.refresh();
-    });
+    }, getStateFilePath(context.globalStorageUri.fsPath));
   }
 
   vscode.window.showInformationMessage(`Opened board "${boardName}"`);
@@ -331,6 +425,264 @@ export function deactivate(): void {
   poller?.stop();
   panel?.dispose();
   authServiceInstance?.clearToken();
-  logger.info('Extension deactivated — poller stopped, token cleared');
+  mcpProviderDisposable?.dispose();
+  killAllClaudeProcesses();
+  logger.info('Extension deactivated — poller stopped, token cleared, Claude processes killed');
   logger.dispose();
+}
+
+// ===== MCP Provider =====
+
+function registerMcpProvider(context: vscode.ExtensionContext, token: string): void {
+  const serverPath = vscode.Uri.joinPath(context.extensionUri, 'out', 'mcp', 'server.js');
+  const stateFile = getStateFilePath(context.globalStorageUri.fsPath);
+
+  // Use vscode.lm API if available (VS Code 1.93+)
+  if ((vscode as any).lm?.registerMcpServerDefinitionProvider) {
+    const disposable = (vscode as any).lm.registerMcpServerDefinitionProvider('aiOsMcpProvider', {
+      provideMcpServerDefinitions: () => {
+        return [{
+          id: 'aiOsMcpProvider',
+          label: 'AI OS Kanban Board',
+          command: 'node',
+          args: [serverPath.fsPath],
+          env: {
+            GITHUB_TOKEN: token,
+            AI_OS_STATE_FILE: stateFile,
+            AI_OS_MODE: 'vscode',
+          },
+        }];
+      },
+    });
+    mcpProviderDisposable = disposable;
+    context.subscriptions.push(disposable);
+    logger.info('MCP server definition provider registered');
+  } else {
+    logger.info('VS Code lm API not available — MCP provider not registered (requires VS Code 1.93+)');
+  }
+}
+
+// ===== Claude Configuration Commands =====
+
+/**
+ * All Claude config file paths that may contain MCP server definitions.
+ * Claude Code reads from multiple locations depending on how it's invoked.
+ */
+function getClaudeConfigPaths(): string[] {
+  const claudeDir = path.join(os.homedir(), '.claude');
+  return [
+    path.join(claudeDir, 'settings.json'),       // Claude Code CLI + VS Code extension
+    path.join(claudeDir, '.mcp.json'),           // Claude Code MCP config
+    path.join(claudeDir, 'remote-settings.json'), // VS Code Server remote session
+  ];
+}
+
+/**
+ * Write the ai-os MCP entry to ALL Claude config files.
+ */
+function writeMcpToAllConfigs(
+  configPaths: string[],
+  serverPath: string,
+  stateFile: string,
+  token: string
+): void {
+  const mcpEntry = {
+    type: 'stdio',
+    command: 'node',
+    args: [serverPath],
+    env: {
+      GITHUB_TOKEN: token,
+      AI_OS_STATE_FILE: stateFile,
+      AI_OS_MODE: 'claude',
+    },
+  };
+
+  for (const configFile of configPaths) {
+    const dir = path.dirname(configFile);
+    if (!fs.existsSync(dir)) {
+      logger.info(`[writeMcpToAllConfigs] Creating directory: ${dir}`);
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    let settings: any = {};
+    if (fs.existsSync(configFile)) {
+      try {
+        settings = JSON.parse(fs.readFileSync(configFile, 'utf-8'));
+        logger.info(`[writeMcpToAllConfigs] Read existing ${configFile}: keys=${JSON.stringify(Object.keys(settings))}`);
+      } catch (error) {
+        logger.error(`[writeMcpToAllConfigs] Failed to parse ${configFile}: ${(error as Error).message}`);
+        settings = {};
+      }
+    } else {
+      logger.info(`[writeMcpToAllConfigs] ${configFile} does not exist, creating new`);
+    }
+
+    settings.mcpServers = settings.mcpServers || {};
+    settings.mcpServers['ai-os'] = mcpEntry;
+
+    fs.writeFileSync(configFile, JSON.stringify(settings, null, 2), 'utf-8');
+    fs.chmodSync(configFile, 0o600);
+    logger.info(`[writeMcpToAllConfigs] Wrote ai-os MCP to ${configFile}`);
+  }
+}
+
+/**
+ * Check if ai-os MCP is configured in ANY Claude config file.
+ */
+function isMcpConfigured(configPaths: string[]): boolean {
+  for (const configFile of configPaths) {
+    if (!fs.existsSync(configFile)) continue;
+    try {
+      const settings = JSON.parse(fs.readFileSync(configFile, 'utf-8'));
+      if (settings.mcpServers?.['ai-os']) {
+        logger.info(`[isMcpConfigured] Found ai-os in ${configFile}`);
+        return true;
+      }
+    } catch (error) {
+      logger.warn(`[isMcpConfigured] Failed to parse ${configFile}: ${(error as Error).message}`);
+    }
+  }
+  return false;
+}
+
+/**
+ * Remove ai-os MCP from ALL Claude config files.
+ */
+function removeMcpFromAllConfigs(configPaths: string[]): void {
+  for (const configFile of configPaths) {
+    if (!fs.existsSync(configFile)) continue;
+    try {
+      const settings = JSON.parse(fs.readFileSync(configFile, 'utf-8'));
+      if (settings.mcpServers?.['ai-os']) {
+        delete settings.mcpServers['ai-os'];
+        fs.writeFileSync(configFile, JSON.stringify(settings, null, 2), 'utf-8');
+        logger.info(`[removeMcpFromAllConfigs] Removed ai-os from ${configFile}`);
+      }
+    } catch (error) {
+      logger.error(`[removeMcpFromAllConfigs] Failed to update ${configFile}: ${(error as Error).message}`);
+    }
+  }
+}
+
+async function handleConfigureClaude(context: vscode.ExtensionContext): Promise<void> {
+  logger.info('[handleConfigureClaude] Starting Claude configuration...');
+
+  const token = await authServiceInstance?.getGitHubToken();
+  if (!token) {
+    logger.warn('[handleConfigureClaude] No GitHub token found');
+    vscode.window.showErrorMessage('Not authenticated. Sign in with GitHub first.');
+    return;
+  }
+  logger.info(`[handleConfigureClaude] Got GitHub token (length=${token.length})`);
+
+  // Check Claude installation
+  const claude = detectClaudeCode();
+  logger.info(`[handleConfigureClaude] Claude detection: cliInstalled=${claude.cliInstalled}, extensionInstalled=${claude.extensionInstalled}`);
+  if (!claude.cliInstalled) {
+    const selection = await vscode.window.showWarningMessage(
+      'Claude Code CLI not found. Auto-work will not work. Install from https://claude.ai/download?',
+      'Install',
+      'Configure Anyway'
+    );
+    logger.info(`[handleConfigureClaude] User selected: ${selection}`);
+    if (selection === 'Install') {
+      vscode.env.openExternal(vscode.Uri.parse('https://claude.ai/download'));
+      return;
+    }
+  }
+
+  const serverPath = vscode.Uri.joinPath(context.extensionUri, 'out', 'mcp', 'server.js');
+  const stateFile = getStateFilePath(context.globalStorageUri.fsPath);
+  const configPaths = getClaudeConfigPaths();
+  logger.info(`[handleConfigureClaude] serverPath=${serverPath.fsPath}`);
+  logger.info(`[handleConfigureClaude] stateFile=${stateFile}`);
+  logger.info(`[handleConfigureClaude] configPaths=${JSON.stringify(configPaths)}`);
+
+  // Write to ALL Claude config files
+  writeMcpToAllConfigs(configPaths, serverPath.fsPath, stateFile, token);
+
+  const result = vscode.window.showInformationMessage(
+    'AI OS tools configured for Claude Code! Restart Claude Code for changes to take effect.',
+    'Restart Claude Code',
+    'Open Output',
+    'Dismiss'
+  );
+  result.then((selection) => {
+    logger.info(`[handleConfigureClaude] User clicked: ${selection}`);
+    if (selection === 'Restart Claude Code') {
+      // Show instructions for restarting Claude Code
+      const restartMsg = vscode.window.showInformationMessage(
+        [
+          'To restart Claude Code:',
+          '',
+          '• If using Claude Code CLI: press Ctrl+C to stop, then run `claude` again',
+          '• If using Claude VS Code extension: reload the VS Code window with Ctrl+Shift+P → "Developer: Reload Window"',
+          '',
+          'Claude will load the AI OS MCP tools on next startup.'
+        ].join('\n'),
+        'Reload VS Code Window',
+        'Got it'
+      );
+      restartMsg.then((sel) => {
+        logger.info(`[handleConfigureClaude] Restart instruction click: ${sel}`);
+        if (sel === 'Reload VS Code Window') {
+          vscode.commands.executeCommand('workbench.action.reloadWindow');
+        }
+      });
+    } else if (selection === 'Open Output') {
+      vscode.commands.executeCommand('ai-os.showOutput');
+    }
+  });
+}
+
+async function handleDisconnectClaude(): Promise<void> {
+  logger.info('[handleDisconnectClaude] Starting Claude disconnect...');
+
+  const configPaths = getClaudeConfigPaths();
+  logger.info(`[handleDisconnectClaude] configPaths=${JSON.stringify(configPaths)}`);
+
+  if (!isMcpConfigured(configPaths)) {
+    logger.info('[handleDisconnectClaude] ai-os not configured in any Claude config');
+    vscode.window.showInformationMessage('AI OS was not configured in Claude Code.');
+    return;
+  }
+
+  removeMcpFromAllConfigs(configPaths);
+
+  vscode.window.showInformationMessage('AI OS disconnected from Claude Code.');
+}
+
+function showOnboardingNotification(): void {
+  logger.info('[showOnboardingNotification] Checking if onboarding needed...');
+
+  const configPaths = getClaudeConfigPaths();
+  logger.info(`[showOnboardingNotification] configPaths=${JSON.stringify(configPaths)}`);
+
+  if (isMcpConfigured(configPaths)) {
+    logger.info('[showOnboardingNotification] Already configured, skipping onboarding');
+    return;
+  }
+
+  // Check if user dismissed onboarding
+  const dismissed = vscode.workspace.getConfiguration('aiOs').get<boolean>('onboardingDismissed', false);
+  if (dismissed) {
+    logger.info('[showOnboardingNotification] Onboarding dismissed by user, skipping');
+    return;
+  }
+
+  logger.info('[showOnboardingNotification] Showing onboarding notification');
+  vscode.window.showInformationMessage(
+    'AI OS installed! Connect to Claude Code?',
+    'Connect Now',
+    'Later',
+    "Don't ask again"
+  ).then((selection) => {
+    logger.info(`[showOnboardingNotification] User selected: ${selection}`);
+    if (selection === 'Connect Now') {
+      vscode.commands.executeCommand('aiOs.configureClaude');
+    } else if (selection === "Don't ask again") {
+      vscode.workspace.getConfiguration('aiOs').update('onboardingDismissed', true, vscode.ConfigurationTarget.Global);
+      logger.info('[showOnboardingNotification] User dismissed onboarding permanently');
+    }
+  });
 }

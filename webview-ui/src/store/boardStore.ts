@@ -28,11 +28,13 @@ interface BoardState {
   loading: boolean;
   error: string | null;
   selectedItemId: string | null;
+  workingIssues: Set<number>;
   setBoardData: (columns: KanbanColumn[], items: IssueItem[]) => void;
   updateItem: (id: string, updates: Partial<IssueItem>) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setSelectedItem: (id: string | null) => void;
+  setWorkingIssue: (issueNumber: number, active: boolean) => void;
   optimisticMove: (itemId: string, newStatus: string) => void;
   revertMove: (itemId: string, originalStatus: string) => void;
   reorderItems: (items: IssueItem[]) => void;
@@ -76,6 +78,7 @@ export const useBoardStore = create<BoardState>()((set) => ({
   loading: false,
   error: null,
   selectedItemId: null,
+  workingIssues: new Set(),
 
   setBoardData: (columns: KanbanColumn[], items: IssueItem[]) =>
     set({ columns, items, loading: false, error: null }),
@@ -92,6 +95,17 @@ export const useBoardStore = create<BoardState>()((set) => ({
   setError: (error: string | null) => set({ error }),
 
   setSelectedItem: (id: string | null) => set({ selectedItemId: id }),
+
+  setWorkingIssue: (issueNumber: number, active: boolean) =>
+    set((state) => {
+      const next = new Set(state.workingIssues);
+      if (active) {
+        next.add(issueNumber);
+      } else {
+        next.delete(issueNumber);
+      }
+      return { workingIssues: next };
+    }),
 
   /** Optimistically move an item to a new column */
   optimisticMove: (itemId: string, newStatus: string) =>

@@ -3,6 +3,7 @@
 import type { GraphQLClient, ProjectItemNode } from './graphql';
 import { detectDeltas, extractStatus, hashToNumber, type BoardItemState, type DeltaEvent } from './delta';
 import { logger } from './logger';
+import { writeBoardState, type BoardState } from './stateBridge';
 
 /** Columns that trigger AI agent */
 const AI_TRIGGER_COLUMNS = new Set(['AI_SPEC', 'AI_CODE']);
@@ -25,6 +26,7 @@ export class PollerService {
   private callback: DeltaCallback | undefined;
   private isPolling = false;
   private isStopped = false;
+  private stateFilePath: string | undefined;
 
   /**
    * Start polling for a specific project.
@@ -32,7 +34,8 @@ export class PollerService {
   public start(
     graphql: GraphQLClient,
     projectId: string,
-    callback: DeltaCallback
+    callback: DeltaCallback,
+    stateFilePath?: string
   ): void {
     this.stop();
     this.isStopped = false;
@@ -40,6 +43,7 @@ export class PollerService {
     this.graphql = graphql;
     this.projectId = projectId;
     this.callback = callback;
+    this.stateFilePath = stateFilePath;
 
     logger.info(`Poller started for project ${projectId} at ${POLL_INTERVAL}ms interval`);
 
@@ -97,6 +101,13 @@ export class PollerService {
       // Update state
       this.updateState(items);
 
+      // Write state bridge file for MCP server
+      if (this.stateFilePath) {
+        this.writeStateBridge(items).catch((err) => {
+          logger.error(`State bridge write error: ${(err as Error).message}`);
+        });
+      }
+
       // Notify if there are changes
       if (events.length > 0) {
         this.callback(events);
@@ -136,5 +147,36 @@ export class PollerService {
    */
   public static isAiTriggerColumn(columnName: string): boolean {
     return AI_TRIGGER_COLUMNS.has(columnName);
+  }
+
+  /**
+   * Write board state to the shared JSON file for the MCP server.
+   */
+  private async writeStateBridge(items: ProjectItemNode[]): Promise<void> {
+    if (!this.stateFilePath) return;
+
+    const columns: BoardState['columns'] = {};
+    const issues: BoardState['issues'] = [];
+
+    for (const item of items) {
+      const githubId = item.databaseId ?? hashToNumber(item.id);
+      const status = extractStatus(item);
+      const title = item.content?.title ?? 'Unknown';
+
+      if (!columns[status]) {
+        columns[status] = [];
+      }
+      columns[status].push({ number: githubId, title });
+
+      issues.push({ number: githubId, title, column: status });
+    }
+
+    const state: BoardState = {
+      columns,
+      issues,
+      lastUpdated: new Date().toISOString(),
+    };
+
+    await writeBoardState(this.stateFilePath, state);
   }
 }

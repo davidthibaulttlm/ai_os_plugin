@@ -179,6 +179,20 @@ export class KanbanPanel {
   }
 
   /**
+   * Notify the webview that Claude is working (or stopped working) on an issue.
+   */
+  public notifyWorkingStatus(issueNumber: number, active: boolean): void {
+    try {
+      this._panel.webview.postMessage({
+        type: 'workingStatus',
+        data: { issueNumber, active },
+      } as ExtensionToWebview);
+    } catch {
+      // Webview disposed
+    }
+  }
+
+  /**
    * Load initial board data asynchronously (fire-and-forget from constructor).
    */
   private async _loadInitialBoard(projectId: string): Promise<void> {

@@ -26,7 +26,7 @@ export default function App() {
   }, []);
 
   const { postMessage } = useVsCode();
-  const { setBoardData, setLoading, setError, optimisticMove, revertMove, reorderItems } = useBoardStore();
+  const { setBoardData, setLoading, setError, optimisticMove, revertMove, reorderItems, setWorkingIssue } = useBoardStore();
 
   // Auto-clear status messages after 5 seconds
   useEffect(() => {
@@ -67,6 +67,10 @@ export default function App() {
       setLoading(false);
     });
 
+    onMessage<{ issueNumber: number; active: boolean }>('workingStatus', (data) => {
+      setWorkingIssue(data.issueNumber, data.active);
+    });
+
     // Set loading — the extension will send boardData when ready
     setLoading(true);
 
@@ -76,6 +80,7 @@ export default function App() {
       offMessage('itemMoved');
       offMessage('itemReordered');
       offMessage('error');
+      offMessage('workingStatus');
     };
   }, [postMessage, setBoardData, setLoading, setError]);
 

@@ -167,6 +167,47 @@ const UPDATE_ITEM_POSITION_MUTATION = `
   }
 `;
 
+const GET_ISSUE_BY_NUMBER_QUERY = `
+  query GetIssueByNumber($owner: String!, $repo: String!, $number: Int!) {
+    repository(owner: $owner, name: $repo) {
+      issue(number: $number) {
+        id
+        number
+        title
+        body
+        url
+        state
+        labels(first: 10) {
+          nodes { name, color }
+        }
+        assignees(first: 5) {
+          nodes { login }
+        }
+      }
+    }
+  }
+`;
+
+export interface IssueDetails {
+  id: string;
+  number: number;
+  title: string;
+  body: string;
+  url: string;
+  state: string;
+  labels: { name: string; color: string }[];
+  assignees: { login: string }[];
+}
+
+export interface GetIssueByNumberResponse {
+  repository: {
+    issue: IssueDetails & {
+      labels: { nodes: { name: string; color: string }[] };
+      assignees: { nodes: { login: string }[] };
+    } | null;
+  } | null;
+}
+
 // Response types
 export interface ProjectNode {
   id: string;
@@ -434,5 +475,35 @@ export class GraphQLClient {
       }
     );
     return result.updateProjectV2ItemPosition.items.nodes.length > 0;
+  }
+
+  /**
+   * Fetch a single issue by repository owner, name, and issue number.
+   * Used by the MCP get_issue_details tool.
+   */
+  public async getIssueByNumber(
+    owner: string,
+    repo: string,
+    issueNumber: number
+  ): Promise<IssueDetails | null> {
+    const result = await this.execute<GetIssueByNumberResponse>(GET_ISSUE_BY_NUMBER_QUERY, {
+      owner,
+      repo,
+      number: issueNumber,
+    });
+
+    const issue = result.repository?.issue;
+    if (!issue) return null;
+
+    return {
+      id: issue.id,
+      number: issue.number,
+      title: issue.title,
+      body: issue.body,
+      url: issue.url,
+      state: issue.state,
+      labels: issue.labels.nodes.map((l) => ({ name: l.name, color: l.color })),
+      assignees: issue.assignees.nodes.map((a) => ({ login: a.login })),
+    };
   }
 }
