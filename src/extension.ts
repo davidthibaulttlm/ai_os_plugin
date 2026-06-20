@@ -13,7 +13,7 @@ import { AgentService } from './services/agent';
 import { openBoard } from './commands/openBoard';
 import { assignAgent } from './commands/assignAgent';
 import { logger } from './services/logger';
-import { writeBoardState, getStateFilePath } from './services/stateBridge';
+import { getStateFilePath } from './services/stateBridge';
 import { detectClaudeCode } from './services/claudeDetector';
 import { ClaudeTrigger } from './services/claudeTrigger';
 import { killAllClaudeProcesses, setWorkingStatusCallback } from './services/claudeSpawner';

@@ -4,12 +4,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-
-export interface BoardState {
-  columns: Record<string, Array<{ number: number; title: string; labels?: string[] }>>;
-  issues: Array<{ number: number; title: string; column: string; labels?: string[] }>;
-  lastUpdated: string;
-}
+import type { BoardState } from '../../services/stateBridge';
 
 /**
  * Read the board state from the shared JSON file.
