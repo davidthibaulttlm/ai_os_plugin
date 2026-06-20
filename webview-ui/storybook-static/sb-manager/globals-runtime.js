@@ -583,7 +583,7 @@ var require_react_dom_production_min = __commonJS({
     ["rowSpan", "start"].forEach(function(a3) {
       z[a3] = new v(a3, 5, !1, a3.toLowerCase(), null, !1, !1);
     });
-    var ra = /[\-:]([a-z])/g;
+    var ra = /[-:]([a-z])/g;
     function sa(a3) {
       return a3[1].toUpperCase();
     }
@@ -3808,7 +3808,7 @@ Error generating stack: ` + f4.message + `
               }
               d = e, b.updateQueue = d, d !== null && (b.flags |= 4);
             } else {
-              g2 = e.nodeType === 9 ? e : e.ownerDocument, a3 === "http://www.w3.org/1999/xhtml" && (a3 = kb(c)), a3 === "http://www.w3.org/1999/xhtml" ? c === "script" ? (a3 = g2.createElement("div"), a3.innerHTML = "<script><\/script>", a3 = a3.removeChild(a3.firstChild)) : typeof d.is == "string" ? a3 = g2.createElement(c, { is: d.is }) : (a3 = g2.createElement(c), c === "select" && (g2 = a3, d.multiple ? g2.multiple = !0 : d.size && (g2.size = d.size))) : a3 = g2.createElementNS(a3, c), a3[Of] = b, a3[Pf] = d, zj(a3, b, !1, !1), b.stateNode = a3;
+              g2 = e.nodeType === 9 ? e : e.ownerDocument, a3 === "http://www.w3.org/1999/xhtml" && (a3 = kb(c)), a3 === "http://www.w3.org/1999/xhtml" ? c === "script" ? (a3 = g2.createElement("div"), a3.innerHTML = "<script></script>", a3 = a3.removeChild(a3.firstChild)) : typeof d.is == "string" ? a3 = g2.createElement(c, { is: d.is }) : (a3 = g2.createElement(c), c === "select" && (g2 = a3, d.multiple ? g2.multiple = !0 : d.size && (g2.size = d.size))) : a3 = g2.createElementNS(a3, c), a3[Of] = b, a3[Pf] = d, zj(a3, b, !1, !1), b.stateNode = a3;
               a: {
                 switch (g2 = vb(c, d), c) {
                   case "dialog":
@@ -6423,7 +6423,6 @@ function prefix3(value, length2) {
           return replace(value, /(.+:)([^;!]+)(;|!.+)?/, "$1" + WEBKIT + (charat(value, 14) === 45 ? "inline-" : "") + "box$3$1" + WEBKIT + "$2$3$1" + MS + "$2box$3") + value;
       }
       break;
-    // writing-mode
     case 5936:
       switch (charat(value, length2 + 11)) {
         // vertical-l(r)
@@ -9418,8 +9417,8 @@ var require_bash = __commonJS({
               pattern: /\$\{[^}]+\}/,
               greedy: !0,
               inside: {
-                operator: /:[-=?+]?|[!\/]|##?|%%?|\^\^?|,,?/,
-                punctuation: /[\[\]]/,
+                operator: /:[-=?+]?|[!/]|##?|%%?|\^\^?|,,?/,
+                punctuation: /[[\]]/,
                 environment: {
                   pattern: RegExp("(\\{)" + envVars),
                   lookbehind: !0,
@@ -9738,7 +9737,7 @@ var require_graphql = __commonJS({
         operator: /[!=|&]|\.{3}/,
         "property-query": /\w+(?=\s*\()/,
         object: /\w+(?=\s*\{)/,
-        punctuation: /[!(){}\[\]:=,]/,
+        punctuation: /[!(){}[\]:=,]/,
         property: /\w+/
       }, Prism.hooks.add("after-tokenize", function(env) {
         if (env.language !== "graphql")
@@ -10012,7 +10011,7 @@ var require_jsx = __commonJS({
         }
         spread = re2(spread).source, Prism2.languages.jsx = Prism2.languages.extend("markup", javascript), Prism2.languages.jsx.tag.pattern = re2(
           /<\/?(?:[\w.:-]+(?:<S>+(?:[\w.:$-]+(?:=(?:"(?:\\[\s\S]|[^\\"])*"|'(?:\\[\s\S]|[^\\'])*'|[^\s{'"/>=]+|<BRACES>))?|<SPREAD>))*<S>*\/?)?>/.source
-        ), Prism2.languages.jsx.tag.inside.tag.pattern = /^<\/?[^\s>\/]*/, Prism2.languages.jsx.tag.inside["attr-value"].pattern = /=(?!\{)(?:"(?:\\[\s\S]|[^\\"])*"|'(?:\\[\s\S]|[^\\'])*'|[^\s'">]+)/, Prism2.languages.jsx.tag.inside.tag.inside["class-name"] = /^[A-Z]\w*(?:\.[A-Z]\w*)*$/, Prism2.languages.jsx.tag.inside.comment = javascript.comment, Prism2.languages.insertBefore(
+        ), Prism2.languages.jsx.tag.inside.tag.pattern = /^<\/?[^\s>/]*/, Prism2.languages.jsx.tag.inside["attr-value"].pattern = /=(?!\{)(?:"(?:\\[\s\S]|[^\\"])*"|'(?:\\[\s\S]|[^\\'])*'|[^\s'">]+)/, Prism2.languages.jsx.tag.inside.tag.inside["class-name"] = /^[A-Z]\w*(?:\.[A-Z]\w*)*$/, Prism2.languages.jsx.tag.inside.comment = javascript.comment, Prism2.languages.insertBefore(
           "inside",
           "attr-name",
           {
@@ -10183,10 +10182,6 @@ var require_markdown = __commonJS({
           ],
           title: [
             {
-              // title 1
-              // =======
-              // title 2
-              // -------
               pattern: /\S.*(?:\n|\r\n?)(?:==+|--+)(?=[ \t]*$)/m,
               alias: "important",
               inside: {
@@ -10205,10 +10200,6 @@ var require_markdown = __commonJS({
             }
           ],
           hr: {
-            // ***
-            // ---
-            // * * *
-            // -----------
             pattern: /(^\s*)([*-])(?:[\t ]*\2){2,}(?=\s*$)/m,
             lookbehind: !0,
             alias: "punctuation"
@@ -10234,7 +10225,7 @@ var require_markdown = __commonJS({
                 lookbehind: !0
               },
               string: /(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\((?:\\.|[^)\\])*\))$/,
-              punctuation: /^[\[\]!:]|[<>]/
+              punctuation: /^[[\]!:]|[<>]/
             },
             alias: "url"
           },
@@ -10440,7 +10431,7 @@ var require_markup = __commonJS({
           greedy: !0,
           inside: {
             "internal-subset": {
-              pattern: /(^[^\[]*\[)[\s\S]+(?=\]>$)/,
+              pattern: /(^[^[]*\[)[\s\S]+(?=\]>$)/,
               lookbehind: !0,
               greedy: !0,
               inside: null
@@ -10460,14 +10451,14 @@ var require_markup = __commonJS({
           greedy: !0
         },
         tag: {
-          pattern: /<\/?(?!\d)[^\s>\/=$<%]+(?:\s(?:\s*[^\s>\/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s'">=]+(?=[\s>]))|(?=[\s/>])))+)?\s*\/?>/,
+          pattern: /<\/?(?!\d)[^\s>/=$<%]+(?:\s(?:\s*[^\s>/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s'">=]+(?=[\s>]))|(?=[\s/>])))+)?\s*\/?>/,
           greedy: !0,
           inside: {
             tag: {
-              pattern: /^<\/?[^\s>\/]+/,
+              pattern: /^<\/?[^\s>/]+/,
               inside: {
                 punctuation: /^<\/?/,
-                namespace: /^[^\s>\/:]+:/
+                namespace: /^[^\s>/:]+:/
               }
             },
             "special-attr": [],
@@ -10485,9 +10476,9 @@ var require_markup = __commonJS({
             },
             punctuation: /\/?>/,
             "attr-name": {
-              pattern: /[^\s>\/]+/,
+              pattern: /[^\s>/]+/,
               inside: {
-                namespace: /^[^\s>\/:]+:/
+                namespace: /^[^\s>/:]+:/
               }
             }
           }
@@ -10623,7 +10614,7 @@ var require_typescript = __commonJS({
           // keywords that have to be followed by an identifier
           /\b(?:asserts|infer|interface|module|namespace|type)\b(?=\s*(?:[{_$a-zA-Z\xA0-\uFFFF]|$))/,
           // This is for `import type *, {}`
-          /\btype\b(?=\s*(?:[\{*]|$))/
+          /\btype\b(?=\s*(?:[{*]|$))/
         ), delete Prism2.languages.typescript.parameter, delete Prism2.languages.typescript["literal-property"];
         var typeInside = Prism2.languages.extend("typescript", {});
         delete typeInside["class-name"], Prism2.languages.typescript["class-name"].inside = typeInside, Prism2.languages.insertBefore("typescript", "function", {
@@ -10720,7 +10711,7 @@ var require_yaml = __commonJS({
         Prism2.languages.yaml = {
           scalar: {
             pattern: RegExp(
-              /([\-:]\s*(?:\s<<prop>>[ \t]+)?[|>])[ \t]*(?:((?:\r?\n|\r)[ \t]+)\S[^\r\n]*(?:\2[^\r\n]+)*)/.source.replace(
+              /([-:]\s*(?:\s<<prop>>[ \t]+)?[|>])[ \t]*(?:((?:\r?\n|\r)[ \t]+)\S[^\r\n]*(?:\2[^\r\n]+)*)/.source.replace(
                 /<<prop>>/g,
                 function() {
                   return properties;
@@ -13070,7 +13061,7 @@ var require_javascript = __commonJS({
             lookbehind: !0
           },
           {
-            pattern: /(^|[^.]|\.\.\.\s*)\b(?:as|assert(?=\s*\{)|async(?=\s*(?:function\b|\(|[$\w\xA0-\uFFFF]|$))|await|break|case|class|const|continue|debugger|default|delete|do|else|enum|export|extends|finally(?=\s*(?:\{|$))|for|from(?=\s*(?:['"]|$))|function|(?:get|set)(?=\s*(?:[#\[$\w\xA0-\uFFFF]|$))|if|implements|import|in|instanceof|interface|let|new|null|of|package|private|protected|public|return|static|super|switch|this|throw|try|typeof|undefined|var|void|while|with|yield)\b/,
+            pattern: /(^|[^.]|\.\.\.\s*)\b(?:as|assert(?=\s*\{)|async(?=\s*(?:function\b|\(|[$\w\xA0-\uFFFF]|$))|await|break|case|class|const|continue|debugger|default|delete|do|else|enum|export|extends|finally(?=\s*(?:\{|$))|for|from(?=\s*(?:['"]|$))|function|(?:get|set)(?=\s*(?:[#[$\w\xA0-\uFFFF]|$))|if|implements|import|in|instanceof|interface|let|new|null|of|package|private|protected|public|return|static|super|switch|this|throw|try|typeof|undefined|var|void|while|with|yield)\b/,
             lookbehind: !0
           }
         ],
@@ -13092,7 +13083,7 @@ var require_javascript = __commonJS({
       }), Prism.languages.javascript["class-name"][0].pattern = /(\b(?:class|extends|implements|instanceof|interface|new)\s+)[\w.\\]+/, Prism.languages.insertBefore("javascript", "keyword", {
         regex: {
           // eslint-disable-next-line regexp/no-dupe-characters-character-class
-          pattern: /((?:^|[^$\w\xA0-\uFFFF."'\])\s]|\b(?:return|yield))\s*)\/(?:\[(?:[^\]\\\r\n]|\\.)*\]|\\.|[^/\\\[\r\n])+\/[dgimyus]{0,7}(?=(?:\s|\/\*(?:[^*]|\*(?!\/))*\*\/)*(?:$|[\r\n,.;:})\]]|\/\/))/,
+          pattern: /((?:^|[^$\w\xA0-\uFFFF."'\])\s]|\b(?:return|yield))\s*)\/(?:\[(?:[^\]\\\r\n]|\\.)*\]|\\.|[^/\\[\r\n])+\/[dgimyus]{0,7}(?=(?:\s|\/\*(?:[^*]|\*(?!\/))*\*\/)*(?:$|[\r\n,.;:})\]]|\/\/))/,
           lookbehind: !0,
           greedy: !0,
           inside: {
@@ -29837,11 +29828,6 @@ var CHANNEL_EVENT_PREFIX = "UNIVERSAL_STORE:", ProgressState = {
   static create(options) {
     if (!options || typeof options?.id != "string")
       throw new TypeError("id is required and must be a string, when creating a UniversalStore");
-    options.debug && console.debug(
-      dedent`[UniversalStore]
-        create`,
-      { options }
-    );
     let existing = instances.get(options.id);
     if (existing)
       return console.warn(dedent`UniversalStore with id "${options.id}" already exists in this environment, re-using existing.
@@ -31106,7 +31092,7 @@ function get(object, path, defaultValue) {
   var result = object == null ? void 0 : baseGet_default(object, path);
   return result === void 0 ? defaultValue : result;
 }
-var get_default = get, isObject3 = isObject, dateFormat = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/, isJSON = (input2) => input2.match(/^[\[\{\"\}].*[\]\}\"]$/);
+var get_default = get, isObject3 = isObject, dateFormat = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/, isJSON = (input2) => input2.match(/^[[\{"\}].*[\]}\"]$/);
 function convertUnconventionalData(data) {
   if (!isObject3(data))
     return data;
@@ -31630,7 +31616,7 @@ var import_react7 = __toESM(require_react(), 1), Link = ({
   href: input2 = "",
   ...props
 }) => {
-  let href = /^\//.test(input2) ? `./?path=${input2}` : input2, target = /^#.*/.test(input2) ? "_self" : "_top";
+  let href = input2.startsWith('/') ? `./?path=${input2}` : input2, target = /^#.*/.test(input2) ? "_self" : "_top";
   return import_react7.default.createElement("a", { href, target, ...props });
 };
 
@@ -40153,7 +40139,6 @@ jsdocStringifyRules.JsdocTypeUnion = (result, transform) => result.elements.map(
 
 // src/docs-tools/shared.ts
 var ADDON_ID = "storybook/docs", PANEL_ID = `${ADDON_ID}/panel`;
-var SNIPPET_RENDERED = `${ADDON_ID}/snippet-rendered`;
 
 // src/actions/runtime/action.ts
 init_dist();
@@ -47807,7 +47792,7 @@ function getFormValue(container, name) {
     return elements.length === 1 ? getSingleElementValue(elements[0]) : getMultiElementValue(elements);
 }
 function getPureName(name) {
-  return /\[\]$/.test(name) ? name.slice(0, -2) : name;
+  return name.endsWith('[]') ? name.slice(0, -2) : name;
 }
 function getAllFormValues(container) {
   return Array.from(container.elements).map((element) => element.name).reduce(
@@ -48434,7 +48419,7 @@ function requireJsTokens() {
   if (hasRequiredJsTokens) return jsTokens_1;
   hasRequiredJsTokens = 1;
   var Identifier, JSXIdentifier, JSXPunctuator, JSXString, JSXText, KeywordsWithExpressionAfter, KeywordsWithNoLineTerminatorAfter, LineTerminatorSequence, MultiLineComment, Newline, NumericLiteral, Punctuator, RegularExpressionLiteral, SingleLineComment, StringLiteral, Template, TokensNotPrecedingObjectLiteral, TokensPrecedingExpression, WhiteSpace;
-  return RegularExpressionLiteral = /\/(?![*\/])(?:\[(?:(?![\]\\]).|\\.)*\]|(?![\/\\]).|\\.)*(\/[$_\u200C\u200D\p{ID_Continue}]*|\\)?/yu, Punctuator = /--|\+\+|=>|\.{3}|\??\.(?!\d)|(?:&&|\|\||\?\?|[+\-%&|^]|\*{1,2}|<{1,2}|>{1,3}|!=?|={1,2}|\/(?![\/*]))=?|[?~,:;[\](){}]/y, Identifier = /(\x23?)(?=[$_\p{ID_Start}\\])(?:[$_\u200C\u200D\p{ID_Continue}]|\\u[\da-fA-F]{4}|\\u\{[\da-fA-F]+\})+/yu, StringLiteral = /(['"])(?:(?!\1)[^\\\n\r]|\\(?:\r\n|[^]))*(\1)?/y, NumericLiteral = /(?:0[xX][\da-fA-F](?:_?[\da-fA-F])*|0[oO][0-7](?:_?[0-7])*|0[bB][01](?:_?[01])*)n?|0n|[1-9](?:_?\d)*n|(?:(?:0(?!\d)|0\d*[89]\d*|[1-9](?:_?\d)*)(?:\.(?:\d(?:_?\d)*)?)?|\.\d(?:_?\d)*)(?:[eE][+-]?\d(?:_?\d)*)?|0[0-7]+/y, Template = /[`}](?:[^`\\$]|\\[^]|\$(?!\{))*(`|\$\{)?/y, WhiteSpace = /[\t\v\f\ufeff\p{Zs}]+/yu, LineTerminatorSequence = /\r?\n|[\r\u2028\u2029]/y, MultiLineComment = /\/\*(?:[^*]|\*(?!\/))*(\*\/)?/y, SingleLineComment = /\/\/.*/y, JSXPunctuator = /[<>.:={}]|\/(?![\/*])/y, JSXIdentifier = /[$_\p{ID_Start}][$_\u200C\u200D\p{ID_Continue}-]*/yu, JSXString = /(['"])(?:(?!\1)[^])*(\1)?/y, JSXText = /[^<>{}]+/y, TokensPrecedingExpression = /^(?:[\/+-]|\.{3}|\?(?:InterpolationIn(?:JSX|Template)|NoLineTerminatorHere|NonExpressionParenEnd|UnaryIncDec))?$|[{}([,;<>=*%&|^!~?:]$/, TokensNotPrecedingObjectLiteral = /^(?:=>|[;\]){}]|else|\?(?:NoLineTerminatorHere|NonExpressionParenEnd))?$/, KeywordsWithExpressionAfter = /^(?:await|case|default|delete|do|else|instanceof|new|return|throw|typeof|void|yield)$/, KeywordsWithNoLineTerminatorAfter = /^(?:return|throw|yield)$/, Newline = RegExp(LineTerminatorSequence.source), jsTokens_1 = function* (input2, { jsx: jsx10 = !1 } = {}) {
+  return RegularExpressionLiteral = /\/(?![*/])(?:\[(?:(?![\]\\]).|\\.)*\]|(?![/\\]).|\\.)*(\/[$_\u200C\u200D\p{ID_Continue}]*|\\)?/yu, Punctuator = /--|\+\+|=>|\.{3}|\??\.(?!\d)|(?:&&|\|\||\?\?|[+\-%&|^]|\*{1,2}|<{1,2}|>{1,3}|!=?|={1,2}|\/(?![/*]))=?|[?~,:;[\](){}]/y, Identifier = /(\x23?)(?=[$_\p{ID_Start}\\])(?:[$_\u200C\u200D\p{ID_Continue}]|\\u[\da-fA-F]{4}|\\u\{[\da-fA-F]+\})+/yu, StringLiteral = /(['"])(?:(?!\1)[^\\\n\r]|\\(?:\r\n|[^]))*(\1)?/y, NumericLiteral = /(?:0[xX][\da-fA-F](?:_?[\da-fA-F])*|0[oO][0-7](?:_?[0-7])*|0[bB][01](?:_?[01])*)n?|0n|[1-9](?:_?\d)*n|(?:(?:0(?!\d)|0\d*[89]\d*|[1-9](?:_?\d)*)(?:\.(?:\d(?:_?\d)*)?)?|\.\d(?:_?\d)*)(?:[eE][+-]?\d(?:_?\d)*)?|0[0-7]+/y, Template = /[`}](?:[^`\\$]|\\[^]|\$(?!\{))*(`|\$\{)?/y, WhiteSpace = /[\t\v\f\ufeff\p{Zs}]+/yu, LineTerminatorSequence = /\r?\n|[\r\u2028\u2029]/y, MultiLineComment = /\/\*(?:[^*]|\*(?!\/))*(\*\/)?/y, SingleLineComment = /\/\/.*/y, JSXPunctuator = /[<>.:={}]|\/(?![/*])/y, JSXIdentifier = /[$_\p{ID_Start}][$_\u200C\u200D\p{ID_Continue}-]*/yu, JSXString = /(['"])(?:(?!\1)[^])*(\1)?/y, JSXText = /[^<>{}]+/y, TokensPrecedingExpression = /^(?:[/+-]|\.{3}|\?(?:InterpolationIn(?:JSX|Template)|NoLineTerminatorHere|NonExpressionParenEnd|UnaryIncDec))?$|[{}([,;<>=*%&|^!~?:]$/, TokensNotPrecedingObjectLiteral = /^(?:=>|[;\]){}]|else|\?(?:NoLineTerminatorHere|NonExpressionParenEnd))?$/, KeywordsWithExpressionAfter = /^(?:await|case|default|delete|do|else|instanceof|new|return|throw|typeof|void|yield)$/, KeywordsWithNoLineTerminatorAfter = /^(?:return|throw|yield)$/, Newline = RegExp(LineTerminatorSequence.source), jsTokens_1 = function* (input2, { jsx: jsx10 = !1 } = {}) {
     var braces, firstCodePoint, isExpression, lastIndex, lastSignificantToken, length2, match3, mode, nextLastIndex, nextLastSignificantToken, parenNesting, postfixIncDec, punctuator, stack;
     for ({ length: length2 } = input2, lastIndex = 0, lastSignificantToken = "", stack = [
       { tag: "JS" }
@@ -49127,7 +49112,6 @@ function getCustomEqualityTesters() {
 function equals(a3, b, customTesters, strictCheck) {
   return customTesters = customTesters || [], eq3(a3, b, [], [], customTesters, strictCheck ? hasKey : hasDefinedKey);
 }
-var functionToString = Function.prototype.toString;
 function isAsymmetric(obj) {
   return !!obj && typeof obj == "object" && "asymmetricMatch" in obj && isA("Function", obj.asymmetricMatch);
 }
@@ -51216,9 +51200,6 @@ function prettyDOM(dom, maxLength, options) {
 }
 var logDOM = function() {
   let userCodeFrame = getUserCodeFrame();
-  console.log(userCodeFrame ? prettyDOM(...arguments) + `
-
-` + userCodeFrame : prettyDOM(...arguments));
 }, config3 = {
   testIdAttribute: "data-testid",
   asyncUtilTimeout: 1e3,
@@ -51495,9 +51476,6 @@ var logRoles = function(dom, _temp2) {
   let {
     hidden = !1
   } = _temp2 === void 0 ? {} : _temp2;
-  return console.log(prettyRoles(dom, {
-    hidden
-  }));
 };
 function computeAriaSelected(element) {
   return element.tagName === "OPTION" ? element.selected : checkBooleanAttribute(element, "aria-selected");
@@ -53056,17 +53034,12 @@ function getPlaygroundUrl(markup2) {
 }
 var debug = (element, maxLength, options) => Array.isArray(element) ? element.forEach((el) => logDOM(el, maxLength, options)) : logDOM(element, maxLength, options), logTestingPlaygroundURL = function(element) {
   if (element === void 0 && (element = getDocument().body), !element || !("innerHTML" in element)) {
-    console.log("The element you're providing isn't a valid DOM element.");
     return;
   }
   if (!element.innerHTML) {
-    console.log("The provided element doesn't have any children.");
     return;
   }
   let playgroundUrl = getPlaygroundUrl(element.innerHTML);
-  return console.log(`Open this URL in your browser
-
-` + playgroundUrl), playgroundUrl;
 }, initialValue = {
   debug,
   logTestingPlaygroundURL
@@ -56466,9 +56439,6 @@ var { expect: expect3 } = instrument(
 
 // src/backgrounds/constants.ts
 var ADDON_ID3 = "storybook/background", PARAM_KEY = "backgrounds";
-var EVENTS2 = {
-  UPDATE: `${ADDON_ID3}/update`
-};
 
 // src/backgrounds/defaults.ts
 var DEFAULT_BACKGROUNDS = {
@@ -57949,13 +57919,9 @@ var decorators3 = globalThis.FEATURES?.outline ? [withOutline] : [], initialGlob
 // src/viewport/constants.ts
 var ADDON_ID6 = "storybook/viewport", PARAM_KEY4 = "viewport", PANEL_ID3 = `${ADDON_ID6}/panel`, TOOL_ID2 = `${ADDON_ID6}/tool`;
 
-// src/viewport/preview.ts
-var initialGlobals4 = {
-  [PARAM_KEY4]: { value: void 0, isRotated: !1 }
-};
 
 // src/csf/index.ts
-var sanitize = (string) => string.toLowerCase().replace(/[ ’–—―′¿'`~!@#$%^&*()_|+\-=?;:'",.<>\{\}\[\]\\\/]/gi, "-").replace(/-+/g, "-").replace(/^-+/, "").replace(/-+$/, ""), sanitizeSafe = (string, part) => {
+var sanitize = (string) => string.toLowerCase().replace(/[ ’–—―′¿'`~!@#$%^&*()_|+\-=?;:'",.<>{\}[\]\\/]/gi, "-").replace(/-+/g, "-").replace(/^-+/, "").replace(/-+$/, ""), sanitizeSafe = (string, part) => {
   let sanitized = sanitize(string);
   if (sanitized === "")
     throw new Error(`Invalid ${part} '${string}', must include alphanumeric characters`);
@@ -58179,7 +58145,7 @@ var TITLE_PATH_SEPARATOR = /\s*\/\s*/, denormalizeStoryParameters = ({
 
 // src/manager-api/modules/refs.ts
 var { location: location3, fetch: fetch2 } = scope, getSourceType = (source, refId) => {
-  let { origin: localOrigin, pathname: localPathname } = location3, { origin: sourceOrigin, pathname: sourcePathname } = new URL(source), localFull = `${localOrigin + localPathname}`.replace(/\/[^\/]*$/, ""), sourceFull = `${sourceOrigin + sourcePathname}`.replace(/\/[^\/]*$/, "");
+  let { origin: localOrigin, pathname: localPathname } = location3, { origin: sourceOrigin, pathname: sourcePathname } = new URL(source), localFull = `${localOrigin + localPathname}`.replace(/\/[^/]*$/, ""), sourceFull = `${sourceOrigin + sourcePathname}`.replace(/\/[^/]*$/, "");
   return localFull === sourceFull ? ["local", sourceFull] : refId || source ? ["external", sourceFull] : [null, null];
 }, defaultStoryMapper = (b, a3) => ({ ...a3, kind: a3.kind.replace("|", "/") }), addRefIds = (input2, ref) => Object.entries(input2).reduce((acc, [id, item]) => ({ ...acc, [id]: { ...item, refId: ref.id } }), {});
 async function handleRequest(request) {
@@ -61290,7 +61256,7 @@ function ManagerConsumer({
   let managerContext = (0, import_react23.useContext)(ManagerContext), renderer = (0, import_react23.useRef)(children), filterer = (0, import_react23.useRef)(filter);
   if (typeof renderer.current != "function")
     return import_react23.default.createElement(import_react23.Fragment, null, renderer.current);
-  let comboData = filterer.current(managerContext), comboDataArray = (0, import_react23.useMemo)(() => [...Object.entries(comboData).reduce((acc, keyval) => acc.concat(keyval), [])], [managerContext.state]);
+  let comboData = filterer.current(managerContext), comboDataArray = (0, import_react23.useMemo)(() => Object.entries(comboData).reduce((acc, keyval) => acc.concat(keyval), []), [managerContext.state]);
   return (0, import_react23.useMemo)(() => {
     let Child = renderer.current;
     return import_react23.default.createElement(Child, { ...comboData });
@@ -62414,7 +62380,6 @@ function $21f1aa98acb08317$export$c57958e35f31ed73(target) {
 
 // ../../node_modules/@react-aria/utils/dist/useViewportSize.mjs
 var import_react37 = __toESM(require_react(), 1);
-var $5df64b3807dc15ee$var$visualViewport = typeof document < "u" && window.visualViewport;
 
 // ../../node_modules/@react-aria/utils/dist/useDescription.mjs
 var import_react38 = __toESM(require_react(), 1), $ef06256079686ba0$var$descriptionId = 0, $ef06256079686ba0$var$descriptionNodes = /* @__PURE__ */ new Map();
@@ -69031,8 +68996,7 @@ var ToggleButton = (0, import_react95.forwardRef)(
 );
 ToggleButton.displayName = "ToggleButton";
 var StyledToggle = styled(Button)(
-  ({ theme: theme3, variant = "outline", pressed }) => ({
-    ...pressed ? {
+  ({ theme: theme3, variant = "outline", pressed }) => (pressed ? {
       ...variant === "solid" ? {
         background: theme3.base === "lighten" ? curriedDarken$1(0.1, theme3.color.secondary) : curriedDarken$1(0.2, theme3.color.secondary)
       } : {},
@@ -69045,8 +69009,7 @@ var StyledToggle = styled(Button)(
         background: curriedTransparentize$1(0.93, theme3.barSelectedColor),
         color: theme3.base === "light" ? curriedDarken$1(0.1, theme3.color.secondary) : theme3.color.secondary
       } : {}
-    } : {}
-  })
+    } : {})
 );
 
 // src/components/components/ActionList/ActionList.tsx
@@ -73935,9 +73898,6 @@ var $d496c0a20b6e58ec$export$6c8a5aaad13c9852 = class _$d496c0a20b6e58ec$export$
     let keys3 = new $e40ea825a81a3709$export$52baac22726c72bf(this.state.selectedKeys === "all" ? this.getSelectAllKeys() : this.state.selectedKeys);
     keys3.has(mappedKey) ? keys3.delete(mappedKey) : this.canSelectItem(mappedKey) && (keys3.add(mappedKey), keys3.anchorKey = mappedKey, keys3.currentKey = mappedKey), !(this.disallowEmptySelection && keys3.size === 0) && this.state.setSelectedKeys(keys3);
   }
-  /**
-  * Replaces the selection with only the given key.
-  */
   replaceSelection(key) {
     if (this.selectionMode === "none") return;
     let mappedKey = this.getKey(key);
@@ -73947,9 +73907,6 @@ var $d496c0a20b6e58ec$export$6c8a5aaad13c9852 = class _$d496c0a20b6e58ec$export$
     ], mappedKey, mappedKey) : new $e40ea825a81a3709$export$52baac22726c72bf();
     this.state.setSelectedKeys(selection);
   }
-  /**
-  * Replaces the selection with the given keys.
-  */
   setSelectedKeys(keys3) {
     if (this.selectionMode === "none") return;
     let selection = new $e40ea825a81a3709$export$52baac22726c72bf();

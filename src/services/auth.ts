@@ -2,7 +2,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { logger } from './logger';
 
-const execAsync = promisify(exec);
+const _execAsync = promisify(exec);
 
 /**
  * AuthService handles GitHub authentication via gh CLI token
@@ -16,7 +16,7 @@ export class AuthService {
    */
   private async execWithTimeout(command: string, timeoutMs = 5000): Promise<{ stdout: string; stderr: string }> {
     return new Promise((resolve, reject) => {
-      const child = exec(command, { timeout: timeoutMs }, (error, stdout, stderr) => {
+      exec(command, { timeout: timeoutMs }, (error, stdout, stderr) => {
         if (error) {
           reject(error);
         } else {

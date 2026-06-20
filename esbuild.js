@@ -86,7 +86,6 @@ async function main() {
       );
     }
   } else {
-    // Build webview first
     const { execSync } = require('child_process');
     try {
       console.log('[watch] building webview...');

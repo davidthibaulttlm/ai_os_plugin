@@ -98,10 +98,8 @@ export class PollerService {
       // Detect deltas
       const events = detectDeltas(this.lastState, items);
 
-      // Update state
       this.updateState(items);
 
-      // Write state bridge file for MCP server
       if (this.stateFilePath) {
         this.writeStateBridge(items).catch((err) => {
           logger.error(`State bridge write error: ${(err as Error).message}`);

@@ -22,7 +22,6 @@ export class SettingsPanel {
 
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
 
-    // Setup message handler
     this.panel.webview.onDidReceiveMessage(
       (message) => this.handleMessage(message),
       undefined,
@@ -163,7 +162,6 @@ export class SettingsPanel {
       el.innerHTML = '<span class="status-dot ' + (connected ? 'green' : 'red') + '"></span>' + label;
     }
 
-    // Handle settings update from extension
     window.addEventListener('message', (event) => {
       const msg = event.data;
       if (msg.type === 'updateSettings') {
@@ -250,7 +248,6 @@ export class SettingsPanel {
   }
 
   private handleMessage(message: unknown): void {
-    // Validate message structure
     if (!message || typeof message !== 'object' || !('type' in message)) {
       logger.warn('Invalid IPC message — missing type');
       return;

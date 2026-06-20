@@ -13,7 +13,7 @@ export class BoardTreeProvider implements vscode.TreeDataProvider<BoardTreeItem>
 
   private boards: BoardTreeItem[] = [];
   private isLoading = false;
-  private mode: TreeMode = 'boards';
+  public mode: TreeMode = 'boards';
 
   refresh(): void {
     this._onDidChangeTreeData.fire();

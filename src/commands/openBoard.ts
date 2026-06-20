@@ -48,10 +48,8 @@ export async function openBoard(
       return;
     }
 
-    // Save board ID to state
     await stateManager.setLastBoardId(project.id);
 
-    // Create or show panel
     const panel = KanbanPanel.createOrShow(extensionUri, graphql, project.id);
     onPanelCreated?.(panel);
   } catch (error) {

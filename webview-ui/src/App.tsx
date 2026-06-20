@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useVsCode, onMessage, offMessage } from './hooks/useVsCode';
-import { useBoardStore, persistBoardState } from './store/boardStore';
-import type { KanbanColumn, IssueItem } from './store/boardStore';
+import { useBoardStore, persistBoardState, type KanbanColumn, type IssueItem } from "./store/boardStore";
 import KanbanBoard from './components/KanbanBoard';
 
 /** Replace items for a given status column in-place, using an iterator over the new order */

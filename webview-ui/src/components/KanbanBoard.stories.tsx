@@ -1,8 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { fn } from 'storybook/test';
+import { fn } from '@storybook/test';
 import KanbanBoard from './KanbanBoard';
-import { useBoardStore } from '../store/boardStore';
-import type { KanbanColumn, IssueItem } from '../store/boardStore';
+import { useBoardStore, type KanbanColumn, type IssueItem } from "../store/boardStore";
 
 const columns: KanbanColumn[] = [
   { id: 'brain_dump', name: 'BRAIN_DUMP', color: '#6b7280' },

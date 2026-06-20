@@ -21,7 +21,6 @@ export function detectClaudeCode(): ClaudeDetectionResult {
     cliInstalled: false,
   };
 
-  // Check VS Code extension
   try {
     const ext = vscode.extensions.getExtension('anthropic.claude-code');
     result.extensionInstalled = ext !== undefined;
@@ -29,7 +28,6 @@ export function detectClaudeCode(): ClaudeDetectionResult {
     logger.error(`Failed to check Claude extension: ${(error as Error).message}`);
   }
 
-  // Check CLI
   try {
     const platformCommand = process.platform === 'win32' ? 'where claude' : 'which claude';
     execSync(platformCommand, { timeout: 5000 });

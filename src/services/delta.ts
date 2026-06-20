@@ -30,7 +30,6 @@ export function detectDeltas(
   logger.debug(`[delta.detectDeltas] Comparing ${currentItems.length} current items against ${lastState.size} last state entries`);
   const events: DeltaEvent[] = [];
 
-  // Build current state map
   const currentMap = new Map<number, BoardItemState>();
 
   for (const item of currentItems) {

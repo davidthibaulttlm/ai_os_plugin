@@ -8,8 +8,9 @@ export interface KanbanColumn {
   color: string;
 }
 
-/** Issue/PR item on the board */
-export interface IssueItem {
+// Webview-local copy of IssueItem (mirrors src/types/ipc.ts for webview isolation)
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export type IssueItem = {
   id: string;
   type: 'ISSUE' | 'PULL_REQUEST';
   title: string;
@@ -47,7 +48,11 @@ interface BoardState {
 export function persistBoardState(): () => void {
   const api = getVsCodeApi();
   if (!api) {
-    return () => {};
+    // No VS Code API available (e.g. Storybook/dev mode) — return no-op unsubscribe
+    return function noOpUnsubscribe() {
+      // Nothing to clean up when VS Code API is unavailable
+      void 0;
+    };
   }
 
   // Restore saved state on mount

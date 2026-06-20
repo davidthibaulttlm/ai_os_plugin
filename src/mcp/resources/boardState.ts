@@ -2,9 +2,18 @@
  * MCP board resources: board://state, board://column/{name}
  */
 
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { ResourceTemplate, type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { readBoardState } from '../tools/utils';
+
+function createBoardError(uri: URL, message: string) {
+  return {
+    contents: [{
+      uri: uri.href,
+      mimeType: 'application/json',
+      text: JSON.stringify({ error: message }),
+    }],
+  };
+}
 
 export function registerBoardResources(server: McpServer): void {
   // Static resource: board://state
@@ -19,13 +28,7 @@ export function registerBoardResources(server: McpServer): void {
     (uri) => {
       const state = readBoardState();
       if (!state) {
-        return {
-          contents: [{
-            uri: uri.href,
-            mimeType: 'application/json',
-            text: JSON.stringify({ error: 'No board loaded. Open a board in AI OS first.' }),
-          }],
-        };
+        return createBoardError(uri, 'No board loaded. Open a board in AI OS first.');
       }
       return {
         contents: [{
@@ -62,13 +65,7 @@ export function registerBoardResources(server: McpServer): void {
     async (uri, { name }) => {
       const state = readBoardState();
       if (!state) {
-        return {
-          contents: [{
-            uri: uri.href,
-            mimeType: 'application/json',
-            text: JSON.stringify({ error: 'No board loaded. Open a board in AI OS first.' }),
-          }],
-        };
+        return createBoardError(uri, 'No board loaded. Open a board in AI OS first.');
       }
 
       const issues = state.columns?.[name as string] ?? [];

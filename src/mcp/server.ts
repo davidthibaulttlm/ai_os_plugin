@@ -6,7 +6,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
-// Import tool and resource handlers
 import { registerBoardTools } from './tools/board';
 import { registerIssueTools } from './tools/issues';
 import { registerStatsTools } from './tools/stats';

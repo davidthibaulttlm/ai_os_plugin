@@ -1,8 +1,13 @@
 import * as vscode from 'vscode';
-import * as crypto from 'crypto';
 import type { GraphQLClient } from '../services/graphql';
 import type { BoardData, ExtensionToWebview, IPCMessage, WebviewToExtension } from '../types/ipc';
 import { logger } from '../services/logger';
+import {
+  loadBoardData,
+  moveItem,
+  reorderItem,
+  getHtmlForWebview,
+} from './KanbanPanel.helpers';
 
 /**
  * Webview panel provider for the AI OS Kanban board.
@@ -48,12 +53,10 @@ export class KanbanPanel {
     // Set webview HTML
     this._panel.webview.html = this._getHtmlForWebview(this._panel.webview);
 
-    // Handle messages from webview
     this._panel.webview.onDidReceiveMessage(
       async (message: IPCMessage) => {
-        logger.debug('Message received from webview', { type: (message as any)?.type });
+        logger.debug('Message received from webview', { type: message.type });
         try {
-          // Validate message structure
           if (!message || typeof message !== 'object' || !('type' in message)) {
             logger.warn('Invalid IPC message — missing type');
             return;
@@ -109,7 +112,6 @@ export class KanbanPanel {
       }
     }
 
-    // Create new panel
     const panel = vscode.window.createWebviewPanel(
       KanbanPanel.viewType,
       'AI OS Kanban',
@@ -132,6 +134,14 @@ export class KanbanPanel {
    */
   public reveal(column: vscode.ViewColumn): void {
     this._panel.reveal(column);
+  }
+
+  private _safePostMessage(msg: ExtensionToWebview): void {
+    try {
+      this._panel.webview.postMessage(msg);
+    } catch {
+      // Panel disposed - message delivery failed
+    }
   }
 
   /**
@@ -250,7 +260,6 @@ export class KanbanPanel {
    * Handle incoming messages from the webview.
    */
   private async _handleMessage(message: WebviewToExtension): Promise<void> {
-    // Validate message type against allowed types
     const allowedTypes = ['loadBoard', 'moveItem', 'reorderItem', 'refresh', 'selectIssue', 'assignAgent', '__ping__', '__inline_ping__', '__react_ready__'];
     if (!allowedTypes.includes(message.type)) {
       logger.warn(`Unknown IPC message type: ${message.type}`);
@@ -287,21 +296,11 @@ export class KanbanPanel {
             message.data.columnId
           );
           logger.info(`moveItem success: ${JSON.stringify(result)}`);
-          try {
-            this._panel.webview.postMessage({
-              type: 'itemMoved',
-              data: result,
-            } as ExtensionToWebview);
-          } catch { /* disposed */ }
+          this._safePostMessage({ type: 'itemMoved', data: result });
         } catch (error) {
           const errorMsg = (error as Error).message;
           logger.error(`moveItem FAILED: ${errorMsg}`);
-          try {
-            this._panel.webview.postMessage({
-              type: 'error',
-              data: { message: `Failed to move item: ${errorMsg}` },
-            } as ExtensionToWebview);
-          } catch { /* disposed */ }
+          this._safePostMessage({ type: 'error', data: { message: `Failed to move item: ${errorMsg}` } });
         }
         break;
       }
@@ -319,21 +318,11 @@ export class KanbanPanel {
             message.data.afterId ?? null
           );
           logger.info(`reorderItem success for ${message.data.itemId}`);
-          try {
-            this._panel.webview.postMessage({
-              type: 'itemReordered',
-              data: { itemId: message.data.itemId },
-            } as ExtensionToWebview);
-          } catch { /* disposed */ }
+          this._safePostMessage({ type: 'itemReordered', data: { itemId: message.data.itemId } });
         } catch (error) {
           const errorMsg = (error as Error).message;
           logger.error(`reorderItem FAILED: ${errorMsg}`);
-          try {
-            this._panel.webview.postMessage({
-              type: 'error',
-              data: { message: `Failed to reorder item: ${errorMsg}` },
-            } as ExtensionToWebview);
-          } catch { /* disposed */ }
+          this._safePostMessage({ type: 'error', data: { message: `Failed to reorder item: ${errorMsg}` } });
         }
         break;
       }
@@ -354,8 +343,8 @@ export class KanbanPanel {
               return;
             }
             await vscode.env.openExternal(vscode.Uri.parse(url));
-          } catch {
-            logger.warn(`Invalid URL for selectIssue: ${url}`);
+          } catch (error) {
+            logger.warn(`Invalid URL for selectIssue: ${url} - ${(error as Error).message}`);
           }
         }
         break;
@@ -377,64 +366,7 @@ export class KanbanPanel {
    * Load board data from GitHub.
    */
   private async _loadBoardData(projectId: string): Promise<BoardData> {
-    const [items, fields] = await Promise.all([
-      this._graphql.getProjectItems(projectId),
-      this._graphql.getProjectFields(projectId),
-    ]);
-
-    // Build column mapping from fields
-    const columns = this._buildColumns(fields);
-
-    // Build items list
-    const boardItems = items.map((item) => ({
-      id: item.id,
-      type: item.type,
-      title: item.content?.title ?? 'Unknown',
-      number: item.content?.number ?? 0,
-      status: this._extractStatus(item),
-      url: item.content?.url ?? '',
-      repo: item.content?.repository?.name ?? '',
-      labels: item.content?.labels?.nodes.map((l) => l.name) ?? [],
-      priority: this._extractPriority(item.content?.labels?.nodes ?? []),
-    }));
-
-    return { columns, items: boardItems };
-  }
-
-  /**
-   * Build columns from project fields.
-   */
-  private _buildColumns(fields: { name: string; id: string; options?: { id: string; name: string; color?: string }[] }[]): Array<{ id: string; name: string; color: string }> {
-    const statusField = fields.find((f) => f.name === 'Status');
-    if (!statusField?.options) {
-      // Return default columns if no Status field found
-      return [
-        { id: 'BRAIN_DUMP', name: 'BRAIN_DUMP', color: 'gray' },
-        { id: 'AI_SPEC', name: 'AI_SPEC', color: 'blue' },
-        { id: 'HUMAN_SPEC_REVIEW', name: 'HUMAN_SPEC_REVIEW', color: 'yellow' },
-        { id: 'AI_CODE', name: 'AI_CODE', color: 'green' },
-        { id: 'HUMAN_CODE_REVIEW', name: 'HUMAN_CODE_REVIEW', color: 'purple' },
-        { id: 'PR_DONE', name: 'PR_DONE', color: 'emerald' },
-      ];
-    }
-
-    return statusField.options.map((option) => ({
-      id: option.id,
-      name: option.name,
-      color: option.color ?? 'gray',
-    }));
-  }
-
-  /**
-   * Extract status from a project item.
-   */
-  private _extractStatus(item: { fieldValues: { nodes: { name?: string; field?: { name: string } }[] } }): string {
-    for (const fv of item.fieldValues.nodes) {
-      if (fv.field?.name === 'Status' && fv.name) {
-        return fv.name;
-      }
-    }
-    return 'UNKNOWN';
+    return loadBoardData(this._graphql, projectId);
   }
 
   /**
@@ -445,91 +377,24 @@ export class KanbanPanel {
     itemId: string,
     columnId: string
   ): Promise<{ id: string; status: string }> {
-    logger.debug(`_moveItem: fetching project fields for ${projectId}`);
-    const fields = await this._graphql.getProjectFields(projectId);
-    const statusField = fields.find((f) => f.name === 'Status');
-
-    if (!statusField) {
-      logger.error(`_moveItem: Status field not found. Available fields: ${fields.map(f => f.name).join(', ')}`);
-      throw new Error('Status field not found in project');
-    }
-
-    logger.debug(`_moveItem: Status field id=${statusField.id}, options=${JSON.stringify(statusField.options?.map(o => ({ id: o.id, name: o.name })))}`);
-    logger.debug(`_moveItem: calling graphql.moveItem(projectId=${projectId}, itemId=${itemId}, fieldId=${statusField.id}, optionId=${columnId})`);
-    const success = await this._graphql.moveItem(projectId, itemId, statusField.id, columnId);
-    logger.debug(`_moveItem: graphql.moveItem returned success=${success}`);
-
-    // Resolve the column name from the option ID for the response
-    const columnName = statusField.options?.find((o) => o.id === columnId)?.name ?? columnId;
-    return { id: itemId, status: columnName };
+    return moveItem(this._graphql, projectId, itemId, columnId);
   }
 
   /**
-   * Reorder an item within the project using updateProjectV2ItemPosition.
+   * Reorder an item within the project.
    */
   private async _reorderItem(
     projectId: string,
     itemId: string,
     afterId: string | null
   ): Promise<void> {
-    logger.debug(`_reorderItem: projectId=${projectId}, itemId=${itemId}, afterId=${afterId}`);
-    const success = await this._graphql.reorderItem(projectId, itemId, afterId);
-    if (!success) {
-      throw new Error('reorderItem returned no items');
-    }
-  }
-
-  /**
-   * Extract priority from labels.
-   * Looks for labels starting with 'priority/' and returns the priority level.
-   */
-  private _extractPriority(labels: { name: string; color: string }[]): string | undefined {
-    const priorityLabel = labels.find((l) => l.name.toLowerCase().startsWith('priority/'));
-    return priorityLabel ? priorityLabel.name.replace(/^priority\//i, '') : undefined;
+    return reorderItem(this._graphql, projectId, itemId, afterId);
   }
 
   /**
    * Generate HTML for the webview with CSP nonce.
    */
   private _getHtmlForWebview(webview: vscode.Webview): string {
-    const cacheBust = Date.now();
-    const scriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this._extensionUri, 'dist', 'assets', 'index.js')
-    );
-    const styleUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this._extensionUri, 'dist', 'assets', 'style.css')
-    );
-    const nonce = getNonce();
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}' ${webview.cspSource}; connect-src ${webview.cspSource};">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="${styleUri}?v=${cacheBust}" rel="stylesheet">
-    <title>AI OS Kanban</title>
-</head>
-<body>
-    <div id="root"></div>
-    <script nonce="${nonce}">
-      console.log('[AI OS] Inline script starting...');
-      window.addEventListener('error', function(e) {
-        console.error('[AI OS] JS error:', e.message, e.filename, e.lineno);
-      });
-      window.addEventListener('unhandledrejection', function(e) {
-        console.error('[AI OS] Unhandled rejection:', e.reason);
-      });
-    </script>
-    <script type="module" src="${scriptUri}?v=${cacheBust}"></script>
-</body>
-</html>`;
+    return getHtmlForWebview(webview, this._extensionUri);
   }
-}
-
-/**
- * Generate a random nonce for CSP.
- */
-function getNonce(): string {
-  return crypto.randomUUID().replace(/-/g, '');
 }

@@ -15,7 +15,9 @@ window.addEventListener('error', (e) => {
         data: { message: e.message, filename: e.filename, lineno: e.lineno }
       });
     }
-  } catch {}
+  } catch (_e) {
+    // Best-effort error reporting - if this fails, there's nowhere to send it
+  }
 });
 
 console.log('[AI OS React] index.tsx loaded, mounting...');
@@ -27,7 +29,9 @@ if (!rootEl) {
     if (api) {
       api.postMessage({ type: '__react_error__', data: { message: '#root element not found' } });
     }
-  } catch {}
+  } catch (_e) {
+    // Best-effort error reporting - if this fails, there's nowhere to send it
+  }
 } else {
   console.log('[AI OS React] #root found, creating React root...');
   try {
@@ -42,7 +46,9 @@ if (!rootEl) {
       if (api) {
         api.postMessage({ type: '__react_ready__', data: { ts: Date.now() } });
       }
-    } catch {}
+    } catch (_e) {
+      // Best-effort ready notification
+    }
   } catch (e) {
     console.error('[AI OS React] React mount failed:', e);
     try {
@@ -50,6 +56,8 @@ if (!rootEl) {
       if (api) {
         api.postMessage({ type: '__react_error__', data: { message: String(e) } });
       }
-    } catch {}
+    } catch (_e) {
+      // Best-effort error notification
+    }
   }
 }

@@ -184,15 +184,13 @@ class GraphQLClient {
                 body: JSON.stringify({ query, variables: variables ?? {} }),
                 signal: controller.signal,
             }).finally(() => clearTimeout(timeoutId));
-            // Parse rate limit headers
             const remaining = response.headers.get('X-RateLimit-Remaining');
             if (remaining) {
-                console.debug(`[AI OS] Rate limit remaining: ${remaining}`);
+                // Rate limit info available in headers
             }
             // Retry on 403 (rate limit) or transient network errors
             if (!response.ok && (response.status === 403 || response.status >= 500) && retryCount < maxRetries) {
                 const delay = Math.min(baseDelay * Math.pow(2, retryCount), 30000);
-                console.debug(`[AI OS] Retry ${retryCount + 1}/${maxRetries} after ${delay}ms (status: ${response.status})`);
                 await new Promise((resolve) => setTimeout(resolve, delay));
                 return this.execute(query, variables, retryCount + 1);
             }
@@ -209,7 +207,7 @@ class GraphQLClient {
             // Retry on network errors (transient failures)
             if (retryCount < maxRetries && error instanceof Error && !error.message.includes('GraphQL error')) {
                 const delay = Math.min(baseDelay * Math.pow(2, retryCount), 30000);
-                console.debug(`[AI OS] Network error retry ${retryCount + 1}/${maxRetries} after ${delay}ms: ${error.message}`);
+                console.error(`[AI OS] Network error retry ${retryCount + 1}/${maxRetries} after ${delay}ms: ${error.message}`);
                 await new Promise((resolve) => setTimeout(resolve, delay));
                 return this.execute(query, variables, retryCount + 1);
             }

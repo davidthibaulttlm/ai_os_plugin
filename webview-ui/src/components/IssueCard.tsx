@@ -1,8 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useVsCode } from '../hooks/useVsCode';
-import { useBoardStore } from '../store/boardStore';
-import type { IssueItem } from '../store/boardStore';
+import { useBoardStore, type IssueItem } from "../store/boardStore";
 
 interface IssueCardProps {
   item: IssueItem;

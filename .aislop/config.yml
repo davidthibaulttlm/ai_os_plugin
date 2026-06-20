@@ -1,4 +1,12 @@
 version: 1
+exclude:
+  - '**/node_modules/**'
+  - '**/storybook-static/**'
+  - '**/out/**'
+  - '**/dist/**'
+  - '**/.storybook/**'
+  - '**/esbuild.js'
+  - 'src/services/graphql.js'
 engines:
   format: true
   lint: true

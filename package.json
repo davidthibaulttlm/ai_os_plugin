@@ -195,14 +195,17 @@
     "@types/vscode": "^1.85.0",
     "@vscode/test-cli": "^0.0.4",
     "@vscode/test-electron": "^2.3.8",
-    "@vscode/vsce": "^2.21.0",
+    "@vscode/vsce": "^3.9.2",
     "chokidar": "^5.0.0",
-    "esbuild": "^0.19.0",
+    "esbuild": "^0.28.1",
     "typescript": "^5.3.0"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@vscode/webview-ui-toolkit": "^1.0.0",
     "zod": "^3.24.0"
+  },
+  "overrides": {
+    "serialize-javascript": "^7.0.6"
   }
 }

@@ -10,8 +10,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import { useBoardStore } from '../store/boardStore';
-import type { IssueItem } from '../store/boardStore';
+import { useBoardStore, type IssueItem } from "../store/boardStore";
 import KanbanColumn from './KanbanColumn';
 import IssueCard from './IssueCard';
 
