@@ -26,6 +26,7 @@ let stateManager: StateManager | undefined;
 let authServiceInstance: AuthService | undefined;
 let boardTreeProvider: BoardTreeProvider | undefined;
 let extensionUri: vscode.Uri | undefined;
+let globalStorageUri: string | undefined;
 let claudeTrigger: ClaudeTrigger | undefined;
 let mcpProviderDisposable: vscode.Disposable | undefined;
 
@@ -166,8 +167,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       panel?.notifyAgentProgress(issueId, columnName);
     });
 
-    // Store extension URI for auto-load
+    // Store extension URI and global storage URI for later use
     extensionUri = context.extensionUri;
+    globalStorageUri = context.globalStorageUri.fsPath;
 
     // Register MCP server definition provider
     registerMcpProvider(context, token);
@@ -362,7 +364,7 @@ async function handleSelectBoard(): Promise<void> {
           }
         }
         panel?.refresh();
-      }, getStateFilePath(extensionUri!.fsPath));
+      }, getStateFilePath(globalStorageUri!));
     }
 
     vscode.window.showInformationMessage(`Board "${project.title}" selected and polling started`);
