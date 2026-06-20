@@ -468,27 +468,62 @@ function registerMcpProvider(context: vscode.ExtensionContext, token: string): v
  * All Claude config file paths that may contain MCP server definitions.
  * Claude Code reads from multiple locations depending on how it's invoked.
  */
-function getClaudeConfigPaths(): string[] {
-  const claudeDir = path.join(os.homedir(), '.claude');
-  return [
-    path.join(claudeDir, 'settings.json'),       // Claude Code CLI + VS Code extension
-    path.join(claudeDir, '.mcp.json'),           // Claude Code MCP config
-    path.join(claudeDir, 'remote-settings.json'), // VS Code Server remote session
-  ];
+/**
+ * Detect the platform where Claude Code runs.
+ * VS Code Server on WSL reports os.platform() as 'linux'.
+ * The Claude Code VS Code extension runs inside the VS Code Server environment.
+ */
+function getClaudePlatform(): 'linux' | 'win32' | 'darwin' {
+  return os.platform() as 'linux' | 'win32' | 'darwin';
 }
 
 /**
- * Write the ai-os MCP entry to ALL Claude config files.
+ * Get the node command for the current platform.
+ * Claude Code VS Code extension runs inside VS Code Server, so on WSL it uses native Linux node.
  */
-function writeMcpToAllConfigs(
-  configPaths: string[],
-  serverPath: string,
-  stateFile: string,
-  token: string
-): void {
-  const mcpEntry = {
-    type: 'stdio',
-    command: 'node',
+function getNodeCommand(): string {
+  const platform = getClaudePlatform();
+  if (platform === 'win32') {
+    return 'node';
+  }
+  // Linux (including WSL) and macOS use /usr/bin/node or 'node'
+  return 'node';
+}
+
+/**
+ * Get ALL Claude Code config file paths where MCP servers are read.
+ * Claude Code VS Code extension reads from:
+ * - ~/.claude.json (global mcpServers section)
+ * - ~/.claude/.mcp.json (MCP-specific config)
+ * - ~/.claude/settings.json (general settings, some versions read MCP here)
+ * - .mcp.json in workspace root (project-scoped)
+ */
+function getClaudeConfigPaths(): string[] {
+  const home = os.homedir();
+  const claudeDir = path.join(home, '.claude');
+  const paths: string[] = [
+    path.join(home, '.claude.json'),             // Global MCP config (PRIMARY)
+    path.join(claudeDir, '.mcp.json'),           // MCP-specific config
+    path.join(claudeDir, 'settings.json'),       // General settings
+  ];
+
+  // Add workspace-level .mcp.json if workspace is open
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+  if (workspaceFolder) {
+    const projectMcp = path.join(workspaceFolder.uri.fsPath, '.mcp.json');
+    paths.push(projectMcp);
+    logger.info(`[getClaudeConfigPaths] Added project .mcp.json: ${projectMcp}`);
+  }
+
+  return paths;
+}
+
+/**
+ * Build the MCP server entry for the current platform.
+ */
+function buildMcpEntry(serverPath: string, stateFile: string, token: string): any {
+  return {
+    command: getNodeCommand(),
     args: [serverPath],
     env: {
       GITHUB_TOKEN: token,
@@ -496,6 +531,20 @@ function writeMcpToAllConfigs(
       AI_OS_MODE: 'claude',
     },
   };
+}
+
+/**
+ * Write the ai-os MCP entry to ALL Claude config files.
+ * Handles both ~/.claude.json (has projects + global mcpServers) and flat config files.
+ */
+function writeMcpToAllConfigs(
+  configPaths: string[],
+  serverPath: string,
+  stateFile: string,
+  token: string
+): void {
+  const mcpEntry = buildMcpEntry(serverPath, stateFile, token);
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 
   for (const configFile of configPaths) {
     const dir = path.dirname(configFile);
@@ -504,24 +553,52 @@ function writeMcpToAllConfigs(
       fs.mkdirSync(dir, { recursive: true });
     }
 
-    let settings: any = {};
+    let data: any = {};
     if (fs.existsSync(configFile)) {
       try {
-        settings = JSON.parse(fs.readFileSync(configFile, 'utf-8'));
-        logger.info(`[writeMcpToAllConfigs] Read existing ${configFile}: keys=${JSON.stringify(Object.keys(settings))}`);
+        data = JSON.parse(fs.readFileSync(configFile, 'utf-8'));
+        logger.info(`[writeMcpToAllConfigs] Read existing ${configFile}`);
       } catch (error) {
         logger.error(`[writeMcpToAllConfigs] Failed to parse ${configFile}: ${(error as Error).message}`);
-        settings = {};
+        data = {};
       }
-    } else {
-      logger.info(`[writeMcpToAllConfigs] ${configFile} does not exist, creating new`);
     }
 
-    settings.mcpServers = settings.mcpServers || {};
-    settings.mcpServers['ai-os'] = mcpEntry;
+    // ~/.claude.json has both global mcpServers AND projects
+    if (configFile.endsWith('.claude.json')) {
+      // Write to global mcpServers
+      data.mcpServers = data.mcpServers || {};
+      data.mcpServers['ai-os'] = mcpEntry;
 
-    fs.writeFileSync(configFile, JSON.stringify(settings, null, 2), 'utf-8');
-    fs.chmodSync(configFile, 0o600);
+      // Also write to current workspace project entry to prevent empty override
+      if (workspaceFolder && data.projects) {
+        if (!data.projects[workspaceFolder]) {
+          data.projects[workspaceFolder] = {
+            allowedTools: [],
+            mcpContextUris: [],
+            mcpServers: {},
+            enabledMcpjsonServers: [],
+            disabledMcpjsonServers: [],
+            hasTrustDialogAccepted: false,
+            projectOnboardingSeenCount: 0,
+          };
+        }
+        data.projects[workspaceFolder].mcpServers = data.projects[workspaceFolder].mcpServers || {};
+        data.projects[workspaceFolder].mcpServers['ai-os'] = mcpEntry;
+        logger.info(`[writeMcpToAllConfigs] Wrote to project entry: ${workspaceFolder}`);
+      }
+    } else {
+      // Flat config files: settings.json, .mcp.json
+      data.mcpServers = data.mcpServers || {};
+      data.mcpServers['ai-os'] = mcpEntry;
+    }
+
+    fs.writeFileSync(configFile, JSON.stringify(data, null, 2), 'utf-8');
+    try {
+      fs.chmodSync(configFile, 0o600);
+    } catch {
+      // Windows doesn't support chmod
+    }
     logger.info(`[writeMcpToAllConfigs] Wrote ai-os MCP to ${configFile}`);
   }
 }
@@ -533,10 +610,20 @@ function isMcpConfigured(configPaths: string[]): boolean {
   for (const configFile of configPaths) {
     if (!fs.existsSync(configFile)) continue;
     try {
-      const settings = JSON.parse(fs.readFileSync(configFile, 'utf-8'));
-      if (settings.mcpServers?.['ai-os']) {
+      const data = JSON.parse(fs.readFileSync(configFile, 'utf-8'));
+      // Check global mcpServers
+      if (data.mcpServers?.['ai-os']) {
         logger.info(`[isMcpConfigured] Found ai-os in ${configFile}`);
         return true;
+      }
+      // Check project entries in .claude.json
+      if (data.projects) {
+        for (const projectPath of Object.keys(data.projects)) {
+          if (data.projects[projectPath]?.mcpServers?.['ai-os']) {
+            logger.info(`[isMcpConfigured] Found ai-os in project ${projectPath} of ${configFile}`);
+            return true;
+          }
+        }
       }
     } catch (error) {
       logger.warn(`[isMcpConfigured] Failed to parse ${configFile}: ${(error as Error).message}`);
@@ -552,12 +639,24 @@ function removeMcpFromAllConfigs(configPaths: string[]): void {
   for (const configFile of configPaths) {
     if (!fs.existsSync(configFile)) continue;
     try {
-      const settings = JSON.parse(fs.readFileSync(configFile, 'utf-8'));
-      if (settings.mcpServers?.['ai-os']) {
-        delete settings.mcpServers['ai-os'];
-        fs.writeFileSync(configFile, JSON.stringify(settings, null, 2), 'utf-8');
-        logger.info(`[removeMcpFromAllConfigs] Removed ai-os from ${configFile}`);
+      const data = JSON.parse(fs.readFileSync(configFile, 'utf-8'));
+
+      // Remove from global mcpServers
+      if (data.mcpServers?.['ai-os']) {
+        delete data.mcpServers['ai-os'];
       }
+
+      // Remove from all project entries
+      if (data.projects) {
+        for (const projectPath of Object.keys(data.projects)) {
+          if (data.projects[projectPath]?.mcpServers?.['ai-os']) {
+            delete data.projects[projectPath].mcpServers['ai-os'];
+          }
+        }
+      }
+
+      fs.writeFileSync(configFile, JSON.stringify(data, null, 2), 'utf-8');
+      logger.info(`[removeMcpFromAllConfigs] Removed ai-os from ${configFile}`);
     } catch (error) {
       logger.error(`[removeMcpFromAllConfigs] Failed to update ${configFile}: ${(error as Error).message}`);
     }
