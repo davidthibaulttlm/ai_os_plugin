@@ -96,9 +96,40 @@ After completing all artifacts, summarize:
   - Do NOT copy `<context>`, `<rules>`, `<project_context>` blocks into the artifact
   - These guide what you write, but should never appear in the output
 
+**Mandatory Logging Task**
+
+**EVERY tasks.md MUST include a final task group for mandatory logging.** This is non-negotiable per AGENTS.md rules:
+
+- Add a task group (e.g., "N. Mandatory Logging") at the end of tasks.md
+- For each new or modified file, add a task to: import `logger` from `src/services/logger`, log start/params/result/error in every method, and verify no `console.log` exists
+- Example task: `- [ ] N.1 `src/path/file.ts` — Add `import { logger }` and log start/params/result/error in: methodA(), methodB(), methodC()`
+
+**Include this code snippet reference in the logging task group so the implementer knows the exact standard:**
+
+    Every method MUST follow this pattern:
+    ```typescript
+    import { logger } from '../services/logger';
+
+    public async someMethod(param1: string): Promise<Result> {
+      logger.info('[ClassName.someMethod] Starting...');
+      logger.info(`[ClassName.someMethod] param1=${param1}`);
+      try {
+        const result = /* ... */;
+        logger.info(`[ClassName.someMethod] Result: ${JSON.stringify(result)}`);
+        return result;
+      } catch (error) {
+        logger.error(`[ClassName.someMethod] Error: ${(error as Error).message}`);
+        throw error;
+      }
+    }
+    ```
+
+    Verification: `grep -rn "console\\.log" src/` must return zero results.
+
 **Guardrails**
 - Create ALL artifacts needed for implementation (as defined by schema's `apply.requires`)
 - Always read dependency artifacts before creating a new one
 - If context is critically unclear, ask the user - but prefer making reasonable decisions to keep momentum
 - If a change with that name already exists, ask if user wants to continue it or create a new one
 - Verify each artifact file exists after writing before proceeding to next
+- **ALWAYS include the mandatory logging task group in tasks.md — no exceptions**

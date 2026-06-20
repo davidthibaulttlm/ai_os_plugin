@@ -60,14 +60,77 @@ Implement tasks from an OpenSpec change.
    - Remaining tasks overview
    - Dynamic instruction from CLI
 
-6. **Implement tasks (loop until done or blocked)**
+6. **MANDATORY: Logger in Every File (Before Implementing Any Task)**
 
-   For each pending task:
-   - Show which task is being worked on
-   - Make the code changes required
-   - Keep changes minimal and focused
-   - Mark task complete in the tasks file: `- [ ]` → `- [x]`
-   - Continue to next task
+    **Before writing ANY code, remember the rules from AGENTS.md:**
+    - **EVERY method in EVERY file MUST log with `logger` from `src/services/logger.ts`**
+    - **ALWAYS import `logger`** at the top of every file: `import { logger } from './services/logger';`
+    - **ALWAYS log at the START of every method**: `logger.info('[ClassName.methodName] Starting...')`
+    - **ALWAYS log key parameters**: `logger.info('[ClassName.methodName] param=value')`
+    - **ALWAYS log results**: `logger.info('[ClassName.methodName] Result: ...')`
+    - **ALWAYS log errors**: `logger.error('[ClassName.methodName] Error: ...')`
+    - **NEVER use `console.log`** — use `logger` exclusively
+    - This applies to 100% of files without exception
+
+    **EVERY new method MUST follow this exact pattern:**
+
+    ```typescript
+    import { logger } from '../services/logger';  // adjust relative path
+
+    export class SomeService {
+      public async someMethod(param1: string, param2: number): Promise<ResultType> {
+        logger.info('[SomeService.someMethod] Starting...');
+        logger.info(`[SomeService.someMethod] param1=${param1}, param2=${param2}`);
+
+        try {
+          // ... implementation ...
+          const result = /* ... */;
+
+          logger.info(`[SomeService.someMethod] Result: ${JSON.stringify(result)}`);
+          return result;
+        } catch (error) {
+          logger.error(`[SomeService.someMethod] Error: ${(error as Error).message}`);
+          throw error;
+        }
+      }
+
+      public someSyncMethod(value: string): boolean {
+        logger.info('[SomeService.someSyncMethod] Starting...');
+        logger.info(`[SomeService.someSyncMethod] value=${value}`);
+
+        try {
+          // ... implementation ...
+          const ok = /* ... */;
+
+          logger.info(`[SomeService.someSyncMethod] Result: ${ok}`);
+          return ok;
+        } catch (error) {
+          logger.error(`[SomeService.someSyncMethod] Error: ${(error as Error).message}`);
+          throw error;
+        }
+      }
+    }
+    ```
+
+    **Verification checklist before marking any task complete:**
+    - [ ] `import { logger }` present at top of file
+    - [ ] Every method has `logger.info('[Class.method] Starting...')` as first line
+    - [ ] Every method logs parameters
+    - [ ] Every method logs result/return value
+    - [ ] Every method has try/catch with `logger.error()`
+    - [ ] Zero `console.log` in the file (run: `grep -n "console\\.log" src/path/file.ts`)
+
+    If the tasks.md does not have a logging task group, ADD one before starting implementation.
+
+7. **Implement tasks (loop until done or blocked)**
+
+    For each pending task:
+    - Show which task is being worked on
+    - Make the code changes required
+    - Keep changes minimal and focused
+    - **Ensure every new method has logger import + start/params/result/error logging**
+    - Mark task complete in the tasks file: `- [ ]` → `- [x]`
+    - Continue to next task
 
    **Pause if:**
    - Task is unclear → ask for clarification
