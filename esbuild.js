@@ -86,6 +86,14 @@ async function main() {
       );
     }
   } else {
+    // Build webview first
+    const { execSync } = require('child_process');
+    try {
+      console.log('[watch] building webview...');
+      execSync('npm run build', { cwd: path.resolve(__dirname, 'webview-ui'), stdio: 'inherit' });
+    } catch (e) {
+      console.warn('[watch] webview build failed, using existing assets');
+    }
     await ctx.rebuild();
     await ctx.dispose();
     // Copy assets after build

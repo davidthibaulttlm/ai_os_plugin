@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as crypto from 'crypto';
 import type { GraphQLClient } from '../services/graphql';
 import type { BoardData, ExtensionToWebview, IPCMessage, WebviewToExtension } from '../types/ipc';
+import { logger } from '../services/logger';
 
 /**
  * Webview panel provider for the AI OS Kanban board.
@@ -50,14 +51,16 @@ export class KanbanPanel {
     // Handle messages from webview
     this._panel.webview.onDidReceiveMessage(
       async (message: IPCMessage) => {
+        logger.debug('Message received from webview', { type: (message as any)?.type });
         try {
           // Validate message structure
           if (!message || typeof message !== 'object' || !('type' in message)) {
-            console.warn('[AI OS] Invalid IPC message received — missing type');
+            logger.warn('Invalid IPC message — missing type');
             return;
           }
           await this._handleMessage(message as WebviewToExtension);
         } catch (error) {
+          logger.error(`Unhandled error in message handler: ${(error as Error).message}`);
           try {
             this._panel.webview.postMessage({
               type: 'error',
@@ -69,6 +72,7 @@ export class KanbanPanel {
       undefined,
       this._disposables
     );
+    logger.debug('onDidReceiveMessage handler registered');
 
     // Reset when panel is closed
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
@@ -94,6 +98,9 @@ export class KanbanPanel {
     // Reuse existing panel if it still exists (not disposed)
     if (KanbanPanel.currentPanel) {
       try {
+        // Update HTML with fresh cache-busting to ensure latest JS loads
+        KanbanPanel.currentPanel._panel.webview.html =
+          KanbanPanel.currentPanel._getHtmlForWebview(KanbanPanel.currentPanel._panel.webview);
         KanbanPanel.currentPanel._panel.reveal(column);
         return KanbanPanel.currentPanel;
       } catch {
@@ -112,7 +119,7 @@ export class KanbanPanel {
         localResourceRoots: [
           vscode.Uri.joinPath(extensionUri, 'dist'),
         ],
-        retainContextWhenHidden: true,
+        retainContextWhenHidden: false,
       }
     );
 
@@ -176,9 +183,9 @@ export class KanbanPanel {
    */
   private async _loadInitialBoard(projectId: string): Promise<void> {
     try {
-      console.log(`[AI OS] Loading initial board for project ${projectId}`);
+      logger.info(`Loading initial board for project ${projectId}`);
       const boardData = await this._loadBoardData(projectId);
-      console.log(`[AI OS] Board loaded: ${boardData.items.length} items, ${boardData.columns.length} columns`);
+      logger.info(`Board loaded: ${boardData.items.length} items, ${boardData.columns.length} columns`);
       try {
         this._panel.webview.postMessage({
           type: 'boardData',
@@ -189,7 +196,7 @@ export class KanbanPanel {
       }
     } catch (error) {
       const errorMsg = (error as Error).message;
-      console.error(`[AI OS] Error loading initial board: ${errorMsg}`);
+      logger.error(`Error loading initial board: ${errorMsg}`);
       try {
         this._panel.webview.postMessage({
           type: 'error',
@@ -210,7 +217,7 @@ export class KanbanPanel {
       try {
         callback();
       } catch (error) {
-        console.error(`[AI OS] Error in dispose callback: ${(error as Error).message}`);
+        logger.error(`Error in dispose callback: ${(error as Error).message}`);
       }
     }
     this._onDisposeCallbacks = [];
@@ -230,16 +237,16 @@ export class KanbanPanel {
    */
   private async _handleMessage(message: WebviewToExtension): Promise<void> {
     // Validate message type against allowed types
-    const allowedTypes = ['loadBoard', 'moveItem', 'refresh', 'selectIssue', 'assignAgent'];
+    const allowedTypes = ['loadBoard', 'moveItem', 'refresh', 'selectIssue', 'assignAgent', '__ping__', '__inline_ping__', '__react_ready__'];
     if (!allowedTypes.includes(message.type)) {
-      console.warn(`[AI OS] Unknown IPC message type: ${message.type}`);
+      logger.warn(`Unknown IPC message type: ${message.type}`);
       return;
     }
 
     switch (message.type) {
       case 'loadBoard': {
         if (!message.data?.boardId || typeof message.data.boardId !== 'string') {
-          console.warn('[AI OS] loadBoard: missing or invalid boardId');
+          logger.warn('loadBoard: missing or invalid boardId');
           return;
         }
         this._projectId = message.data.boardId;
@@ -254,21 +261,34 @@ export class KanbanPanel {
       }
 
       case 'moveItem': {
+        logger.info(`moveItem received: itemId=${message.data?.itemId}, columnId=${message.data?.columnId}, projectId=${this._projectId}`);
         if (!this._projectId || !message.data?.itemId || !message.data?.columnId) {
-          console.warn('[AI OS] moveItem: missing required fields');
+          logger.warn('moveItem: missing required fields');
           return;
         }
-        const result = await this._moveItem(
-          this._projectId,
-          message.data.itemId,
-          message.data.columnId
-        );
         try {
-          this._panel.webview.postMessage({
-            type: 'itemMoved',
-            data: result,
-          } as ExtensionToWebview);
-        } catch { /* disposed */ }
+          const result = await this._moveItem(
+            this._projectId,
+            message.data.itemId,
+            message.data.columnId
+          );
+          logger.info(`moveItem success: ${JSON.stringify(result)}`);
+          try {
+            this._panel.webview.postMessage({
+              type: 'itemMoved',
+              data: result,
+            } as ExtensionToWebview);
+          } catch { /* disposed */ }
+        } catch (error) {
+          const errorMsg = (error as Error).message;
+          logger.error(`moveItem FAILED: ${errorMsg}`);
+          try {
+            this._panel.webview.postMessage({
+              type: 'error',
+              data: { message: `Failed to move item: ${errorMsg}` },
+            } as ExtensionToWebview);
+          } catch { /* disposed */ }
+        }
         break;
       }
 
@@ -284,12 +304,12 @@ export class KanbanPanel {
           try {
             const parsed = new URL(url);
             if (parsed.protocol !== 'https:' || !parsed.hostname.endsWith('github.com')) {
-              console.warn(`[AI OS] Blocked attempt to open non-GitHub URL: ${url}`);
+              logger.warn(`Blocked attempt to open non-GitHub URL: ${url}`);
               return;
             }
             await vscode.env.openExternal(vscode.Uri.parse(url));
           } catch {
-            console.warn(`[AI OS] Invalid URL for selectIssue: ${url}`);
+            logger.warn(`Invalid URL for selectIssue: ${url}`);
           }
         }
         break;
@@ -379,14 +399,19 @@ export class KanbanPanel {
     itemId: string,
     columnId: string
   ): Promise<{ id: string; status: string }> {
+    logger.debug(`_moveItem: fetching project fields for ${projectId}`);
     const fields = await this._graphql.getProjectFields(projectId);
     const statusField = fields.find((f) => f.name === 'Status');
 
     if (!statusField) {
+      logger.error(`_moveItem: Status field not found. Available fields: ${fields.map(f => f.name).join(', ')}`);
       throw new Error('Status field not found in project');
     }
 
-    await this._graphql.moveItem(projectId, itemId, statusField.id, columnId);
+    logger.debug(`_moveItem: Status field id=${statusField.id}, options=${JSON.stringify(statusField.options?.map(o => ({ id: o.id, name: o.name })))}`);
+    logger.debug(`_moveItem: calling graphql.moveItem(projectId=${projectId}, itemId=${itemId}, fieldId=${statusField.id}, optionId=${columnId})`);
+    const success = await this._graphql.moveItem(projectId, itemId, statusField.id, columnId);
+    logger.debug(`_moveItem: graphql.moveItem returned success=${success}`);
 
     // Resolve the column name from the option ID for the response
     const columnName = statusField.options?.find((o) => o.id === columnId)?.name ?? columnId;
@@ -406,6 +431,7 @@ export class KanbanPanel {
    * Generate HTML for the webview with CSP nonce.
    */
   private _getHtmlForWebview(webview: vscode.Webview): string {
+    const cacheBust = Date.now();
     const scriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this._extensionUri, 'dist', 'assets', 'index.js')
     );
@@ -420,12 +446,21 @@ export class KanbanPanel {
     <meta charset="UTF-8">
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}' ${webview.cspSource}; connect-src ${webview.cspSource};">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="${styleUri}" rel="stylesheet">
+    <link href="${styleUri}?v=${cacheBust}" rel="stylesheet">
     <title>AI OS Kanban</title>
 </head>
 <body>
     <div id="root"></div>
-    <script nonce="${nonce}" type="module" src="${scriptUri}"></script>
+    <script nonce="${nonce}">
+      console.log('[AI OS] Inline script starting...');
+      window.addEventListener('error', function(e) {
+        console.error('[AI OS] JS error:', e.message, e.filename, e.lineno);
+      });
+      window.addEventListener('unhandledrejection', function(e) {
+        console.error('[AI OS] Unhandled rejection:', e.reason);
+      });
+    </script>
+    <script type="module" src="${scriptUri}?v=${cacheBust}"></script>
 </body>
 </html>`;
   }

@@ -1,6 +1,7 @@
 /** AI Agent trigger service */
 
 import type { GraphQLClient } from './graphql';
+import { logger } from './logger';
 
 /** Agent trigger hook callback */
 export type AgentTriggerCallback = (issueId: string, columnName: string) => Promise<void>;
@@ -50,7 +51,7 @@ export class AgentService {
     if (controller) {
       controller.abort();
       this.activeAgents.delete(issueId);
-      console.debug(`[AI OS] Cancelled agent for issue #${issueId}`);
+      logger.debug(`Cancelled agent for issue #${issueId}`);
     }
   }
 

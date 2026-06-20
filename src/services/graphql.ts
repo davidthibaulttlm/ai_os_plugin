@@ -1,5 +1,7 @@
 /** GitHub GraphQL client using built-in fetch (Node 20+) */
 
+import { logger } from './logger';
+
 // GraphQL Queries
 const LIST_PROJECTS_QUERY = `
   query ListProjects($first: Int = 100) {
@@ -146,7 +148,9 @@ const GET_PROJECT_FIELDS_QUERY = `
 const UPDATE_ITEM_FIELD_MUTATION = `
   mutation UpdateItemField($input: UpdateProjectV2ItemFieldValueInput!) {
     updateProjectV2ItemFieldValue(input: $input) {
-      success
+      projectV2Item {
+        id
+      }
     }
   }
 `;
@@ -229,7 +233,7 @@ export interface GetProjectFieldsResponse {
 }
 
 export interface UpdateItemFieldResponse {
-  updateProjectV2ItemFieldValue: { success: boolean };
+  updateProjectV2ItemFieldValue: { projectV2Item: { id: string } | null };
 }
 
 /** GraphQL error from GitHub API */
@@ -274,13 +278,13 @@ export class GraphQLClient {
       // Parse rate limit headers
       const remaining = response.headers.get('X-RateLimit-Remaining');
       if (remaining) {
-        console.debug(`[AI OS] Rate limit remaining: ${remaining}`);
+        logger.debug(`Rate limit remaining: ${remaining}`);
       }
 
       // Retry on 403 (rate limit) or transient network errors
       if (!response.ok && (response.status === 403 || response.status >= 500) && retryCount < maxRetries) {
         const delay = Math.min(baseDelay * Math.pow(2, retryCount), 30000);
-        console.debug(`[AI OS] Retry ${retryCount + 1}/${maxRetries} after ${delay}ms (status: ${response.status})`);
+        logger.debug(`Retry ${retryCount + 1}/${maxRetries} after ${delay}ms (status: ${response.status})`);
         await new Promise((resolve) => setTimeout(resolve, delay));
         return this.execute(query, variables, retryCount + 1);
       }
@@ -298,7 +302,7 @@ export class GraphQLClient {
       // Retry on network errors (transient failures)
       if (retryCount < maxRetries && error instanceof Error && !error.message.includes('GraphQL error')) {
         const delay = Math.min(baseDelay * Math.pow(2, retryCount), 30000);
-        console.debug(`[AI OS] Network error retry ${retryCount + 1}/${maxRetries} after ${delay}ms: ${error.message}`);
+        logger.debug(`Network error retry ${retryCount + 1}/${maxRetries} after ${delay}ms: ${error.message}`);
         await new Promise((resolve) => setTimeout(resolve, delay));
         return this.execute(query, variables, retryCount + 1);
       }
@@ -365,7 +369,7 @@ export class GraphQLClient {
         },
       }
     );
-    return result.updateProjectV2ItemFieldValue.success;
+    return result.updateProjectV2ItemFieldValue.projectV2Item !== null;
   }
 
   /**

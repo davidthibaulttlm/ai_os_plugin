@@ -37,7 +37,10 @@ export default function KanbanBoard({ onMoveItem }: KanbanBoardProps) {
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveItem(null);
     const { active, over } = event;
+    console.debug('[AI OS Drag] handleDragEnd', { activeId: active.id, overId: over?.id });
+
     if (!over || active.id === over.id) {
+      console.debug('[AI OS Drag] No move needed', { reason: over ? 'same item' : 'no target' });
       return;
     }
 
@@ -46,18 +49,22 @@ export default function KanbanBoard({ onMoveItem }: KanbanBoardProps) {
 
     // Check if dropped directly on a column
     let droppedColumn = columns.find((col) => col.id === overId);
+    console.debug('[AI OS Drag] Column lookup', { overId, found: droppedColumn?.name ?? null });
 
     // If not a column, check if dropped over another card — find its column
     if (!droppedColumn) {
       const droppedItem = items.find((item) => item.id === overId);
       if (droppedItem) {
         droppedColumn = columns.find((col) => col.name === droppedItem.status);
+        console.debug('[AI OS Drag] Resolved via card', { cardId: droppedItem.id, column: droppedColumn?.name ?? null });
       }
     }
 
     if (droppedColumn) {
-      // Send the GitHub option ID for the mutation, and the column name for optimistic update
+      console.log('[AI OS Drag] Triggering move', { itemId: activeId, columnId: droppedColumn.id, columnName: droppedColumn.name });
       onMoveItem(activeId, droppedColumn.id, droppedColumn.name);
+    } else {
+      console.error('[AI OS Drag] No column found for drop target', { overId, availableColumns: columns.map(c => ({ id: c.id, name: c.name })) });
     }
   };
 

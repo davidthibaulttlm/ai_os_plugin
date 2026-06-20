@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { getVsCodeApi } from '../vscodeApi';
 
 /** Kanban column definition */
 export interface KanbanColumn {
@@ -41,13 +42,13 @@ interface BoardState {
  * Returns an unsubscribe function to clean up the subscription.
  */
 export function persistBoardState(): () => void {
-  if (typeof acquireVsCodeApi === 'undefined') {
+  const api = getVsCodeApi();
+  if (!api) {
     return () => {};
   }
-  const vsCodeApi = acquireVsCodeApi();
 
   // Restore saved state on mount
-  const saved = vsCodeApi.getState() as { columns?: KanbanColumn[]; items?: IssueItem[] } | null;
+  const saved = api.getState() as { columns?: KanbanColumn[]; items?: IssueItem[] } | null;
   if (saved) {
     useBoardStore.setState((state) => ({
       ...state,
@@ -58,7 +59,7 @@ export function persistBoardState(): () => void {
 
   // Subscribe to changes and persist
   const unsubscribe = useBoardStore.subscribe((state) => {
-    vsCodeApi.setState({
+    api.setState({
       columns: state.columns,
       items: state.items,
     });

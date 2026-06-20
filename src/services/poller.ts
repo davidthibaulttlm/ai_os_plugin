@@ -2,6 +2,7 @@
 
 import type { GraphQLClient, ProjectItemNode } from './graphql';
 import { detectDeltas, extractStatus, hashToNumber, type BoardItemState, type DeltaEvent } from './delta';
+import { logger } from './logger';
 
 /** Columns that trigger AI agent */
 const AI_TRIGGER_COLUMNS = new Set(['AI_SPEC', 'AI_CODE']);
@@ -40,16 +41,16 @@ export class PollerService {
     this.projectId = projectId;
     this.callback = callback;
 
-    console.log(`[AI OS] Poller started for project ${projectId} at ${POLL_INTERVAL}ms interval`);
+    logger.info(`Poller started for project ${projectId} at ${POLL_INTERVAL}ms interval`);
 
     // Initial poll
     this.poll().catch((err) => {
-      console.error(`[AI OS] Initial poll failed: ${(err as Error).message}`);
+      logger.error(`Initial poll failed: ${(err as Error).message}`);
     });
 
     this.intervalId = setInterval(() => {
       this.poll().catch((err) => {
-        console.error(`[AI OS] Poll interval failed: ${(err as Error).message}`);
+        logger.error(`Poll interval failed: ${(err as Error).message}`);
       });
     }, POLL_INTERVAL);
   }
@@ -63,7 +64,7 @@ export class PollerService {
       clearInterval(this.intervalId);
       this.intervalId = undefined;
     }
-    console.log('[AI OS] Poller stopped');
+    logger.info('Poller stopped');
   }
 
   /**
@@ -76,7 +77,7 @@ export class PollerService {
 
     // Prevent overlapping polls — if already polling, skip this cycle
     if (this.isPolling) {
-      console.warn('[AI OS] Poll skipped — previous poll still in progress');
+      logger.warn('Poll skipped — previous poll still in progress');
       return;
     }
 
@@ -101,7 +102,7 @@ export class PollerService {
         this.callback(events);
       }
     } catch (error) {
-      console.error(`[AI OS] Poll error: ${(error as Error).message}`);
+      logger.error(`Poll error: ${(error as Error).message}`);
     } finally {
       this.isPolling = false;
     }

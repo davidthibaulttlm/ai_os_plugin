@@ -8,6 +8,7 @@ import { PollerService } from './services/poller';
 import { AgentService } from './services/agent';
 import { openBoard } from './commands/openBoard';
 import { assignAgent } from './commands/assignAgent';
+import { logger } from './services/logger';
 
 let panel: KanbanPanel | undefined;
 let graphql: GraphQLClient | undefined;
@@ -18,7 +19,7 @@ let authServiceInstance: AuthService | undefined;
 let boardTreeProvider: BoardTreeProvider | undefined;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-  console.log('[AI OS] Extension activating...');
+  logger.info('Extension activating...');
 
   try {
     stateManager = new StateManager(context.globalState);
@@ -50,19 +51,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         vscode.window.showInformationMessage('Use drag-and-drop on the kanban board to move items')
       )
     );
-    console.log('[AI OS] Commands and tree view registered');
+    logger.info('Commands and tree view registered');
 
     // Init auth and services lazily
     const token = await authServiceInstance.getGitHubToken();
     if (!token) {
-      console.warn('[AI OS] No GitHub token — commands will prompt for auth');
+      logger.warn('No GitHub token — commands will prompt for auth');
       return;
     }
 
     // Validate token has required scopes
     const tokenValid = await authServiceInstance.validateToken(token);
     if (!tokenValid) {
-      console.warn('[AI OS] Token may have insufficient scopes');
+      logger.warn('Token may have insufficient scopes');
     }
 
     graphql = new GraphQLClient(token);
@@ -76,7 +77,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       panel?.notifyAgentProgress(issueId, columnName);
     });
 
-    console.log('[AI OS] Extension activated successfully');
+    logger.info('Extension activated successfully');
   } catch (error) {
     console.error('[AI OS] Activation error:', error);
     vscode.window.showErrorMessage(
@@ -99,7 +100,7 @@ async function handleOpenBoard(context: vscode.ExtensionContext): Promise<void> 
     // Stop poller when panel is disposed
     p.onDispose(() => {
       poller?.stop();
-      console.log('[AI OS] Poller stopped on panel dispose');
+      logger.info('Poller stopped on panel dispose');
     });
     const boardId = stateManager?.getLastBoardId();
     if (boardId && graphql && poller) {
@@ -254,7 +255,7 @@ async function handleOpenBoardFromTree(
   panel = p;
   p.onDispose(() => {
     poller?.stop();
-    console.log('[AI OS] Poller stopped on panel dispose');
+    logger.info('Poller stopped on panel dispose');
   });
 
   if (poller) {
@@ -286,5 +287,6 @@ export function deactivate(): void {
   poller?.stop();
   panel?.dispose();
   authServiceInstance?.clearToken();
-  console.log('[AI OS] Extension deactivated — poller stopped, token cleared');
+  logger.info('Extension deactivated — poller stopped, token cleared');
+  logger.dispose();
 }

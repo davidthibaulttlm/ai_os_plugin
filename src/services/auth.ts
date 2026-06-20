@@ -1,5 +1,6 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { logger } from './logger';
 
 const execAsync = promisify(exec);
 
@@ -51,7 +52,7 @@ export class AuthService {
       }
     } catch (error) {
       // gh CLI not available or timed out
-      console.warn('[AI OS] Failed to get GitHub token:', (error as Error).message);
+      logger.warn(`Failed to get GitHub token: ${(error as Error).message}`);
       return undefined;
     }
 

@@ -4,6 +4,10 @@
 
 **BEFORE writing ANY code, you MUST verify against official documentation:**
 
+YOU HAVE TO FIX CODE ? SEARCH THE WEB!
+YOU HAVE TO IMPLEMENT SOMETHING ? SEARCH THE WEB!
+YOU ARE SURE OF SOMETHING OR YOU ARE UNSURE ? SEARCH THE WEB!
+
 1. **ALWAYS search the web or use Context7 MCP** to check official documentation for the libraries/APIs you're working with.
 2. **NEVER rely on memory alone** for API signatures, GraphQL schemas, or framework configurations.
 3. **ALWAYS verify** that your implementation matches the CURRENT version of the documentation — not outdated knowledge.
