@@ -133,3 +133,25 @@ After completing all artifacts, summarize:
 - If a change with that name already exists, ask if user wants to continue it or create a new one
 - Verify each artifact file exists after writing before proceeding to next
 - **ALWAYS include the mandatory logging task group in tasks.md — no exceptions**
+
+**Mandatory Testing Task**
+
+**EVERY tasks.md MUST include a final task group for testing.** This is non-negotiable — all code ships with tests:
+
+- Add a task group (e.g., "N. Tests") at the end of tasks.md **after** the logging task group
+- Require **90% code coverage** on all new and modified files
+- Include tasks for:
+  1. **Vitest setup** (if not already present) — `vitest`, `@vitest/coverage-v8`, `vitest.config.ts` with `coverage.thresholds.global = 90`
+  2. **Unit tests** for every new/modified service file — `src/test/services/*.test.ts`
+  3. **Storybook stories** for every new/modified webview component — isolated rendering + interaction tests with `@storybook/test`
+  4. **Integration tests** for command flows — `src/test/integration/*.integration.test.ts`
+  5. **Coverage verification** task — run `npx vitest run --coverage` and verify ≥90%
+- Mock `vscode` API with `vi.mock('vscode', ...)` in unit tests
+- Mock `GraphQLClient` with `vi.fn()` spies
+
+Example testing tasks:
+    ## N. Tests
+    - [ ] N.1 Setup Vitest if not present (`vitest`, `@vitest/coverage-v8`, `vitest.config.ts`)
+    - [ ] N.2 `src/test/services/myservice.test.ts` — Test methodA(), methodB(), methodC() with mocked vscode + GraphQLClient
+    - [ ] N.3 Update `webview-ui/src/components/MyComponent.stories.tsx` — Add stories for new props/states
+    - [ ] N.4 Run `npx vitest run --coverage` and verify ≥90% coverage on all new/modified files

@@ -1,5 +1,14 @@
 ## ADDED Requirements
 
+### Dependency: Label data in board state
+The prioritizer requires label data on each board item for bug detection. `BoardItemState` MUST include a `labels` field (array of label name strings). The GraphQL query already fetches labels via `CONTENT_FRAGMENT` — the delta detection layer (`src/services/delta.ts`) and state bridge (`src/services/stateBridge.ts`) MUST propagate this data through to the in-memory board state.
+
+### Dependency: AI-eligible columns constant
+The `AI_TRIGGER_COLUMNS` constant in `src/services/agent.ts` currently only includes `['AI_SPEC', 'AI_CODE']`. It MUST be updated to include `BRAIN_DUMP` as an AI-eligible column (since the prioritizer scans it and auto-moves to AI_SPEC). Rename to `AI_ELIGIBLE_COLUMNS` to reflect broader scope.
+
+### Implementation Note: Auto-move GraphQL mutation
+The auto-move from BRAIN_DUMP to AI_SPEC uses the existing `UPDATE_ITEM_FIELD_MUTATION` (`UpdateProjectV2ItemFieldValueInput`) to update the Status field on the project item. The target option ID for "AI_SPEC" status is resolved from the column mapping stored in VS Code Memento (same mapping used by the poller to resolve GitHub option IDs → column names). Reverse lookup: find the option ID whose mapped name is `AI_SPEC`.
+
 ### Requirement: Prioritizer scans columns in correct priority order
 The agent prioritizer SHALL scan AI-eligible columns in the following order: AI_CODE first, then AI_SPEC, then BRAIN_DUMP. The first non-empty column determines the candidate pool.
 
@@ -114,3 +123,75 @@ The extension SHALL provide a VS Code command "AI OS: Start Agent" that runs the
 #### Scenario: Command when agent busy
 - **WHEN** the user runs "AI OS: Start Agent" and an agent is already working with no bugs pending
 - **THEN** the extension shows a notification: "Agent is busy working on #[issue]"
+
+---
+
+## Testing Strategy
+
+### Target: 90% code coverage across all new and modified files
+
+### Layer 1: Unit Tests — Vitest (Extension Host Services)
+
+**Framework**: Vitest with `@vitest/coverage-v8`
+
+**Why Vitest over Jest:**
+- Vite ecosystem alignment (webview already uses Vite 5)
+- Native TypeScript support — no `ts-jest` config needed
+- `vi.mock()` provides precise module-level mocking for `vscode` API
+- Faster execution (native ESM, no Babel transform)
+- Microsoft's official guidance recommends Jest manual mocks or abstraction wrappers — Vitest's `vi.mock` is the modern equivalent
+
+**Mocking the `vscode` API:**
+- Use `vi.mock('vscode', () => ({ window: { showInformationMessage: vi.fn() }, ... }))` per test file
+- Mock `Memento` (`context.globalState`) as a plain `Map`-backed object
+- Mock `GraphQLClient` with `vi.fn()` spies for mutation/query verification
+
+**Test files:**
+- `src/test/services/agent.test.ts` — prioritizer logic, WIP tracking, bug detection, auto-move
+- `src/test/services/delta.test.ts` — label extraction, delta detection with labels
+- `src/test/commands/startAgent.test.ts` — command handler with mocked vscode notifications
+
+**Coverage target**: 90% branches + lines on all new/modified service files
+
+### Layer 2: Storybook Isolated Component Testing (Webview)
+
+**Framework**: Storybook 10 + `@storybook/test` (already installed in `webview-ui/package.json`)
+
+**What to test in isolation:**
+- `IssueCard` — render with bug label badge, render with priority indicator
+- `KanbanColumn` — render with items in correct order, drag-and-drop within column
+- `Header` — display "Agent Busy" indicator when WIP active
+
+**Interaction tests with `@storybook/test`:**
+- Use `userEvent` from `@storybook/test` to simulate clicks on "Start Agent" button
+- Verify IPC message dispatch via mocked `vscodeApi.postMessage`
+
+**Coverage**: All new component props and visual states covered by stories
+
+### Layer 3: Integration Tests — VS Code Test Electron
+
+**Framework**: `@vscode/test-electron` (official VS Code extension testing)
+
+**Scope:**
+- End-to-end flow: command registered → prioritizer runs → agent triggered
+- Verify `vscode.commands.executeCommand('aiOs.startAgent')` fires correct notification
+
+**Run via**: `npx vscode-test` or existing `src/test/runTest.ts` pattern with `--coverage` flag
+
+### Test Execution Commands
+
+```bash
+# Extension host unit tests (Vitest)
+npx vitest run --coverage
+
+# Webview Storybook tests
+cd webview-ui && npx storybook test
+
+# Integration tests (VS Code Electron)
+npx vscode-test
+```
+
+### Coverage Enforcement
+
+- Add `coverage.thresholds.global = 90` to Vitest config
+- CI gate: `npx vitest run --coverage --coverage.reporter=text-summary` must pass

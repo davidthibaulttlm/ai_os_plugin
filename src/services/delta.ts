@@ -80,11 +80,14 @@ export function detectDeltas(
  * Looks for the Status single-select field value.
  */
 export function extractStatus(item: ProjectItemNode): string {
+  logger.debug(`[delta.extractStatus] Extracting status for item id=${item.id}`);
   for (const fv of item.fieldValues.nodes) {
     if (fv.field?.name === 'Status' && fv.name) {
+      logger.debug(`[delta.extractStatus] Found status: ${fv.name}`);
       return fv.name;
     }
   }
+  logger.warn('[delta.extractStatus] No Status field found, returning UNKNOWN');
   return 'UNKNOWN';
 }
 
@@ -93,11 +96,14 @@ export function extractStatus(item: ProjectItemNode): string {
  * Used as a fallback when databaseId is null.
  */
 export function hashToNumber(id: string): number {
+  logger.debug(`[delta.hashToNumber] Converting id=${id} to number`);
   let hash = 0;
   for (let i = 0; i < id.length; i++) {
     const char = id.charCodeAt(i);
     hash = (hash << 5) - hash + char;
     hash |= 0;
   }
-  return Math.abs(hash);
+  const result = Math.abs(hash);
+  logger.debug(`[delta.hashToNumber] Result: ${result}`);
+  return result;
 }

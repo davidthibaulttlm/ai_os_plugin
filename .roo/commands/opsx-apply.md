@@ -213,3 +213,25 @@ This skill supports the "actions on a change" model:
 
 - **Can be invoked anytime**: Before all artifacts are done (if tasks exist), after partial implementation, interleaved with other actions
 - **Allows artifact updates**: If implementation reveals design issues, suggest updating artifacts - not phase-locked, work fluidly
+
+**Mandatory Testing During Implementation**
+
+After implementing all functional tasks, tests MUST be written before marking the change complete:
+
+1. **Write unit tests** for every new/modified service file using Vitest
+   - Mock `vscode` API with `vi.mock('vscode', ...)`
+   - Mock `GraphQLClient` with `vi.fn()` spies
+   - Place tests in `src/test/services/*.test.ts`
+
+2. **Update Storybook stories** for every new/modified webview component
+   - Add isolated rendering stories for new props/states
+   - Add interaction tests with `@storybook/test` and `userEvent`
+
+3. **Write integration tests** for new command flows
+   - Place in `src/test/integration/*.integration.test.ts`
+
+4. **Verify coverage**: Run `npx vitest run --coverage` — must achieve ≥90% on all new/modified files
+
+5. **Do NOT mark change complete** until all tests pass and coverage threshold met
+
+If the tasks.md lacks a testing task group, create one and work through it before finishing.

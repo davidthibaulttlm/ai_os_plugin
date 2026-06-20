@@ -3,6 +3,14 @@
 - [ ] 1.1 Verify GraphQL query includes label data in project item responses (check `CONTENT_FRAGMENT` in `src/services/graphql.queries.ts`)
 - [ ] 1.2 Extend `ProjectItemNode` type in `src/services/graphql.ts` to include labels field if missing
 - [ ] 1.3 Update `BoardItemState` in `src/services/delta.ts` to include labels array
+- [ ] 1.4 Extract labels from `item.content.labels.nodes` in `detectDeltas()` and pass through to `BoardItemState`
+- [ ] 1.5 Update `BoardState` type in `src/services/stateBridge.ts` to include labels per issue
+
+## 1.5 Update AI-Eligible Columns Constant
+
+- [ ] 1.5.1 Rename `AI_TRIGGER_COLUMNS` to `AI_ELIGIBLE_COLUMNS` in `src/services/agent.ts`
+- [ ] 1.5.2 Add `BRAIN_DUMP` to the set: `['AI_SPEC', 'AI_CODE', 'BRAIN_DUMP']`
+- [ ] 1.5.3 Update all references to the renamed constant across codebase
 
 ## 2. Implement Core Prioritizer Logic
 
@@ -26,9 +34,10 @@
 
 ## 5. Implement Auto-Move from BRAIN_DUMP
 
-- [ ] 5.1 Add `moveToColumn(issueId, fromColumn, toColumn)` method in `AgentService` that calls GraphQL mutation
-- [ ] 5.2 Integrate auto-move into `selectNextIssue()` — when selected issue is in BRAIN_DUMP, move to AI_SPEC before returning
-- [ ] 5.3 Handle move failure: log error, notify user, return null candidate
+- [ ] 5.1 Add `moveToColumn(issueId, fromColumn, toColumn)` method in `AgentService` that calls `UPDATE_ITEM_FIELD_MUTATION` (UpdateProjectV2ItemFieldValueInput) to update the Status field
+- [ ] 5.2 Resolve target option ID for AI_SPEC status by reverse-lookup from column mapping stored in Memento (same mapping poller uses for GitHub option ID → column name)
+- [ ] 5.3 Integrate auto-move into `selectNextIssue()` — when selected issue is in BRAIN_DUMP, move to AI_SPEC before returning
+- [ ] 5.4 Handle move failure: log error, notify user, return null candidate
 
 ## 6. Implement Start Agent Command
 
@@ -60,3 +69,56 @@
 - [ ] 9.3 `src/services/delta.ts` — Add logging to `extractStatus()` and any new label extraction methods
 - [ ] 9.4 `src/services/stateBridge.ts` — Add logging to any modified methods that handle label data
 - [ ] 9.5 Verify NO `console.log` exists in any new or modified file (use `logger` exclusively)
+
+## 10. Setup Vitest for Extension Host Unit Tests
+
+- [ ] 10.1 Add Vitest devDependencies: `vitest`, `@vitest/coverage-v8`, `@types/node`
+- [ ] 10.2 Create `vitest.config.ts` with coverage thresholds (`global: 90`) and exclude patterns (`node_modules`, `dist`, `webview-ui`)
+- [ ] 10.3 Add test script to root `package.json`: `"test": "vitest run --coverage"`
+- [ ] 10.4 Create `src/test/mocks/vscode.ts` — mock module for `vscode` API (window, commands, workspace, Memento)
+
+## 11. Write Unit Tests for Agent Service
+
+- [ ] 11.1 `src/test/services/agent.test.ts` — Test `selectNextIssue()` with all column priority order combinations
+- [ ] 11.2 `src/test/services/agent.test.ts` — Test `isBug()` with label variations: "bug", "Bug", "BUG", "type/bug", no bug
+- [ ] 11.3 `src/test/services/agent.test.ts` — Test `findBugInColumns()` scanning multiple columns
+- [ ] 11.4 `src/test/services/agent.test.ts` — Test WIP tracking: `isBusy()`, `setWip()`, `clearWip()`
+- [ ] 11.5 `src/test/services/agent.test.ts` — Test WIP enforcement: refuse non-bug when busy, allow bug when busy
+- [ ] 11.6 `src/test/services/agent.test.ts` — Test `previewNextIssue()` returns candidate without side effects
+- [ ] 11.7 `src/test/services/agent.test.ts` — Test `moveToColumn()` calls GraphQL mutation with correct input
+- [ ] 11.8 `src/test/services/agent.test.ts` — Test auto-move failure handling (mutation throws → error logged, null returned)
+- [ ] 11.9 `src/test/services/agent.test.ts` — Test human column exclusion (HUMAN_SPEC_REVIEW, HUMAN_CODE_REVIEW, PR_DONE never selected)
+
+## 12. Write Unit Tests for Delta Detection
+
+- [ ] 12.1 `src/test/services/delta.test.ts` — Test label extraction from `item.content.labels.nodes`
+- [ ] 12.2 `src/test/services/delta.test.ts` — Test `detectDeltas()` includes labels in `BoardItemState`
+- [ ] 12.3 `src/test/services/delta.test.ts` — Test delta detection with items that have/have not labels
+
+## 13. Write Unit Tests for Start Agent Command
+
+- [ ] 13.1 `src/test/commands/startAgent.test.ts` — Test command calls `selectNextIssue()` and launches agent
+- [ ] 13.2 `src/test/commands/startAgent.test.ts` — Test success notification with issue number and title
+- [ ] 13.3 `src/test/commands/startAgent.test.ts` — Test busy notification when WIP limit reached
+- [ ] 13.4 `src/test/commands/startAgent.test.ts` — Test empty notification when no AI-eligible issues
+
+## 14. Storybook Isolated Component Tests (Webview)
+
+- [ ] 14.1 Update `IssueCard.stories.tsx` — Add story with bug label badge visible
+- [ ] 14.2 Update `IssueCard.stories.tsx` — Add story with priority indicator (top card in column)
+- [ ] 14.3 Update `KanbanColumn.stories.tsx` — Add story showing items in correct priority order
+- [ ] 14.4 Update `Header.stories.tsx` — Add story with "Agent Busy" indicator when WIP active
+- [ ] 14.5 Add interaction test in `IssueCard.stories.tsx` — click "Assign Agent" dispatches correct IPC message
+- [ ] 14.6 Run `cd webview-ui && npx storybook test` and verify all stories pass
+
+## 15. Integration Tests (VS Code Test Electron)
+
+- [ ] 15.1 Create `src/test/integration/startAgent.integration.test.ts` — Test full command flow in VS Code Electron
+- [ ] 15.2 Verify command registration: `vscode.commands.executeCommand('aiOs.startAgent')` executes without error
+- [ ] 15.3 Verify notification appears in VS Code window after command execution
+
+## 16. Coverage Verification
+
+- [ ] 16.1 Run `npx vitest run --coverage` and verify ≥90% coverage on all new/modified files
+- [ ] 16.2 Add coverage report to CI pipeline (if applicable)
+- [ ] 16.3 Verify no uncovered branches in prioritizer logic, bug detection, WIP tracking, auto-move
