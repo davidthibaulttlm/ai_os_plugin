@@ -17,6 +17,7 @@ let poller: PollerService | undefined;
 let agentService: AgentService | undefined;
 let stateManager: StateManager | undefined;
 let _globalStorageUri: string | undefined;
+let boardTreeProvider: any | undefined;
 
 export function setBoardHandlerDeps(
   p: KanbanPanel | undefined,
@@ -24,7 +25,8 @@ export function setBoardHandlerDeps(
   pol: PollerService | undefined,
   a: AgentService | undefined,
   s: StateManager | undefined,
-  uri: string | undefined
+  uri: string | undefined,
+  tree: any | undefined
 ): void {
   panel = p;
   graphql = g;
@@ -32,6 +34,7 @@ export function setBoardHandlerDeps(
   agentService = a;
   stateManager = s;
   _globalStorageUri = uri;
+  boardTreeProvider = tree;
 }
 
 export function getPanel(): KanbanPanel | undefined { return panel; }
@@ -102,14 +105,33 @@ export async function handleStartAgent(): Promise<void> {
   }
 }
 
-export async function loadProjectsAuto(_ctx: vscode.ExtensionContext): Promise<void> {
+export async function loadProjectsAuto(ctx: vscode.ExtensionContext): Promise<void> {
+  logger.info('[loadProjectsAuto] Starting auto-load');
   if (!graphql) return;
   try {
+    boardTreeProvider?.setLoading(true);
     const projects = await graphql.listProjects();
-    if (projects.length === 0) return;
-    // Expose for tree provider if needed
-    void projects;
+
+    if (projects.length === 0) {
+      boardTreeProvider?.setLoading(false);
+      return;
+    }
+
+    boardTreeProvider?.setBoards(
+      projects.map((p: any) => ({ id: p.id, name: p.title, number: p.number, url: p.url }))
+    );
+
+    // Auto-open last used board if exists
+    const lastBoardId = stateManager?.getLastBoardId();
+    if (lastBoardId) {
+      const lastProject = projects.find((p: any) => p.id === lastBoardId);
+      if (lastProject) {
+        handleOpenBoardFromTree(ctx, lastBoardId, lastProject.title);
+      }
+    }
+    boardTreeProvider?.setLoading(false);
   } catch (error) {
+    boardTreeProvider?.setLoading(false);
     logger.error(`Failed to auto-load projects: ${(error as Error).message}`);
   }
 }

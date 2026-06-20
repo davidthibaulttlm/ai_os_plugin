@@ -139,7 +139,7 @@ async function initServices(context: vscode.ExtensionContext): Promise<void> {
   poller.setAgentService(agentService);
 
   // Wire board handler dependencies
-  setBoardHandlerDeps(getPanel(), graphql, poller, agentService, stateManager, context.globalStorageUri.fsPath);
+  setBoardHandlerDeps(getPanel(), graphql, poller, agentService, stateManager, context.globalStorageUri.fsPath, boardTreeProvider);
 
   claudeTrigger = new ClaudeTrigger();
   claudeTrigger.setCallback(async (event) => {
