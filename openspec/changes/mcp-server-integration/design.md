@@ -91,6 +91,22 @@ VS Code provides a native MCP server definition provider API (`vscode.lm.registe
 7. Test with Claude Code: verify tools appear after extension install
 8. Rollback: Remove MCP provider registration — existing extension functionality unaffected
 
+## Cross-Platform Configuration
+
+The Claude Code VS Code extension runs inside the VS Code Server environment. This means:
+
+- **WSL**: The extension runs as a native Linux process inside WSL. `os.platform()` returns `linux`. The MCP config uses `command: "node"` directly (NOT `wsl`, because `wsl` does not exist inside WSL).
+- **macOS/Linux native**: Same as WSL — `command: "node"`.
+- **Windows native**: `os.platform()` returns `win32`. The MCP config uses `command: "node"`.
+
+Claude Code reads MCP servers from multiple config files:
+- `~/.claude.json` — Global `mcpServers` section AND project-level entries under `projects["/path/to/workspace"].mcpServers`
+- `~/.claude/.mcp.json` — MCP-specific config file
+- `~/.claude/settings.json` — General settings (some Claude Code versions read MCP here)
+- `.mcp.json` in workspace root — Project-scoped MCP config
+
+**Critical**: Project-level `mcpServers: {}` in `~/.claude.json` overrides the global `mcpServers`. The extension MUST write the `ai-os` entry to BOTH the global section AND the current workspace's project entry.
+
 ## Open Questions
 
 - Should MCP tools support filtering by repository? (Currently returns all issues on the board.)

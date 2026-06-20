@@ -37,16 +37,20 @@ The MCP server definition SHALL include the GitHub token in the `env` property a
 - **WHEN** the user is not authenticated
 - **THEN** the MCP server definition does not include `GITHUB_TOKEN` in the env object
 
-### Requirement: Claude config writes token to file securely
-The `aiOs.configureClaude` command SHALL write the GitHub token to `~/.claude/settings.json` as a literal value in the `env.GITHUB_TOKEN` field. The file SHALL be written with restrictive permissions (0o600 — owner read/write only) to prevent other users from reading the token. This is an accepted trade-off: the token is already stored in VS Code's Memento, and the Claude config file is a standard Claude Code convention.
+### Requirement: Claude config writes token to all config files securely
+The `aiOs.configureClaude` command SHALL write the GitHub token to ALL Claude Code configuration files where MCP servers are read. This includes `~/.claude.json` (global `mcpServers` AND project-level entries), `~/.claude/.mcp.json`, `~/.claude/settings.json`, and `.mcp.json` in the workspace root. Each file SHALL be written with restrictive permissions (0o600 — owner read/write only) where the OS supports it. The token is already stored in VS Code's Memento, and the Claude config file is a standard Claude Code convention.
 
 #### Scenario: Config file has restrictive permissions
-- **WHEN** the configure command writes `~/.claude/settings.json`
-- **THEN** the file permissions are set to 0o600 (owner read/write only)
+- **WHEN** the configure command writes any Claude config file
+- **THEN** the file permissions are set to 0o600 (owner read/write only) on platforms that support chmod
 
 #### Scenario: Token written as literal in env
 - **WHEN** the configure command writes the config
 - **THEN** the `env.GITHUB_TOKEN` field contains the actual token string value
+
+#### Scenario: Project-level entry prevents empty override
+- **WHEN** `~/.claude.json` has a project entry for the current workspace with empty `mcpServers: {}`
+- **THEN** the configure command writes the `ai-os` entry into the project-level `mcpServers` to prevent the empty object from overriding the global config
 
 ### Requirement: Provider contributes to package.json mcpServerDefinitionProviders
 The `package.json` file SHALL include a `contributes.mcpServerDefinitionProviders` array with at least one entry containing `id` and `label` properties.
@@ -123,8 +127,34 @@ Running the configure command multiple times SHALL be safe and produce the same 
 - **THEN** the second run overwrites the `ai-os` entry with updated paths without creating duplicates
 
 ### Requirement: Configure command uses correct MCP server structure
-The MCP server entry written to `~/.claude/settings.json` SHALL follow the Claude Code MCP configuration format with `command`, `args`, and `env` properties.
+The MCP server entry SHALL follow the Claude Code MCP configuration format with `command`, `args`, and `env` properties. The `command` SHALL be `node` (resolved from the VS Code Server environment where Claude Code runs).
 
 #### Scenario: Config entry has correct structure
 - **WHEN** the configure command writes the config
 - **THEN** the `mcpServers["ai-os"]` entry contains `command: "node"`, `args: [serverPath]`, and `env` with `GITHUB_TOKEN` and `AI_OS_STATE_FILE`
+
+### Requirement: Extension detects platform and uses correct node command
+The extension SHALL detect the platform where Claude Code runs using `os.platform()`. The Claude Code VS Code extension runs inside the VS Code Server environment, so on WSL it reports `linux` and uses the native Linux `node` command. The extension SHALL NOT use `wsl` as the command when running inside WSL, because `wsl` does not exist inside the WSL environment.
+
+#### Scenario: WSL platform detected
+- **WHEN** the extension runs on WSL (VS Code Server on Linux)
+- **THEN** `os.platform()` returns `linux` and the MCP entry uses `command: "node"`
+
+#### Scenario: macOS platform detected
+- **WHEN** the extension runs on macOS
+- **THEN** `os.platform()` returns `darwin` and the MCP entry uses `command: "node"`
+
+#### Scenario: Windows native platform detected
+- **WHEN** the extension runs on Windows (not WSL)
+- **THEN** `os.platform()` returns `win32` and the MCP entry uses `command: "node"`
+
+### Requirement: Extension provides reinstall MCP command
+The extension SHALL provide a command `aiOs.configureClaude` that can be re-run at any time to reinstall or repair the MCP configuration. Running the command multiple times SHALL be safe and idempotent, overwriting the existing `ai-os` entry with current paths and token.
+
+#### Scenario: User reinstalls MCP from command palette
+- **WHEN** the user runs "AI OS: Connect to Claude Code" after it was already configured
+- **THEN** the extension overwrites the `ai-os` entry in all config files with current paths and token
+
+#### Scenario: Reinstall after config corruption
+- **WHEN** the Claude config files are corrupted or the `ai-os` entry is missing
+- **THEN** running "AI OS: Connect to Claude Code" repairs the configuration
