@@ -15,6 +15,8 @@ Self-hosted VS Code extension that connects to your GitHub account and automates
 
 > **⚠️ Work in Progress**: This project is actively under development. Features may not perform as expected and are subject to change. Use at your own risk and report any issues you encounter.
 
+<img width="2561" height="1388" alt="image" src="https://github.com/user-attachments/assets/b4d0fe40-93e8-48af-beea-3aff8bcea7a0" />
+
 ## ✨ Features
 
 - **GitHub Projects v2 Integration** — Connect via `gh` CLI token, no separate OAuth flow
