@@ -132,6 +132,27 @@ function registerAutoWorkCommands(): void {
       boardTreeProvider?.refresh();
     }
   });
+  vscode.commands.registerCommand('aiOs.setReposDir', async () => {
+    logger.info('[aiOs.setReposDir] Opening repos directory input');
+    const config = vscode.workspace.getConfiguration('aiOs');
+    const current = config.get<string>('reposDir', '~/ai-os-repos');
+    logger.info(`[aiOs.setReposDir] Current reposDir=${current}`);
+    const value = await vscode.window.showInputBox({
+      prompt: 'Set directory for cloned repositories (supports ~ for home)',
+      value: current,
+      placeHolder: '~/ai-os-repos',
+    });
+    if (value !== undefined && value.trim() !== '') {
+      logger.info(`[aiOs.setReposDir] Updating reposDir to ${value}`);
+      await config.update('reposDir', value.trim(), vscode.ConfigurationTarget.Global);
+      const verified = config.get<string>('reposDir');
+      logger.info(`[aiOs.setReposDir] Verified reposDir=${verified}`);
+      boardTreeProvider?.refresh();
+      vscode.window.showInformationMessage(`Repos directory set to: ${value.trim()}`);
+    } else {
+      logger.info('[aiOs.setReposDir] Cancelled or empty value');
+    }
+  });
   vscode.commands.registerCommand('aiOs.resetOnboarding', () => {
     vscode.workspace.getConfiguration('aiOs').update('onboardingDismissed', false, vscode.ConfigurationTarget.Global);
     vscode.window.showInformationMessage('Onboarding reset. Reload the extension to see the connect dialog.');

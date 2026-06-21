@@ -197,11 +197,6 @@
           "command": "aiOs.openSettings",
           "when": "view == aiOs.boardSelector",
           "group": "navigation"
-        },
-        {
-          "command": "aiOs.cloneRepos",
-          "when": "view == aiOs.boardSelector",
-          "group": "navigation"
         }
       ]
     }

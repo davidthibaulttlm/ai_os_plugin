@@ -17,6 +17,18 @@ IT'S VERY CRITICAL! YOU WILL BE EVALUATED ON YOUR ABILITY TO SEARCH THE WEB TO G
 
 **This rule applies to 100% of tasks without exception.**
 
+## MANDATORY: Update Tests When Modifying Logic
+
+**EVERY TIME you modify existing logic, you MUST update the corresponding tests. NO EXCEPTIONS.**
+
+1. **Changed a function?** Update its test file to match the new behavior.
+2. **Added a new method?** Write a new test file immediately (one test file per method).
+3. **Extracted code to a new module?** Write tests for the new module.
+4. **Refactored imports/exports?** Verify all existing tests still import correctly.
+5. **Before marking complete:** Run `npx vitest run` — ALL tests must pass.
+
+**NEVER ship code changes without verifying tests pass. This is non-negotiable.**
+
 ## MANDATORY: Logger in Every File
 
 **EVERY method in EVERY file MUST log. No exceptions.**

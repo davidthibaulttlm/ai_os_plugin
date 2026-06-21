@@ -86,6 +86,7 @@ export class BoardTreeProvider implements vscode.TreeDataProvider<BoardTreeItem>
     const maxTurns = config.get<number>('autoWorkMaxTurns', 25);
     const allowedTools = config.get<string>('autoWorkAllowedTools', '');
     const confirmFirst = config.get<boolean>('autoWorkConfirmFirst', true);
+    const reposDir = config.get<string>('reposDir', '~/ai-os-repos');
 
     return [
       {
@@ -130,6 +131,16 @@ export class BoardTreeProvider implements vscode.TreeDataProvider<BoardTreeItem>
         command: {
           command: 'aiOs.setAllowedTools',
           title: 'Set Allowed Tools',
+        },
+        contextValue: 'settingInput',
+      } as BoardTreeItem,
+      {
+        label: '$(folder) Repos Directory',
+        tooltip: `Currently: ${reposDir} — Click to change`,
+        description: reposDir,
+        command: {
+          command: 'aiOs.setReposDir',
+          title: 'Set Repos Directory',
         },
         contextValue: 'settingInput',
       } as BoardTreeItem,
