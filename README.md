@@ -1,5 +1,9 @@
 # AI OS — VS Code Extension providing AI-Powered Kanban Automation
 
+<p align="center">
+  <a href="README.md">English</a> · <a href="README.fr.md">Français</a>
+</p>
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![VS Code](https://img.shields.io/badge/VS%20Code-1.85%2B-blue.svg)](https://code.visualstudio.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3%2B-blue.svg)](https://www.typescriptlang.org/)
