@@ -13,14 +13,22 @@
 
 Self-hosted VS Code extension that connects to your GitHub account and automates kanban workflows on [GitHub Projects v2](https://docs.github.com/en/issues/planning-and-tracking-with-projects) boards. AI agents automatically work on issues entering `AI_SPEC` / `AI_CODE` columns.
 
+> **⚠️ Work in Progress**: This project is actively under development. Features may not perform as expected and are subject to change. Use at your own risk and report any issues you encounter.
+
 ## ✨ Features
 
 - **GitHub Projects v2 Integration** — Connect via `gh` CLI token, no separate OAuth flow
-- **Interactive Kanban Board** — Drag-and-drop issue cards across 6 workflow columns
-- **AI Agent Auto-Trigger** — When issues enter `AI_SPEC` or `AI_CODE`, Claude Code agents spawn automatically
-- **Real-Time Polling** — 30s GraphQL polling keeps your board in sync with external changes
+- **Interactive Kanban Board** — Drag-and-drop issue cards across 6 workflow columns in a React webview
+- **Claude Code Agent Integration** — Works with Claude Code CLI, VS Code extension, or Claude Code app
+- **Auto-Trigger on Column Move** — Issues entering `AI_SPEC` or `AI_CODE` columns automatically spawn agents
+- **Full Git Workflow Pipeline** — Agent work → commit → push → PR creation → card auto-advances to next column
+- **Repository Worktree Management** — Clones project repos into isolated git worktrees for safe parallel agent work
+- **Agent Prioritizer** — Smart issue selection: bugs first, then by priority and age
+- **Delta Detection** — Detects board changes from external sources (PR merges, manual moves) and reacts
+- **Real-Time Board Polling** — 30s GraphQL polling keeps your board in sync
 - **MCP Server** — Exposes kanban board state as MCP tools for AI agent integration
-- **Repository Management** — Clone project repos into worktrees for agent work
+- **Settings Panel** — Configure auto-work columns, repos directory, Claude connection, and agent limits
+- **Board Tree View** — Activity bar with board selector, settings, and quick actions
 - **Zero Infrastructure** — No database, no webhooks, no tunnels. Everything runs in VS Code
 
 ## 🏗️ Architecture
