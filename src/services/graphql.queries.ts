@@ -159,6 +159,28 @@ export const UPDATE_ITEM_POSITION_MUTATION = `
   }
 `;
 
+export const CREATE_PULL_REQUEST_MUTATION = `
+  mutation CreatePullRequest($input: CreatePullRequestInput!) {
+    createPullRequest(input: $input) {
+      pullRequest {
+        id
+        url
+        number
+      }
+    }
+  }
+`;
+
+export interface CreatePullRequestResponse {
+  createPullRequest: {
+    pullRequest: {
+      id: string;
+      url: string;
+      number: number;
+    };
+  };
+}
+
 export const GET_ISSUE_BY_NUMBER_QUERY = `
   query GetIssueByNumber($owner: String!, $repo: String!, $number: Int!) {
     repository(owner: $owner, name: $repo) {

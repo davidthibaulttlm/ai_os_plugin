@@ -20,7 +20,9 @@ export type ExtensionToWebview =
   | { type: 'itemReordered'; data: { itemId: string } }
   | { type: 'error'; data: { message: string } }
   | { type: 'agentProgress'; data: { issueId: string; status: string } }
-  | { type: 'workingStatus'; data: { issueNumber: number; active: boolean } };
+  | { type: 'workingStatus'; data: { issueNumber: number; active: boolean } }
+  | { type: 'agentOutput'; issueNumber: number; line: string; timestamp: number }
+  | { type: 'agentStatus'; issueNumber: number; status: 'running' | 'success' | 'failed'; reason?: string };
 
 export interface BoardData {
   columns: { id: string; name: string; color: string }[];

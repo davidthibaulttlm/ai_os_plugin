@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useVsCode } from '../hooks/useVsCode';
@@ -25,11 +26,18 @@ export default function IssueCard({ item }: IssueCardProps) {
 
   const { postMessage } = useVsCode();
   const workingIssues = useBoardStore((state) => state.workingIssues);
+  const agentOutputs = useBoardStore((state) => state.agentOutputs);
+  const agentStatuses = useBoardStore((state) => state.agentStatuses);
   const isWorking = workingIssues.has(item.number);
+  const agentStatus = agentStatuses.get(item.number);
+  const outputLines = agentOutputs.get(item.number) ?? [];
+  const [outputOpen, setOutputOpen] = useState(false);
 
   const handleClick = () => {
     postMessage('selectIssue', { issueId: item.url });
   };
+
+  const hasAgentSession = agentStatus !== undefined;
 
   return (
     <div
@@ -44,11 +52,23 @@ export default function IssueCard({ item }: IssueCardProps) {
         <span className="text-xs font-mono text-vscode-descriptionForeground">
           #{item.number}
         </span>
-        {item.type === 'PULL_REQUEST' && (
-          <span className="text-xs bg-vscode-badge-background text-vscode-badge-foreground px-1.5 py-0.5 rounded">
-            PR
-          </span>
-        )}
+        <div className="flex gap-1">
+          {item.type === 'PULL_REQUEST' && (
+            <span className="text-xs bg-vscode-badge-background text-vscode-badge-foreground px-1.5 py-0.5 rounded">
+              PR
+            </span>
+          )}
+          {agentStatus === 'success' && (
+            <span className="text-xs bg-green-600 text-white px-1.5 py-0.5 rounded">
+              Done
+            </span>
+          )}
+          {agentStatus === 'failed' && (
+            <span className="text-xs bg-red-600 text-white px-1.5 py-0.5 rounded">
+              Failed
+            </span>
+          )}
+        </div>
       </div>
       <div className="text-sm font-medium mt-1 text-vscode-editor-foreground">
         {item.title}
@@ -74,6 +94,24 @@ export default function IssueCard({ item }: IssueCardProps) {
         <div className="flex items-center gap-1 mt-2">
           <div className="w-2 h-2 rounded-full bg-vscode-progressBar-background animate-pulse" />
           <span className="text-xs text-vscode-descriptionForeground">Claude is working...</span>
+        </div>
+      )}
+      {hasAgentSession && outputLines.length > 0 && (
+        <div className="mt-2 border-t border-vscode-editor-border pt-2">
+          <button
+            onClick={(e) => { e.stopPropagation(); setOutputOpen(!outputOpen); }}
+            className="text-xs text-vscode-textLink-foreground hover:underline"
+          >
+            {outputOpen ? 'Hide' : 'Show'} output ({outputLines.length} lines)
+          </button>
+          {outputOpen && (
+            <div className="mt-1 bg-vscode-editor-inactiveSelectionBackground rounded p-2 max-h-32 overflow-auto">
+              {outputLines.slice(-20).map((line, i) => (
+                // eslint-disable-next-line react/no-array-index-key
+                <div key={i} className="text-xs font-mono text-vscode-editor-foreground">{line}</div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -137,8 +137,8 @@ describe('Start Agent Integration', () => {
     ]);
 
     const launched: string[] = [];
-    agentService.setCallback(async (issueId) => {
-      launched.push(issueId);
+    agentService.setCallback(async (options) => {
+      launched.push(options.issueId);
     });
 
     registerStartAgentCommand(agentService);

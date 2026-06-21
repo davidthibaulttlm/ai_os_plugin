@@ -26,7 +26,7 @@ export default function App() {
   }, []);
 
   const { postMessage } = useVsCode();
-  const { setBoardData, setLoading, setError, optimisticMove, revertMove, reorderItems, setWorkingIssue } = useBoardStore();
+  const { setBoardData, setLoading, setError, optimisticMove, revertMove, reorderItems, setWorkingIssue, addAgentOutput, setAgentStatus } = useBoardStore();
 
   // Auto-clear status messages after 5 seconds
   useEffect(() => {
@@ -71,6 +71,14 @@ export default function App() {
       setWorkingIssue(data.issueNumber, data.active);
     });
 
+    onMessage<{ issueNumber: number; line: string; timestamp: number }>('agentOutput', (data) => {
+      addAgentOutput(data.issueNumber, data.line);
+    });
+
+    onMessage<{ issueNumber: number; status: 'running' | 'success' | 'failed'; reason?: string }>('agentStatus', (data) => {
+      setAgentStatus(data.issueNumber, data.status, data.reason);
+    });
+
     // Set loading — the extension will send boardData when ready
     setLoading(true);
 
@@ -81,6 +89,8 @@ export default function App() {
       offMessage('itemReordered');
       offMessage('error');
       offMessage('workingStatus');
+      offMessage('agentOutput');
+      offMessage('agentStatus');
     };
   }, []);
 

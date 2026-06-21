@@ -7,6 +7,7 @@ import {
   UPDATE_ITEM_FIELD_MUTATION,
   UPDATE_ITEM_POSITION_MUTATION,
   GET_ISSUE_BY_NUMBER_QUERY,
+  CREATE_PULL_REQUEST_MUTATION,
   type IssueDetails,
   type GetIssueByNumberResponse,
   type ProjectNode,
@@ -17,6 +18,7 @@ import {
   type GetProjectFieldsResponse,
   type UpdateItemFieldResponse,
   type UpdateItemPositionResponse,
+  type CreatePullRequestResponse,
   GraphQLError,
 } from './graphql.queries';
 
@@ -228,5 +230,41 @@ export class GraphQLClient {
       labels: issue.labels.nodes.map((l) => ({ name: l.name, color: l.color })),
       assignees: issue.assignees.nodes.map((a) => ({ login: a.login })),
     };
+  }
+
+  /**
+   * Create a pull request via GraphQL mutation.
+   * @param repositoryId - GraphQL node ID of the repository
+   * @param headBranch - Source branch name
+   * @param baseBranch - Target branch name
+   * @param title - PR title
+   * @param body - PR description/body
+   */
+  public async createPullRequest(
+    repositoryId: string,
+    headBranch: string,
+    baseBranch: string,
+    title: string,
+    body: string
+  ): Promise<{ success: boolean; prUrl?: string; error?: string }> {
+    logger.info(`[GraphQLClient.createPullRequest] repositoryId=${repositoryId} headBranch=${headBranch} baseBranch=${baseBranch} title=${title}`);
+    try {
+      const result = await this.execute<CreatePullRequestResponse>(CREATE_PULL_REQUEST_MUTATION, {
+        input: {
+          repositoryId,
+          headRefName: headBranch,
+          baseRefName: baseBranch,
+          title,
+          body,
+        },
+      });
+      const prUrl = result.createPullRequest.pullRequest.url;
+      logger.info(`[GraphQLClient.createPullRequest] Result: success, prUrl=${prUrl}`);
+      return { success: true, prUrl };
+    } catch (error) {
+      const errorMsg = (error as Error).message;
+      logger.error(`[GraphQLClient.createPullRequest] Error: ${errorMsg}`);
+      return { success: false, error: errorMsg.substring(0, 200) };
+    }
   }
 }

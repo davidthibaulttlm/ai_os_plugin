@@ -10,6 +10,7 @@ import { logger } from './services/logger';
 import { getStateFilePath } from './services/stateBridge';
 import { ClaudeTrigger } from './services/claudeTrigger';
 import { killAllClaudeProcesses, setWorkingStatusCallback, setOnFinishCallback } from './services/claudeSpawner';
+import { ClaudeHarness } from './services/claudeHarness';
 import {
   handleConfigureClaude,
   handleDisconnectClaude,
@@ -37,6 +38,7 @@ let authServiceInstance: AuthService | undefined;
 let boardTreeProvider: BoardTreeProvider | undefined;
 let _globalStorageUri: string | undefined;
 let claudeTrigger: ClaudeTrigger | undefined;
+let claudeHarness: ClaudeHarness | undefined;
 let mcpProviderDisposable: vscode.Disposable | undefined;
 
 function registerCommands(context: vscode.ExtensionContext): void {
@@ -192,6 +194,15 @@ async function initServices(context: vscode.ExtensionContext): Promise<void> {
 
   setBoardHandlerDeps(getPanel(), graphql, poller, agentService, stateManager, context.globalStorageUri.fsPath, boardTreeProvider, repoManager);
 
+  // Set GITHUB_TOKEN in environment so ClaudeHarness can pass it to spawned processes
+  process.env.GITHUB_TOKEN = token;
+  logger.info('[initServices] GITHUB_TOKEN set in environment');
+
+  // Instantiate ClaudeHarness with dependencies
+  const panel = getPanel();
+  claudeHarness = new ClaudeHarness(repoManager, graphql, panel?.webview);
+  logger.info('[initServices] ClaudeHarness initialized');
+
   claudeTrigger = new ClaudeTrigger();
   claudeTrigger.setCallback(async (event) => {
     const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
@@ -219,15 +230,45 @@ async function initServices(context: vscode.ExtensionContext): Promise<void> {
   loadProjectsAuto(context);
 }
 
-async function setupAgentCallback(token: string): Promise<void> {
+async function setupAgentCallback(_token: string): Promise<void> {
   logger.info('[setupAgentCallback] Setting up agent callback');
-  agentService!.setCallback(async (issueId: string, columnName: string, title?: string, body?: string, owner?: string, repo?: string) => {
+  agentService!.setCallback(async (options) => {
+    const { issueId, columnName, title, body, owner, repo } = options;
     logger.info(`[setupAgentCallback] Agent callback for #${issueId} in ${columnName} title=${title} body=${body ? String(body.length) + 'chars' : 'empty'} owner=${owner} repo=${repo}`);
     vscode.window.showInformationMessage(
       `AI Agent triggered for issue #${issueId} in column ${columnName}`
     );
     getPanel()?.notifyAgentProgress(issueId, columnName);
 
+    // Use ClaudeHarness if available and repo context is present
+    if (claudeHarness && owner && repo) {
+      const issueNumber = parseInt(issueId, 10);
+      const issueTitle = title ?? `Issue #${issueId}`;
+      logger.info(`[setupAgentCallback] Delegating to ClaudeHarness for ${owner}/${repo} #${issueNumber}`);
+
+      const result = await claudeHarness.run({
+        issueNumber,
+        owner,
+        repo,
+        title: issueTitle,
+        body,
+        column: columnName,
+      });
+
+      logger.info(`[setupAgentCallback] Harness result: success=${result.success} reason=${result.reason}`);
+
+      // On completion, clear WIP and trigger next issue
+      await agentService!.finishAgent(issueId);
+
+      if (result.success && result.prUrl) {
+        vscode.window.showInformationMessage(`Agent completed for #${issueNumber}. PR: ${result.prUrl}`);
+      } else if (!result.success) {
+        vscode.window.showWarningMessage(`Agent failed for #${issueNumber}: ${result.reason}`);
+      }
+      return;
+    }
+
+    // Fallback: legacy claudeTrigger path
     let workDir: string | undefined;
     if (owner && repo && repoManager) {
       const issueNumber = parseInt(issueId, 10);
@@ -260,7 +301,7 @@ async function setupAgentCallback(token: string): Promise<void> {
       column: columnName,
       reason: 'assigned' as const,
     };
-    await claudeTrigger!.handleTrigger(triggerEvent, token, workDir);
+    await claudeTrigger!.handleTrigger(triggerEvent, _token, workDir);
   });
 }
 
@@ -291,11 +332,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
 export function deactivate(): void {
   poller?.stop();
+  claudeHarness?.stopAll();
+  killAllClaudeProcesses();
   getPanel()?.dispose();
   authServiceInstance?.clearToken();
   mcpProviderDisposable?.dispose();
-  killAllClaudeProcesses();
-  logger.info('Extension deactivated — poller stopped, token cleared, Claude processes killed');
+  logger.info('Extension deactivated — poller stopped, harness stopped, token cleared, Claude processes killed');
   logger.dispose();
 }
 

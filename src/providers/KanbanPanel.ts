@@ -31,6 +31,13 @@ export class KanbanPanel {
     this._onDisposeCallbacks.push(callback);
   }
 
+  /**
+   * Get the underlying webview for posting messages.
+   */
+  public get webview(): vscode.Webview {
+    return this._panel.webview;
+  }
+
   private constructor(
     panel: vscode.WebviewPanel,
     extensionUri: vscode.Uri,

@@ -32,7 +32,7 @@ describe('AgentService callback with repo context', () => {
       },
     ]);
     await agent.startAgent();
-    expect(callback).toHaveBeenCalledWith('1', 'AI_SPEC', 'Test Issue', undefined, 'myowner', 'myrepo');
+    expect(callback).toHaveBeenCalledWith({ issueId: '1', columnName: 'AI_SPEC', title: 'Test Issue', body: undefined, owner: 'myowner', repo: 'myrepo' });
   });
 
   it('passes undefined owner/repo when not available', async () => {
@@ -46,7 +46,7 @@ describe('AgentService callback with repo context', () => {
       },
     ]);
     await agent.startAgent();
-    expect(callback).toHaveBeenCalledWith('2', 'AI_CODE', 'No Repo Issue', undefined, undefined, undefined);
+    expect(callback).toHaveBeenCalledWith({ issueId: '2', columnName: 'AI_CODE', title: 'No Repo Issue', body: undefined, owner: undefined, repo: undefined });
   });
 
   it('onAgentTrigger passes owner/repo from board items', async () => {
@@ -62,6 +62,6 @@ describe('AgentService callback with repo context', () => {
       },
     ]);
     await agent.onAgentTrigger('10', 'AI_SPEC');
-    expect(callback).toHaveBeenCalledWith('10', 'AI_SPEC', 'Trigger Issue', undefined, 'trigger-owner', 'trigger-repo');
+    expect(callback).toHaveBeenCalledWith({ issueId: '10', columnName: 'AI_SPEC', title: 'Trigger Issue', body: undefined, owner: 'trigger-owner', repo: 'trigger-repo' });
   });
 });

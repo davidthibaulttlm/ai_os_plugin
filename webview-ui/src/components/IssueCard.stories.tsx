@@ -3,6 +3,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { DndContext } from '@dnd-kit/core';
 import IssueCard from './IssueCard';
 import type { IssueItem } from '../store/boardStore';
+import { useBoardStore } from '../store/boardStore';
 
 const meta = {
   title: 'Components/IssueCard',
@@ -107,4 +108,71 @@ export const ClickSelectsIssue: Story = {
     const card = canvasElement.querySelector('div[draggable]');
     card?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   },
+};
+
+export const AgentRunning: Story = {
+  args: {
+    item: {
+      ...baseItem,
+      id: 'agent_running',
+      title: 'Implement API rate limiting',
+      number: 55,
+      status: 'AI_CODE',
+      labels: ['feature'],
+    },
+  },
+  decorators: [
+    (Story) => {
+      useBoardStore.setState({
+        agentStatuses: new Map([[55, 'running']]),
+        agentOutputs: new Map([[55, ['Analyzing codebase...', 'Creating rate limiter middleware...']]]),
+        workingIssues: new Set([55]),
+      });
+      return <Story />;
+    },
+  ],
+};
+
+export const AgentSuccess: Story = {
+  args: {
+    item: {
+      ...baseItem,
+      id: 'agent_success',
+      title: 'Add input validation',
+      number: 60,
+      status: 'HUMAN_SPEC_REVIEW',
+      labels: ['feature'],
+    },
+  },
+  decorators: [
+    (Story) => {
+      useBoardStore.setState({
+        agentStatuses: new Map([[60, 'success']]),
+        agentOutputs: new Map([[60, ['Validation middleware created', 'Tests passing', 'Changes staged']]]),
+      });
+      return <Story />;
+    },
+  ],
+};
+
+export const AgentFailed: Story = {
+  args: {
+    item: {
+      ...baseItem,
+      id: 'agent_failed',
+      title: 'Fix memory leak in worker',
+      number: 75,
+      status: 'AI_CODE',
+      labels: ['bug'],
+    },
+  },
+  decorators: [
+    (Story) => {
+      useBoardStore.setState({
+        agentStatuses: new Map([[75, 'failed']]),
+        agentOutputs: new Map([[75, ['Error: spawn claude ENOENT']]]),
+      });
+      return <Story />;
+    },
+  ],
 };

@@ -76,8 +76,8 @@ describe('handleStartAgent command', () => {
     ]);
 
     let launchedIssue: string | undefined;
-    agentService.setCallback(async (issueId) => {
-      launchedIssue = issueId;
+    agentService.setCallback(async (options) => {
+      launchedIssue = options.issueId;
     });
 
     await simulateHandleStartAgent(agentService);

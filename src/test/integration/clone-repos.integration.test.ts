@@ -91,12 +91,14 @@ describe('Clone repos integration flow', () => {
     await agentService.startAgent();
 
     expect(callback).toHaveBeenCalledWith(
-      '42',
-      'AI_SPEC',
-      'Fix login',
-      'Body text',
-      'test-owner',
-      'test-repo'
+      expect.objectContaining({
+        issueId: '42',
+        columnName: 'AI_SPEC',
+        title: 'Fix login',
+        body: 'Body text',
+        owner: 'test-owner',
+        repo: 'test-repo',
+      })
     );
   });
 

@@ -1,5 +1,23 @@
 import { create } from 'zustand';
 import { getVsCodeApi } from '../vscodeApi';
+import { logger } from '../logger';
+
+/** HTML-escape a string to prevent XSS */
+export function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+    .replace(/&/g, '\&')
+    .replace(/</g, '\<')
+    .replace(/>/g, '\>')
+    .replace(/"/g, '"')
+    .replace(/'/g, '\&#x27;');
+}
+}
 
 /** Kanban column definition */
 export interface KanbanColumn {
@@ -30,6 +48,9 @@ interface BoardState {
   error: string | null;
   selectedItemId: string | null;
   workingIssues: Set<number>;
+  // Agent output state
+  agentOutputs: Map<number, string[]>;
+  agentStatuses: Map<number, 'running' | 'success' | 'failed'>;
   setBoardData: (columns: KanbanColumn[], items: IssueItem[]) => void;
   updateItem: (id: string, updates: Partial<IssueItem>) => void;
   setLoading: (loading: boolean) => void;
@@ -39,6 +60,10 @@ interface BoardState {
   optimisticMove: (itemId: string, newStatus: string) => void;
   revertMove: (itemId: string, originalStatus: string) => void;
   reorderItems: (items: IssueItem[]) => void;
+  // Agent output actions
+  addAgentOutput: (issueNumber: number, line: string) => void;
+  setAgentStatus: (issueNumber: number, status: 'running' | 'success' | 'failed', reason?: string) => void;
+  replayAgentOutputs: (outputs: Map<number, string[]>) => void;
 }
 
 /**
@@ -84,6 +109,8 @@ export const useBoardStore = create<BoardState>()((set) => ({
   error: null,
   selectedItemId: null,
   workingIssues: new Set(),
+  agentOutputs: new Map(),
+  agentStatuses: new Map(),
 
   setBoardData: (columns: KanbanColumn[], items: IssueItem[]) =>
     set({ columns, items, loading: false, error: null }),
@@ -130,4 +157,30 @@ export const useBoardStore = create<BoardState>()((set) => ({
 
   /** Replace the items array with a new ordering */
   reorderItems: (items: IssueItem[]) => set({ items }),
+
+  // Agent output actions
+  addAgentOutput: (issueNumber: number, line: string) => {
+    logger.debug(`[useBoardStore.addAgentOutput] issueNumber=${issueNumber}`);
+    set((state) => {
+      const outputs = new Map(state.agentOutputs);
+      const existing = outputs.get(issueNumber) ?? [];
+      existing.push(escapeHtml(line));
+      outputs.set(issueNumber, existing);
+      return { agentOutputs: outputs };
+    });
+  },
+
+  setAgentStatus: (issueNumber: number, status: 'running' | 'success' | 'failed', reason?: string) => {
+    logger.info(`[useBoardStore.setAgentStatus] issueNumber=${issueNumber} status=${status} reason=${reason}`);
+    set((state) => {
+      const statuses = new Map(state.agentStatuses);
+      statuses.set(issueNumber, status);
+      return { agentStatuses: statuses };
+    });
+  },
+
+  replayAgentOutputs: (outputs: Map<number, string[]>) => {
+    logger.info(`[useBoardStore.replayAgentOutputs] Replaying ${outputs.size} issue outputs`);
+    set({ agentOutputs: outputs });
+  },
 }));

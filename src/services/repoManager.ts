@@ -262,7 +262,7 @@ echo '${this.token}'`;
   /**
    * Detect the default branch name for a repo.
    */
-  private async detectDefaultBranch(owner: string, repo: string): Promise<string> {
+  public async detectDefaultBranch(owner: string, repo: string): Promise<string> {
     logger.info(`[RepoManager.detectDefaultBranch] owner=${owner} repo=${repo}`);
     const result = await this.runGit('/tmp', ['ls-remote', '--symref', `https://github.com/${owner}/${repo}.git`, 'HEAD']);
     
@@ -434,5 +434,119 @@ echo '${this.token}'`;
         return { success: false, error: errorMsg.substring(0, 100) };
       }
     });
+  }
+
+  /**
+   * Check if there are staged changes in the worktree.
+   */
+  public async hasStagedChanges(worktreePath: string): Promise<boolean> {
+    logger.info(`[RepoManager.hasStagedChanges] worktreePath=${worktreePath}`);
+    try {
+      const result = await this.runGit(worktreePath, ['diff', '--staged', '--name-only']);
+      const hasChanges = result.code === 0 && result.stdout.length > 0;
+      logger.info(`[RepoManager.hasStagedChanges] Result: ${hasChanges}`);
+      return hasChanges;
+    } catch (error) {
+      logger.error(`[RepoManager.hasStagedChanges] Error: ${(error as Error).message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Commit staged changes in the worktree with git config fallback.
+   */
+  public async commitWorktree(worktreePath: string, message: string): Promise<GitResult> {
+    logger.info(`[RepoManager.commitWorktree] worktreePath=${worktreePath} message=${message}`);
+    try {
+      // Set git user config as fallback
+      await this.runGit(worktreePath, ['config', 'user.name', 'ai-os-agent']);
+      await this.runGit(worktreePath, ['config', 'user.email', 'ai-os@localhost']);
+
+      // Sanitize message: replace newlines with spaces, escape quotes
+      const sanitized = message.replace(/\n/g, ' ').replace(/"/g, '\\"');
+      const result = await this.runGit(worktreePath, ['commit', '-m', sanitized]);
+
+      if (result.code === 0) {
+        logger.info('[RepoManager.commitWorktree] Result: success');
+        return { success: true };
+      } else {
+        // "nothing added to commit" means no staged changes — not an error per se
+        if (result.stderr.includes('nothing added') || result.stderr.includes('no changes added')) {
+          logger.warn('[RepoManager.commitWorktree] No staged changes to commit');
+          return { success: false, error: 'No staged changes' };
+        }
+        const error = result.stderr || 'Commit failed';
+        logger.error(`[RepoManager.commitWorktree] Error: ${error}`);
+        return { success: false, error: error.substring(0, 100) };
+      }
+    } catch (error) {
+      const errorMsg = (error as Error).message;
+      logger.error(`[RepoManager.commitWorktree] Error: ${errorMsg}`);
+      return { success: false, error: errorMsg.substring(0, 100) };
+    }
+  }
+
+  /**
+   * Push the worktree branch to origin.
+   */
+  public async pushWorktree(worktreePath: string, branchName: string): Promise<GitResult> {
+    logger.info(`[RepoManager.pushWorktree] worktreePath=${worktreePath} branchName=${branchName}`);
+    try {
+      const result = await this.runGit(worktreePath, ['push', '--set-upstream', 'origin', branchName]);
+
+      if (result.code === 0) {
+        logger.info('[RepoManager.pushWorktree] Result: success');
+        return { success: true };
+      } else {
+        const error = result.stderr || 'Push failed';
+        logger.error(`[RepoManager.pushWorktree] Error: ${error}`);
+        return { success: false, error: error.substring(0, 100) };
+      }
+    } catch (error) {
+      const errorMsg = (error as Error).message;
+      logger.error(`[RepoManager.pushWorktree] Error: ${errorMsg}`);
+      return { success: false, error: errorMsg.substring(0, 100) };
+    }
+  }
+
+  /**
+   * Get the repository node ID (GraphQL ID) for a given owner/repo.
+   * Used for createPullRequest mutation.
+   */
+  private async getRepositoryNodeId(owner: string, repo: string): Promise<string | null> {
+    logger.info(`[RepoManager.getRepositoryNodeId] owner=${owner} repo=${repo}`);
+    try {
+      const result = await this.runGit('/tmp', ['ls-remote', `https://github.com/${owner}/${repo}.git`, 'HEAD']);
+      if (result.code === 0) {
+        // We need the GraphQL node ID, which requires an API call.
+        // For now, return null and let the caller handle it via GraphQL.
+        logger.info('[RepoManager.getRepositoryNodeId] Result: null (requires GraphQL)');
+        return null;
+      }
+      return null;
+    } catch (error) {
+      logger.error(`[RepoManager.getRepositoryNodeId] Error: ${(error as Error).message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Create a pull request via GraphQL mutation.
+   * Requires the repository GraphQL node ID.
+   */
+  public async createPullRequest(
+    repositoryId: string,
+    headBranch: string,
+    baseBranch: string,
+    title: string,
+    body: string
+  ): Promise<{ success: boolean; prUrl?: string; error?: string }> {
+    logger.info(`[RepoManager.createPullRequest] repositoryId=${repositoryId} headBranch=${headBranch} baseBranch=${baseBranch} title=${title}`);
+
+    // This method is a placeholder — the actual GraphQL mutation is executed
+    // by the harness which has access to the GraphQLClient.
+    // RepoManager doesn't hold a GraphQL client reference.
+    logger.warn('[RepoManager.createPullRequest] Not implemented — use GraphQLClient directly');
+    return { success: false, error: 'createPullRequest must be called via GraphQLClient' };
   }
 }

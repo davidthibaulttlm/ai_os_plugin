@@ -1,5 +1,6 @@
 /**
  * Claude Spawner — spawns `claude -p` child processes for auto-work.
+ * @deprecated Use ClaudeHarness instead. Kept for backward compatibility.
  */
 
 import { spawn, ChildProcess } from 'child_process';
