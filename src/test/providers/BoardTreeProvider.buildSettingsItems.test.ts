@@ -8,6 +8,14 @@ vi.mock('vscode', () => ({
     event = undefined as any;
     fire = vi.fn();
   },
+  ThemeIcon: class ThemeIcon {
+    public readonly id: string;
+    public readonly color: unknown | undefined;
+    constructor(id: string, color?: unknown) {
+      this.id = id;
+      this.color = color;
+    }
+  },
   workspace: {
     getConfiguration: vi.fn().mockReturnValue({
       get: vi.fn((_key: string, fallback: unknown) => fallback),
@@ -38,6 +46,11 @@ vi.mock('../../services/logger', () => ({
     warn: vi.fn(),
     error: vi.fn(),
   },
+}));
+
+vi.mock('../../services/claudeConfig', () => ({
+  getClaudeConfigPaths: vi.fn(() => ['/tmp/.claude.json']),
+  isMcpConfigured: vi.fn(() => false),
 }));
 
 describe('BoardTreeProvider._buildSettingsItems', () => {
@@ -84,13 +97,13 @@ describe('BoardTreeProvider._buildSettingsItems', () => {
     expect(reposDir).toBeDefined();
   });
 
-  it('should include Claude Integration items', async () => {
+  it('should show Connect when MCP not configured', async () => {
     provider.setMode('settings');
     const items = await provider.getChildren();
     const connectItem = items.find((i: any) => i.label && i.label.includes('Connect to Claude Code'));
     const disconnectItem = items.find((i: any) => i.label && i.label.includes('Disconnect from Claude Code'));
     expect(connectItem).toBeDefined();
-    expect(disconnectItem).toBeDefined();
+    expect(disconnectItem).toBeUndefined();
   });
 
   it('should not include auto-work items', async () => {

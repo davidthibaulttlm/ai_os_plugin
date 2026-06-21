@@ -121,7 +121,7 @@ function writeMcpToAllConfigs(
   }
 }
 
-function isMcpConfigured(configPaths: string[]): boolean {
+export function isMcpConfigured(configPaths: string[]): boolean {
   for (const configFile of configPaths) {
     if (!fs.existsSync(configFile)) continue;
     try {

@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { getClaudeConfigPaths, isMcpConfigured } from '../services/claudeConfig';
 import { logger } from '../services/logger';
 
 export interface BoardTreeItem extends vscode.TreeItem {
@@ -109,35 +110,39 @@ export class BoardTreeProvider implements vscode.TreeDataProvider<BoardTreeItem>
 
     // Determine clone status
     const boardId = _stateManager?.getLastBoardId();
-    let cloneStatus: { icon: string; description: string; clickable: boolean };
+    let cloneIconName = 'repo';
+    let cloneDescription = 'Not cloned';
+    let cloneClickable = true;
 
     if (!boardId) {
-      cloneStatus = { icon: '$(repo)', description: 'No board open', clickable: false };
+      cloneIconName = 'question';
+      cloneDescription = 'No board open';
+      cloneClickable = false;
     } else if (_repoManager && _repoManager.getClonedRepos) {
       const cloned = _repoManager.getClonedRepos();
       const hasCloned = cloned && cloned.length > 0;
-      cloneStatus = hasCloned
-        ? { icon: '$(repo-cloned)', description: 'Cloned', clickable: true }
-        : { icon: '$(repo)', description: 'Not cloned', clickable: true };
-    } else {
-      cloneStatus = { icon: '$(repo)', description: 'Not cloned', clickable: true };
+      cloneIconName = hasCloned ? 'check' : 'repo';
+      cloneDescription = hasCloned ? 'Cloned' : 'Not cloned';
+      cloneClickable = true;
     }
 
-    logger.info(`[BoardTreeProvider._buildSettingsItems] Clone status: ${cloneStatus.description} boardId=${boardId ?? 'none'}`);
+    logger.info(`[BoardTreeProvider._buildSettingsItems] Clone status: ${cloneDescription} boardId=${boardId ?? 'none'}`);
 
     const items: BoardTreeItem[] = [
       // Section header: REPOSITORIES
       {
-        label: '$(package) REPOSITORIES',
+        label: 'REPOSITORIES',
         tooltip: 'Repository settings',
+        iconPath: new vscode.ThemeIcon('package'),
         collapsibleState: vscode.TreeItemCollapsibleState.None,
         contextValue: 'sectionHeader',
       } as BoardTreeItem,
       // Repos Directory
       {
-        label: '$(folder) Repos Directory',
+        label: 'Repos Directory',
         tooltip: `Currently: ${reposDir} — Click to change`,
         description: reposDir,
+        iconPath: new vscode.ThemeIcon('folder'),
         command: {
           command: 'aiOs.setReposDir',
           title: 'Set Repos Directory',
@@ -146,15 +151,16 @@ export class BoardTreeProvider implements vscode.TreeDataProvider<BoardTreeItem>
       } as BoardTreeItem,
       // Clone Repos with status
       {
-        label: `${cloneStatus.icon} Clone Repos`,
-        tooltip: cloneStatus.clickable
+        label: 'Clone Repos',
+        tooltip: cloneClickable
           ? 'Click to clone or update repositories'
           : 'Open a board first to enable cloning',
-        description: cloneStatus.description,
-        command: cloneStatus.clickable
+        description: cloneDescription,
+        iconPath: new vscode.ThemeIcon(cloneIconName),
+        command: cloneClickable
           ? { command: 'aiOs.cloneRepos', title: 'Clone Repos' }
           : undefined,
-        contextValue: cloneStatus.clickable ? 'cloneReposClickable' : 'cloneReposDisabled',
+        contextValue: cloneClickable ? 'cloneReposClickable' : 'cloneReposDisabled',
       } as BoardTreeItem,
       // Spacer
       {
@@ -164,34 +170,37 @@ export class BoardTreeProvider implements vscode.TreeDataProvider<BoardTreeItem>
       } as BoardTreeItem,
       // Section header: CLAUDE INTEGRATION
       {
-        label: '$(cloud-upload) CLAUDE INTEGRATION',
+        label: 'CLAUDE INTEGRATION',
         tooltip: 'Claude Code connection settings',
+        iconPath: new vscode.ThemeIcon('cloud-upload'),
         collapsibleState: vscode.TreeItemCollapsibleState.None,
         contextValue: 'sectionHeader',
       } as BoardTreeItem,
-      // Connect to Claude Code
-      {
-        label: '$(cloud-upload) Connect to Claude Code',
-        tooltip: 'Write MCP config to ~/.claude/settings.json',
-        command: {
-          command: 'aiOs.configureClaude',
-          title: 'Connect to Claude Code',
-        },
-        contextValue: 'settingAction',
-      } as BoardTreeItem,
-      // Disconnect from Claude Code
-      {
-        label: '$(plug) Disconnect from Claude Code',
-        tooltip: 'Remove MCP config from ~/.claude/settings.json',
-        command: {
-          command: 'aiOs.disconnectClaude',
-          title: 'Disconnect from Claude Code',
-        },
-        contextValue: 'settingAction',
-      } as BoardTreeItem,
+      // Connect / Disconnect Claude Code — show only the relevant action
+      ...(() => {
+        const configPaths = getClaudeConfigPaths();
+        const configured = isMcpConfigured(configPaths);
+        logger.info(`[BoardTreeProvider._buildSettingsItems] MCP configured: ${configured}`);
+        if (configured) {
+          return [this._makeActionItem('Disconnect from Claude Code', 'Remove MCP config from ~/.claude/settings.json', 'cancel', 'aiOs.disconnectClaude')];
+        } else {
+          return [this._makeActionItem('Connect to Claude Code', 'Write MCP config to ~/.claude/settings.json', 'plug', 'aiOs.configureClaude')];
+        }
+      })(),
     ];
 
     logger.info(`[BoardTreeProvider._buildSettingsItems] Result: ${items.length} items`);
     return items;
+  }
+
+  private _makeActionItem(label: string, tooltip: string, icon: string, command: string): BoardTreeItem {
+    logger.debug(`[BoardTreeProvider._makeActionItem] label=${label} command=${command}`);
+    return {
+      label,
+      tooltip,
+      iconPath: new vscode.ThemeIcon(icon),
+      command: { command, title: label },
+      contextValue: 'settingAction',
+    } as BoardTreeItem;
   }
 }

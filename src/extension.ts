@@ -91,6 +91,7 @@ function registerCommands(context: vscode.ExtensionContext): void {
         return;
       }
       await handleCloneRepos(repoManager, graphql, boardId);
+      boardTreeProvider?.refresh();
     }),
   );
   registerStartAgentCommand();

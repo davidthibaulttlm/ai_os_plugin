@@ -81,6 +81,36 @@ export class RepoManager {
     return exists;
   }
 
+  public getClonedRepos(): RepoRef[] {
+    logger.info(`[RepoManager.getClonedRepos] Scanning ${this.reposDir}`);
+    const cloned: RepoRef[] = [];
+    try {
+      if (!fs.existsSync(this.reposDir)) {
+        logger.info('[RepoManager.getClonedRepos] reposDir does not exist');
+        return cloned;
+      }
+      const owners = fs.readdirSync(this.reposDir, { withFileTypes: true })
+        .filter(d => d.isDirectory())
+        .map(d => d.name);
+      for (const owner of owners) {
+        const ownerPath = path.join(this.reposDir, owner);
+        const repos = fs.readdirSync(ownerPath, { withFileTypes: true })
+          .filter(d => d.isDirectory())
+          .map(d => d.name);
+        for (const repo of repos) {
+          const gitDir = path.join(ownerPath, repo, '.git');
+          if (fs.existsSync(gitDir)) {
+            cloned.push({ owner, repo });
+          }
+        }
+      }
+    } catch (error) {
+      logger.error(`[RepoManager.getClonedRepos] Error scanning: ${(error as Error).message}`);
+    }
+    logger.info(`[RepoManager.getClonedRepos] Found ${cloned.length} cloned repos`);
+    return cloned;
+  }
+
   public extractReposFromItems(items: ProjectItemNode[]): RepoRef[] {
     logger.info(`[RepoManager.extractReposFromItems] Starting with ${items.length} items`);
     const seen = new Set<string>();
@@ -153,7 +183,7 @@ export class RepoManager {
     logger.info(`[RepoManager.detectDefaultBranch] owner=${owner} repo=${repo}`);
     const result = await this._runGit('/tmp', ['ls-remote', '--symref', `https://github.com/${owner}/${repo}.git`, 'HEAD']);
 
-    const match = result.stdout.match(/refs\/heads\/([^\\]+)/);
+    const match = result.stdout.match(/refs\/heads\/([^\s]+)/);
     const branch = match ? match[1] : 'main';
     logger.info(`[RepoManager.detectDefaultBranch] Result: ${branch}`);
     return branch;
