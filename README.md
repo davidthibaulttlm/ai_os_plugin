@@ -1,4 +1,4 @@
-# AI OS — AI-Powered Kanban Automation for GitHub Projects v2
+# AI OS — VS Code Extension providing AI-Powered Kanban Automation
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![VS Code](https://img.shields.io/badge/VS%20Code-1.85%2B-blue.svg)](https://code.visualstudio.com/)
