@@ -23,14 +23,14 @@ Self-hosted VS Code extension that connects to your GitHub account and automates
 - **GitHub Projects v2 Integration** — Connect via `gh` CLI token, no separate OAuth flow
 - **Interactive Kanban Board** — Drag-and-drop issue cards across 6 workflow columns in a React webview
 - **Claude Code Agent Integration** — Works with Claude Code CLI, VS Code extension, or Claude Code app
-- **Auto-Trigger on Column Move** — Issues entering `AI_SPEC` or `AI_CODE` columns automatically spawn agents
+- **Manual Agent Trigger** — Start agents on demand via the "Start Agent" command
 - **Full Git Workflow Pipeline** — Agent work → commit → push → PR creation → card auto-advances to next column
 - **Repository Worktree Management** — Clones project repos into isolated git worktrees for safe parallel agent work
-- **Agent Prioritizer** — Smart issue selection: bugs first, then by priority and age
+- **Deterministic Issue Selection** — Picks the topmost issue in the column: bugs break WIP limit, column priority is AI_CODE > AI_SPEC > BRAIN_DUMP
 - **Delta Detection** — Detects board changes from external sources (PR merges, manual moves) and reacts
 - **Real-Time Board Polling** — 30s GraphQL polling keeps your board in sync
 - **MCP Server** — Exposes kanban board state as MCP tools for AI agent integration
-- **Settings Panel** — Configure auto-work columns, repos directory, Claude connection, and agent limits
+- **Settings Panel** — Repos directory and Claude connection
 - **Board Tree View** — Activity bar with board selector, settings, and quick actions
 - **Zero Infrastructure** — No database, no webhooks, no tunnels. Everything runs in VS Code
 
@@ -189,9 +189,9 @@ npm run test:watch
 - [x] GitHub Projects v2 integration via GraphQL
 - [x] Interactive kanban board with drag-and-drop
 - [x] Claude Code agent spawning (CLI / extension / app)
-- [x] Auto-trigger on column move (AI_SPEC / AI_CODE)
+- [x] Manual agent trigger via "Start Agent" command
 - [x] Git worktree management for isolated agent work
-- [x] Agent prioritizer (bugs first, then priority/age)
+- [x] Deterministic issue selection (topmost card wins, bugs break WIP limit)
 - [x] Delta detection for external board changes
 - [x] 30s GraphQL polling for real-time sync
 - [x] MCP server for board state interrogation
@@ -214,6 +214,7 @@ npm run test:watch
 - [ ] Customizable board columns (current 6-column template is hardcoded to author's workflow)
 - [ ] Custom kanban column templates
 - [ ] Multi-board support with dashboard view
+- [ ] Configurable number of parallel agent sessions
 - [ ] Agent conversation history and replay
 - [ ] VS Code marketplace publication
 

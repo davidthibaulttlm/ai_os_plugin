@@ -23,14 +23,14 @@ Extension VS Code auto-hébergée qui se connecte à votre compte GitHub et auto
 - **Intégration GitHub Projects v2** — Connexion via le jeton `gh` CLI, pas de flux OAuth séparé
 - **Tableau Kanban Interactif** — Glisser-déposer des cartes de problèmes entre 6 colonnes de flux de travail dans un webview React
 - **Intégration Agent Claude Code** — Fonctionne avec Claude Code CLI, l'extension VS Code ou l'application Claude Code
-- **Déclenchement Automatique au Déplacement** — Les problèmes entrant dans les colonnes `AI_SPEC` ou `AI_CODE` déclenchent automatiquement des agents
+- **Déclenchement Manuel d'Agent** — Lancez les agents à la demande via la commande "Start Agent"
 - **Pipeline Complet de Flux Git** — Travail de l'agent → commit → push → création de PR → la carte avance automatiquement à la colonne suivante
 - **Gestion de Worktree de Référentiel** — Clone les référentiels du projet dans des worktrees git isolés pour un travail d'agent parallèle sécurisé
-- **Priorisateur d'Agent** — Sélection intelligente des problèmes : bugs en premier, puis par priorité et ancienneté
+- **Sélection Déterministe des Problèmes** — Sélectionne la carte en haut de la colonne : les bugs brisent la limite WIP, la priorité de colonne est AI_CODE > AI_SPEC > BRAIN_DUMP
 - **Détection de Delta** — Détecte les changements de tableau provenant de sources externes (fusions PR, déplacements manuels) et réagit
 - **Polling de Tableau en Temps Réel** — Polling GraphQL de 30s garde votre tableau synchronisé
 - **Serveur MCP** — Expose l'état du tableau kanban comme outils MCP pour l'intégration d'agents IA
-- **Panneau de Paramètres** — Configurez les colonnes de travail automatique, le répertoire des référentiels, la connexion Claude et les limites d'agents
+- **Panneau de Paramètres** — Configurez le répertoire des référentiels et la connexion Claude
 - **Vue Arbre de Tableau** — Barre d'activité avec sélecteur de tableau, paramètres et actions rapides
 - **Zéro Infrastructure** — Pas de base de données, pas de webhooks, pas de tunnels. Tout fonctionne dans VS Code
 
@@ -189,9 +189,9 @@ npm run test:watch
 - [x] Intégration GitHub Projects v2 via GraphQL
 - [x] Tableau kanban interactif avec glisser-déposer
 - [x] Lancement d'agent Claude Code (CLI / extension / application)
-- [x] Déclenchement automatique au déplacement de colonne (AI_SPEC / AI_CODE)
+- [x] Déclenchement manuel d'agent via la commande "Start Agent"
 - [x] Gestion de worktree git pour travail d'agent isolé
-- [x] Priorisateur d'agent (bugs en premier, puis priorité/ancienneté)
+- [x] Sélection déterministe des problèmes (carte en haut gagne, les bugs brisent la limite WIP)
 - [x] Détection de delta pour changements externes de tableau
 - [x] Polling GraphQL de 30s pour synchronisation en temps réel
 - [x] Serveur MCP pour interrogation d'état de tableau
@@ -214,6 +214,7 @@ npm run test:watch
 - [ ] Colonnes de tableau personnalisables (le template actuel à 6 colonnes est codé en dur pour le flux de travail de l'auteur)
 - [ ] Templates de colonnes kanban personnalisés
 - [ ] Support multi-tableau avec vue tableau de bord
+- [ ] Nombre configurable de sessions d'agent parallèles
 - [ ] Historique et relecture des conversations d'agent
 - [ ] Publication sur le marketplace VS Code
 
