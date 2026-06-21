@@ -265,6 +265,7 @@ Ce projet est un témoignage de la puissance de **l'IA open-source et open-weigh
 
 Ce projet n'existerait pas sans ces projets open-source incroyables :
 
+- **[Qwen](https://github.com/QwenLM/Qwen3.6)** — Pour le modèle de base Qwen3.6-27B, un modèle de langage open-weight incroyable par Alibaba
 - **[Unsloth](https://huggingface.co/unsloth/Qwen3.6-27B-MTP-GGUF)** — Pour le modèle Qwen3.6-27B-MTP GGUF et leur travail incroyable sur le fine-tuning efficace et l'optimisation de modèle
 - **[llama.cpp](https://github.com/ggml-org/llama.cpp)** — Pour avoir rendu possible l'exécution de grands modèles de langage localement sur du matériel grand public avec une vitesse fulgurante
 - **[Zoo Code](https://github.com/Zoo-Code-Org/Zoo-Code)** — Pour l'assistant de codage alimenté par IA qui a aidé à construire ce projet (fork de [Roo Code](https://github.com/RooCodeInc/Roo-Code))
