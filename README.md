@@ -150,12 +150,6 @@ npm test
 npm run test:watch
 ```
 
-## 📖 Documentation
-
-- **[BUILD_GUIDE.md](BUILD_GUIDE.md)** — Complete implementation guide (architecture, code patterns, API details)
-- **[AGENTS.md](AGENTS.md)** — AI agent guidance and development rules
-- **[DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md)** — Current development phase and installation guide
-
 ## 🔑 Key Design Decisions
 
 1. **GraphQL-only for Projects v2** — GitHub Projects v2 has no REST API
