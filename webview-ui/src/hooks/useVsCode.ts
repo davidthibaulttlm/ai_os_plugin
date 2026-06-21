@@ -28,22 +28,9 @@ export function useVsCode() {
       console.error('[AI OS IPC] postMessage threw exception', e);
     }
 
-    const messageHandler = (event: MessageEvent) => {
-      const message = event.data;
-      if (typeof message !== 'object' || message === null) {
-        return;
-      }
-
-      const handlers = messageHandlers.get(message.type as string);
-      if (handlers) {
-        for (const handler of handlers) {
-          handler(message);
-        }
-      }
-    };
-
-    window.addEventListener('message', messageHandler);
-    return () => window.removeEventListener('message', messageHandler);
+    // Ensure the persistent window listener is attached (singleton on window.__aiOsIPC).
+    // No need to add/remove here — ensureListener() guarantees exactly one listener.
+    ensureListener();
   }, []);
 
   const postMessage = useCallback(
@@ -68,28 +55,72 @@ export function useVsCode() {
 }
 
 /**
- * Message handler registry for incoming messages from extension host.
- * Supports multiple handlers per type (e.g. app-level + one-time success handlers).
+ * Persistent message handler registry — stored on `window` so it survives
+ * module reloads when the webview HTML is reassigned (panel reuse).
+ * This prevents the "15 duplicate logs" bug where each reload stacked
+ * a new window.addEventListener while old ones remained active.
  */
-const messageHandlers = new Map<string, Array<(message: Record<string, unknown>) => void>>();
+interface IPCRegistry {
+  handlers: Map<string, Array<(message: Record<string, unknown>) => void>>;
+  listenerAttached: boolean;
+}
+
+declare global {
+  interface Window {
+    __aiOsIPC?: IPCRegistry;
+  }
+}
+
+function getRegistry(): IPCRegistry {
+  if (!window.__aiOsIPC) {
+    window.__aiOsIPC = {
+      handlers: new Map(),
+      listenerAttached: false,
+    };
+  }
+  return window.__aiOsIPC;
+}
+
+/**
+ * Single persistent window message listener.
+ * Attached exactly once — survives module reloads.
+ */
+function ensureListener(): void {
+  const registry = getRegistry();
+  if (!registry.listenerAttached) {
+    const messageHandler = (event: MessageEvent) => {
+      const message = event.data;
+      if (typeof message !== 'object' || message === null) return;
+      const handlers = registry.handlers.get(message.type as string);
+      if (handlers) {
+        for (const handler of handlers) {
+          handler(message);
+        }
+      }
+    };
+    window.addEventListener('message', messageHandler);
+    registry.listenerAttached = true;
+  }
+}
 
 /**
  * Register a handler for a specific message type.
- * Multiple handlers can be registered for the same type.
+ * Replaces any existing handler for the same type to prevent accumulation.
  */
 export function onMessage<T>(type: string, handler: (data: T) => void): void {
+  ensureListener();
   const wrapped = (message: Record<string, unknown>) => {
     if (message.data) {
       handler(message.data as T);
     }
   };
-  messageHandlers.set(type, [wrapped]);
+  getRegistry().handlers.set(type, [wrapped]);
 }
 
 /**
  * Remove ALL handlers for a message type (use in useEffect cleanup).
  */
 export function offMessage(type: string): void {
-  messageHandlers.delete(type);
+  getRegistry().handlers.delete(type);
 }
 
