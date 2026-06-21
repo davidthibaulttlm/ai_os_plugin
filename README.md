@@ -10,6 +10,8 @@
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
 [![Issues](https://img.shields.io/github/issues/davidthibaulttlm/ai_os_plugin)](https://github.com/davidthibaulttlm/ai_os_plugin/issues)
 [![Stars](https://img.shields.io/github/stars/davidthibaulttlm/ai_os_plugin?style=flat)](https://github.com/davidthibaulttlm/ai_os_plugin)
+[![Made in 🇨🇦 Québec](https://img.shields.io/badge/Made_in-🇨🇦_Québec-blue.svg)]()
+[![Fait au Québec](https://img.shields.io/badge/Fait_au-Québec-0033A0?colorA=0033A0&colorB=FFFFFF)]()
 
 Self-hosted VS Code extension that connects to your GitHub account and automates kanban workflows on [GitHub Projects v2](https://docs.github.com/en/issues/planning-and-tracking-with-projects) boards. AI agents automatically work on issues entering `AI_SPEC` / `AI_CODE` columns.
 
