@@ -5,6 +5,18 @@ import IssueCard from './IssueCard';
 import type { IssueItem } from '../store/boardStore';
 import { useBoardStore } from '../store/boardStore';
 
+function withAgentState(status: string, outputs: string[], issueNumber: number, working = false) {
+  return (Story: () => React.ReactNode) => {
+    const opts: any = {
+      agentStatuses: new Map([[issueNumber, status]]),
+      agentOutputs: new Map([[issueNumber, outputs]]),
+    };
+    if (working) opts.workingIssues = new Set([issueNumber]);
+    useBoardStore.setState(opts);
+    return <Story />;
+  };
+}
+
 const meta = {
   title: 'Components/IssueCard',
   component: IssueCard,
@@ -122,14 +134,7 @@ export const AgentRunning: Story = {
     },
   },
   decorators: [
-    (Story) => {
-      useBoardStore.setState({
-        agentStatuses: new Map([[55, 'running']]),
-        agentOutputs: new Map([[55, ['Analyzing codebase...', 'Creating rate limiter middleware...']]]),
-        workingIssues: new Set([55]),
-      });
-      return <Story />;
-    },
+    withAgentState('running', ['Analyzing codebase...', 'Creating rate limiter middleware...'], 55, true),
   ],
 };
 
@@ -145,13 +150,7 @@ export const AgentSuccess: Story = {
     },
   },
   decorators: [
-    (Story) => {
-      useBoardStore.setState({
-        agentStatuses: new Map([[60, 'success']]),
-        agentOutputs: new Map([[60, ['Validation middleware created', 'Tests passing', 'Changes staged']]]),
-      });
-      return <Story />;
-    },
+    withAgentState('success', ['Validation middleware created', 'Tests passing', 'Changes staged'], 60),
   ],
 };
 
@@ -167,12 +166,6 @@ export const AgentFailed: Story = {
     },
   },
   decorators: [
-    (Story) => {
-      useBoardStore.setState({
-        agentStatuses: new Map([[75, 'failed']]),
-        agentOutputs: new Map([[75, ['Error: spawn claude ENOENT']]]),
-      });
-      return <Story />;
-    },
+    withAgentState('failed', ['Error: spawn claude ENOENT'], 75),
   ],
 };

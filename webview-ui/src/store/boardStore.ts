@@ -11,13 +11,7 @@ export function escapeHtml(text: string): string {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#x27;');
 }
-    .replace(/&/g, '\&')
-    .replace(/</g, '\<')
-    .replace(/>/g, '\>')
-    .replace(/"/g, '"')
-    .replace(/'/g, '\&#x27;');
-}
-}
+
 
 /** Kanban column definition */
 export interface KanbanColumn {

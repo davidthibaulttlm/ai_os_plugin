@@ -1,49 +1,23 @@
-/** RepoManager — clones repos, manages git worktrees per issue */
-
 import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import type { ProjectItemNode } from './graphql';
 import { logger } from './logger';
+import type { GitResult, WorktreeResult, RepoRef } from './repoManager.types';
+import { runGit, handleGitResult } from './repoManager.git';
 
-/** Result of a git operation */
-export interface GitResult {
-  success: boolean;
-  error?: string;
-}
+export type { GitResult, WorktreeResult, RepoRef } from './repoManager.types';
 
-/** Result of worktree creation */
-export interface WorktreeResult extends GitResult {
-  path?: string;
-}
-
-/** Repo identifier */
-export interface RepoRef {
-  owner: string;
-  repo: string;
-}
-
-/**
- * Manages repository cloning and git worktrees for agent isolation.
- * Each issue gets its own worktree so agent work doesn't conflict with user's coding.
- */
 export class RepoManager {
   private reposDir: string;
   private token: string;
-  /** Per-repo promise chain to serialize git operations on same repo */
   private repoChains = new Map<string, Promise<unknown>>();
 
-  /**
-   * Create a new RepoManager instance.
-   * @param reposDir - Base directory for cloned repos (supports ~ for home)
-   * @param token - GitHub token for HTTPS auth via GIT_ASKPASS
-   */
   public constructor(reposDir: string, token: string) {
     logger.info('[RepoManager.constructor] Starting...');
     logger.info(`[RepoManager.constructor] reposDir=${reposDir}`);
 
-    // Resolve ~ to home directory
     this.reposDir = reposDir.startsWith('~')
       ? reposDir.replace('~', os.homedir())
       : reposDir;
@@ -52,17 +26,11 @@ export class RepoManager {
     logger.info(`[RepoManager.constructor] Resolved reposDir=${this.reposDir}`);
   }
 
-  /**
-   * Get the resolved repos directory path.
-   */
   public getReposDir(): string {
     logger.debug(`[RepoManager.getReposDir] Returning ${this.reposDir}`);
     return this.reposDir;
   }
 
-  /**
-   * Check if git is available on PATH.
-   */
   public checkGitAvailable(): boolean {
     logger.info('[RepoManager.checkGitAvailable] Checking git availability');
     try {
@@ -76,9 +44,6 @@ export class RepoManager {
     }
   }
 
-  /**
-   * Sync version of checkGitAvailable for synchronous usage.
-   */
   public async checkGitAvailableAsync(): Promise<boolean> {
     logger.info('[RepoManager.checkGitAvailableAsync] Checking git availability');
     return new Promise((resolve) => {
@@ -100,9 +65,6 @@ export class RepoManager {
     });
   }
 
-  /**
-   * Get the absolute path for a cloned repo.
-   */
   public getRepoPath(owner: string, repo: string): string {
     logger.info(`[RepoManager.getRepoPath] owner=${owner} repo=${repo}`);
     const repoPath = path.join(this.reposDir, owner, repo);
@@ -110,9 +72,6 @@ export class RepoManager {
     return repoPath;
   }
 
-  /**
-   * Check if a repo is already cloned (by checking for .git directory).
-   */
   public isRepoCloned(owner: string, repo: string): boolean {
     logger.info(`[RepoManager.isRepoCloned] owner=${owner} repo=${repo}`);
     const repoPath = this.getRepoPath(owner, repo);
@@ -122,9 +81,6 @@ export class RepoManager {
     return exists;
   }
 
-  /**
-   * Extract unique repository identifiers from board items.
-   */
   public extractReposFromItems(items: ProjectItemNode[]): RepoRef[] {
     logger.info(`[RepoManager.extractReposFromItems] Starting with ${items.length} items`);
     const seen = new Set<string>();
@@ -148,9 +104,6 @@ export class RepoManager {
     return repos;
   }
 
-  /**
-   * Generate a slug from an issue title for branch/directory naming.
-   */
   private slugify(title: string): string {
     return title
       .toLowerCase()
@@ -160,10 +113,6 @@ export class RepoManager {
       .replace(/^-|-$/g, '');
   }
 
-  /**
-   * Generate branch name for an issue.
-   * Format: ai-os/{repoName}/{ISSUE}-{title-slug}
-   */
   public getBranchName(repoName: string, issueNumber: number, title: string): string {
     logger.info(`[RepoManager.getBranchName] repoName=${repoName} issueNumber=${issueNumber} title=${title}`);
     const slug = this.slugify(title);
@@ -172,10 +121,6 @@ export class RepoManager {
     return branchName;
   }
 
-  /**
-   * Get the worktree path for an issue.
-   * Format: <repoPath>/.worktrees/{ISSUE}-{title-slug}
-   */
   public getWorktreePath(owner: string, repo: string, issueNumber: number, title: string): string {
     logger.info(`[RepoManager.getWorktreePath] owner=${owner} repo=${repo} issueNumber=${issueNumber} title=${title}`);
     const repoPath = this.getRepoPath(owner, repo);
@@ -185,20 +130,14 @@ export class RepoManager {
     return worktreePath;
   }
 
-  /**
-   * Get the repo key for promise chain serialization.
-   */
   private getRepoKey(owner: string, repo: string): string {
     return `${owner}/${repo}`;
   }
 
-  /**
-   * Queue an operation for a specific repo to prevent concurrent git commands.
-   */
   private async queueRepoOp<T>(owner: string, repo: string, op: () => Promise<T>): Promise<T> {
     const key = this.getRepoKey(owner, repo);
     const previous = this.repoChains.get(key) || Promise.resolve();
-    await previous; // Wait for previous operation to complete
+    await previous;
     try {
       return await op();
     } finally {
@@ -206,75 +145,20 @@ export class RepoManager {
     }
   }
 
-  /**
-   * Run a git command with token auth via GIT_ASKPASS.
-   */
-  private runGit(cwd: string, args: string[]): Promise<{ stdout: string; stderr: string; code: number | null }> {
-    logger.debug(`[RepoManager.runGit] cwd=${cwd} args=${args.join(' ')}`);
-
-    const askpassScript = `#!/bin/sh
-echo '${this.token}'`;
-
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-os-'));
-    const askpassPath = path.join(tmpDir, 'askpass.sh');
-    fs.writeFileSync(askpassPath, askpassScript, { mode: 0o700 });
-
-    const env = {
-      ...process.env,
-      GIT_ASKPASS: askpassPath,
-      GIT_TERMINAL_PROMPT: '0',
-    };
-
-    return new Promise((resolve) => {
-      const child = spawn('git', args, { cwd, env, shell: false });
-      let stdout = '';
-      let stderr = '';
-
-      child.stdout.on('data', (data) => { stdout += data.toString(); });
-      child.stderr.on('data', (data) => { stderr += data.toString(); });
-
-      child.on('exit', (code) => {
-        try { fs.unlinkSync(askpassPath); fs.rmdirSync(tmpDir); } catch { /* ignore cleanup errors */ }
-        resolve({ stdout: stdout.trim(), stderr: stderr.trim(), code });
-      });
-
-      child.on('error', (error) => {
-        try { fs.unlinkSync(askpassPath); fs.rmdirSync(tmpDir); } catch { /* ignore */ }
-        resolve({ stdout: '', stderr: error.message, code: -1 });
-      });
-    });
+  private async _runGit(cwd: string, args: string[]) {
+    return runGit(this.token, cwd, args);
   }
 
-  /**
-   * Convert git run result to GitResult with logging.
-   */
-  private handleGitResult(result: { code: number | null; stderr: string }, action: string, owner: string, repo: string): GitResult {
-    if (result.code === 0) {
-      logger.info(`[RepoManager.${action}] Successfully ${action}ed ${owner}/${repo}`);
-      return { success: true };
-    } else {
-      const error = result.stderr || `${action.charAt(0).toUpperCase() + action.slice(1)} failed`;
-      logger.error(`[RepoManager.${action}] Error ${action}ing ${owner}/${repo}: ${error}`);
-      return { success: false, error: error.substring(0, 100) };
-    }
-  }
-
-  /**
-   * Detect the default branch name for a repo.
-   */
   public async detectDefaultBranch(owner: string, repo: string): Promise<string> {
     logger.info(`[RepoManager.detectDefaultBranch] owner=${owner} repo=${repo}`);
-    const result = await this.runGit('/tmp', ['ls-remote', '--symref', `https://github.com/${owner}/${repo}.git`, 'HEAD']);
-    
+    const result = await this._runGit('/tmp', ['ls-remote', '--symref', `https://github.com/${owner}/${repo}.git`, 'HEAD']);
+
     const match = result.stdout.match(/refs\/heads\/([^\\]+)/);
     const branch = match ? match[1] : 'main';
     logger.info(`[RepoManager.detectDefaultBranch] Result: ${branch}`);
     return branch;
   }
 
-  /**
-   * Clone a repository (single-branch, full history).
-   */
   public async cloneRepo(owner: string, repo: string): Promise<GitResult> {
     logger.info(`[RepoManager.cloneRepo] owner=${owner} repo=${repo}`);
 
@@ -283,19 +167,18 @@ echo '${this.token}'`;
         const repoPath = this.getRepoPath(owner, repo);
         const defaultBranch = await this.detectDefaultBranch(owner, repo);
 
-        // Ensure parent directory exists
         const parentDir = path.dirname(repoPath);
         if (!fs.existsSync(parentDir)) {
           fs.mkdirSync(parentDir, { recursive: true });
         }
 
         logger.info(`[RepoManager.cloneRepo] Cloning ${owner}/${repo} to ${repoPath} branch=${defaultBranch}`);
-        const result = await this.runGit(parentDir, [
+        const result = await this._runGit(parentDir, [
           'clone', '--single-branch', '--branch', defaultBranch,
           `https://github.com/${owner}/${repo}.git`, repo
         ]);
 
-        return this.handleGitResult(result, 'clone', owner, repo);
+        return handleGitResult(result, 'clone', owner, repo);
       } catch (error) {
         const errorMsg = (error as Error).message;
         logger.error(`[RepoManager.cloneRepo] Error: ${errorMsg}`);
@@ -304,18 +187,15 @@ echo '${this.token}'`;
     });
   }
 
-  /**
-   * Update an existing repo with git pull --rebase.
-   */
   public async updateRepo(owner: string, repo: string): Promise<GitResult> {
     logger.info(`[RepoManager.updateRepo] owner=${owner} repo=${repo}`);
 
     return this.queueRepoOp(owner, repo, async () => {
       try {
         const repoPath = this.getRepoPath(owner, repo);
-        const result = await this.runGit(repoPath, ['pull', '--rebase']);
+        const result = await this._runGit(repoPath, ['pull', '--rebase']);
 
-        return this.handleGitResult(result, 'pull', owner, repo);
+        return handleGitResult(result, 'pull', owner, repo);
       } catch (error) {
         const errorMsg = (error as Error).message;
         logger.error(`[RepoManager.updateRepo] Error: ${errorMsg}`);
@@ -324,9 +204,6 @@ echo '${this.token}'`;
     });
   }
 
-  /**
-   * Clone missing repos and update existing ones.
-   */
   public async cloneOrUpdateRepos(repos: RepoRef[]): Promise<GitResult[]> {
     logger.info(`[RepoManager.cloneOrUpdateRepos] Processing ${repos.length} repos`);
     const results: GitResult[] = [];
@@ -356,11 +233,11 @@ echo '${this.token}'`;
         }
         const worktreesDir = path.join(repoPath, '.worktrees');
         fs.mkdirSync(worktreesDir, { recursive: true });
-        const branchCheck = await this.runGit(repoPath, ['branch', '--list', branchName]);
+        const branchCheck = await this._runGit(repoPath, ['branch', '--list', branchName]);
         const branchExists = branchCheck.stdout.includes(branchName);
         const result = branchExists
-          ? await this.runGit(repoPath, ['worktree', 'add', worktreePath, branchName])
-          : await this.runGit(repoPath, ['worktree', 'add', '-b', branchName, worktreePath]);
+          ? await this._runGit(repoPath, ['worktree', 'add', worktreePath, branchName])
+          : await this._runGit(repoPath, ['worktree', 'add', '-b', branchName, worktreePath]);
         if (result.code === 0) {
           logger.info(`[RepoManager.createWorktree] Success: ${worktreePath}`);
           return { success: true, path: worktreePath };
@@ -384,13 +261,13 @@ echo '${this.token}'`;
         logger.error(`[RepoManager.updateWorktree] Does not exist: ${worktreePath}`);
         return { success: false, error: 'Worktree does not exist' };
       }
-      const fetchResult = await this.runGit(worktreePath, ['fetch', 'origin']);
+      const fetchResult = await this._runGit(worktreePath, ['fetch', 'origin']);
       if (fetchResult.code !== 0) {
         const error = fetchResult.stderr || 'Fetch failed';
         logger.error(`[RepoManager.updateWorktree] Fetch error: ${error}`);
         return { success: false, error: error.substring(0, 100) };
       }
-      const pullResult = await this.runGit(worktreePath, ['pull', '--rebase']);
+      const pullResult = await this._runGit(worktreePath, ['pull', '--rebase']);
       if (pullResult.code === 0) {
         logger.info('[RepoManager.updateWorktree] Success');
         return { success: true };
@@ -415,14 +292,14 @@ echo '${this.token}'`;
         const worktreePath = this.getWorktreePath(owner, repo, issueNumber, title);
         if (fs.existsSync(worktreePath)) {
           logger.info(`[RepoManager.cleanupWorktree] Removing: ${worktreePath}`);
-          const removeResult = await this.runGit(repoPath, ['worktree', 'remove', '--force', worktreePath]);
+          const removeResult = await this._runGit(repoPath, ['worktree', 'remove', '--force', worktreePath]);
           if (removeResult.code !== 0) {
             logger.warn(`[RepoManager.cleanupWorktree] Remove failed, trying manual`);
             try { fs.rmSync(worktreePath, { recursive: true, force: true }); }
             catch (e) { logger.error(`[RepoManager.cleanupWorktree] Manual remove failed: ${(e as Error).message}`); }
           }
         }
-        const branchResult = await this.runGit(repoPath, ['branch', '-D', branchName]);
+        const branchResult = await this._runGit(repoPath, ['branch', '-D', branchName]);
         if (branchResult.code !== 0) {
           logger.warn(`[RepoManager.cleanupWorktree] Delete branch failed: ${branchResult.stderr}`);
         }
@@ -436,13 +313,10 @@ echo '${this.token}'`;
     });
   }
 
-  /**
-   * Check if there are staged changes in the worktree.
-   */
   public async hasStagedChanges(worktreePath: string): Promise<boolean> {
     logger.info(`[RepoManager.hasStagedChanges] worktreePath=${worktreePath}`);
     try {
-      const result = await this.runGit(worktreePath, ['diff', '--staged', '--name-only']);
+      const result = await this._runGit(worktreePath, ['diff', '--staged', '--name-only']);
       const hasChanges = result.code === 0 && result.stdout.length > 0;
       logger.info(`[RepoManager.hasStagedChanges] Result: ${hasChanges}`);
       return hasChanges;
@@ -452,25 +326,19 @@ echo '${this.token}'`;
     }
   }
 
-  /**
-   * Commit staged changes in the worktree with git config fallback.
-   */
   public async commitWorktree(worktreePath: string, message: string): Promise<GitResult> {
     logger.info(`[RepoManager.commitWorktree] worktreePath=${worktreePath} message=${message}`);
     try {
-      // Set git user config as fallback
-      await this.runGit(worktreePath, ['config', 'user.name', 'ai-os-agent']);
-      await this.runGit(worktreePath, ['config', 'user.email', 'ai-os@localhost']);
+      await this._runGit(worktreePath, ['config', 'user.name', 'ai-os-agent']);
+      await this._runGit(worktreePath, ['config', 'user.email', 'ai-os@localhost']);
 
-      // Sanitize message: replace newlines with spaces, escape quotes
       const sanitized = message.replace(/\n/g, ' ').replace(/"/g, '\\"');
-      const result = await this.runGit(worktreePath, ['commit', '-m', sanitized]);
+      const result = await this._runGit(worktreePath, ['commit', '-m', sanitized]);
 
       if (result.code === 0) {
         logger.info('[RepoManager.commitWorktree] Result: success');
         return { success: true };
       } else {
-        // "nothing added to commit" means no staged changes — not an error per se
         if (result.stderr.includes('nothing added') || result.stderr.includes('no changes added')) {
           logger.warn('[RepoManager.commitWorktree] No staged changes to commit');
           return { success: false, error: 'No staged changes' };
@@ -486,13 +354,10 @@ echo '${this.token}'`;
     }
   }
 
-  /**
-   * Push the worktree branch to origin.
-   */
   public async pushWorktree(worktreePath: string, branchName: string): Promise<GitResult> {
     logger.info(`[RepoManager.pushWorktree] worktreePath=${worktreePath} branchName=${branchName}`);
     try {
-      const result = await this.runGit(worktreePath, ['push', '--set-upstream', 'origin', branchName]);
+      const result = await this._runGit(worktreePath, ['push', '--set-upstream', 'origin', branchName]);
 
       if (result.code === 0) {
         logger.info('[RepoManager.pushWorktree] Result: success');
@@ -509,43 +374,14 @@ echo '${this.token}'`;
     }
   }
 
-  /**
-   * Get the repository node ID (GraphQL ID) for a given owner/repo.
-   * Used for createPullRequest mutation.
-   */
-  private async getRepositoryNodeId(owner: string, repo: string): Promise<string | null> {
-    logger.info(`[RepoManager.getRepositoryNodeId] owner=${owner} repo=${repo}`);
-    try {
-      const result = await this.runGit('/tmp', ['ls-remote', `https://github.com/${owner}/${repo}.git`, 'HEAD']);
-      if (result.code === 0) {
-        // We need the GraphQL node ID, which requires an API call.
-        // For now, return null and let the caller handle it via GraphQL.
-        logger.info('[RepoManager.getRepositoryNodeId] Result: null (requires GraphQL)');
-        return null;
-      }
-      return null;
-    } catch (error) {
-      logger.error(`[RepoManager.getRepositoryNodeId] Error: ${(error as Error).message}`);
-      return null;
-    }
-  }
-
-  /**
-   * Create a pull request via GraphQL mutation.
-   * Requires the repository GraphQL node ID.
-   */
   public async createPullRequest(
     repositoryId: string,
     headBranch: string,
     baseBranch: string,
     title: string,
-    body: string
+    _body: string
   ): Promise<{ success: boolean; prUrl?: string; error?: string }> {
     logger.info(`[RepoManager.createPullRequest] repositoryId=${repositoryId} headBranch=${headBranch} baseBranch=${baseBranch} title=${title}`);
-
-    // This method is a placeholder — the actual GraphQL mutation is executed
-    // by the harness which has access to the GraphQLClient.
-    // RepoManager doesn't hold a GraphQL client reference.
     logger.warn('[RepoManager.createPullRequest] Not implemented — use GraphQLClient directly');
     return { success: false, error: 'createPullRequest must be called via GraphQLClient' };
   }

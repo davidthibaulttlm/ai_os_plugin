@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "deny": [
+      "Edit(.aislop/config.yml)",
+      "Write(.aislop/config.yml)"
+    ]
+  }
+}
