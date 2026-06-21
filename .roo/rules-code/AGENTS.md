@@ -54,3 +54,17 @@ IT'S VERY CRITICAL! YOU WILL BE EVALUATED ON YOUR ABILITY TO SEARCH THE WEB TO G
 - **DO NOT use `tailwind.config.js` for colors** — it will NOT work.
 - VS Code theme CSS variables use **camelCase**: `sideBar.background` → `--vscode-sideBar-background` (NOT `--vscode-sidebar-background`).
 - Reference: https://tailwindcss.com/docs/theme and https://code.visualstudio.com/api/references/theme-color
+
+## MANDATORY: One Test File Per Method
+
+**EVERY method gets its own test file. NEVER clump multiple methods into one test file.**
+
+- **Naming**: `src/test/services/<service>.<method>.test.ts` (e.g., `agent.selectNextIssue.test.ts`)
+- **Constants/static methods**: `src/test/services/<service>.constants.test.ts` or `<service>.<staticMethod>.test.ts`
+- **MAX 400 LINES per test file** — if a test file exceeds 400 lines, split it further
+- **Integration tests**: `src/test/integration/*.integration.test.ts` — one file per command flow
+- **90% code coverage** on all new/modified files is mandatory
+- Mock `vscode` API with `vi.mock('vscode', ...)` in unit tests
+- Mock `GraphQLClient` with `vi.fn()` spies
+
+**This rule applies to 100% of test files without exception.**

@@ -59,6 +59,20 @@ code --extensionDevelopmentPath=$PWD  # Load extension in VS Code
 5. VS Code extension eliminates webhook infrastructure (no tunnels needed)
 6. No database — state persists via VS Code Memento and in-memory only
 
+## MANDATORY: One Test File Per Method
+
+**EVERY method gets its own test file. NEVER clump multiple methods into one test file.**
+
+- **Naming**: `src/test/services/<service>.<method>.test.ts` (e.g., `agent.selectNextIssue.test.ts`)
+- **Constants/static methods**: `src/test/services/<service>.constants.test.ts` or `<service>.<staticMethod>.test.ts`
+- **MAX 400 LINES per test file** — if a test file exceeds 400 lines, split it further
+- **Integration tests**: `src/test/integration/*.integration.test.ts` — one file per command flow
+- **90% code coverage** on all new/modified files is mandatory
+- Mock `vscode` API with `vi.mock('vscode', ...)` in unit tests
+- Mock `GraphQLClient` with `vi.fn()` spies
+
+**This rule applies to 100% of test files without exception.**
+
 ## Full Context
 
 All detailed context is in [`CONTEXT_FOR_NEW_SESSION.md`](CONTEXT_FOR_NEW_SESSION.md) — read before starting work.

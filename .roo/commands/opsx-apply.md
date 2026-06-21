@@ -218,20 +218,25 @@ This skill supports the "actions on a change" model:
 
 After implementing all functional tasks, tests MUST be written before marking the change complete:
 
-1. **Write unit tests** for every new/modified service file using Vitest
+1. **ONE TEST FILE PER METHOD** — Each method gets its own test file. NEVER clump multiple methods into a single test file.
+   - Naming: `src/test/services/<service>.<method>.test.ts` (e.g., `agent.selectNextIssue.test.ts`)
+   - Constants/static methods: `src/test/services/<service>.constants.test.ts` or `<service>.<staticMethod>.test.ts`
+   - **MAX 400 LINES per test file** — if a test file exceeds 400 lines, split it further
+
+2. **Write unit tests** for every new/modified service file using Vitest
    - Mock `vscode` API with `vi.mock('vscode', ...)`
    - Mock `GraphQLClient` with `vi.fn()` spies
    - Place tests in `src/test/services/*.test.ts`
 
-2. **Update Storybook stories** for every new/modified webview component
+3. **Update Storybook stories** for every new/modified webview component
    - Add isolated rendering stories for new props/states
    - Add interaction tests with `@storybook/test` and `userEvent`
 
-3. **Write integration tests** for new command flows
+4. **Write integration tests** for new command flows
    - Place in `src/test/integration/*.integration.test.ts`
 
-4. **Verify coverage**: Run `npx vitest run --coverage` — must achieve ≥90% on all new/modified files
+5. **Verify coverage**: Run `npx vitest run --coverage` — must achieve ≥90% on all new/modified files
 
-5. **Do NOT mark change complete** until all tests pass and coverage threshold met
+6. **Do NOT mark change complete** until all tests pass and coverage threshold met
 
 If the tasks.md lacks a testing task group, create one and work through it before finishing.

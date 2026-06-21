@@ -152,6 +152,12 @@ After completing all artifacts, summarize:
 Example testing tasks:
     ## N. Tests
     - [ ] N.1 Setup Vitest if not present (`vitest`, `@vitest/coverage-v8`, `vitest.config.ts`)
-    - [ ] N.2 `src/test/services/myservice.test.ts` — Test methodA(), methodB(), methodC() with mocked vscode + GraphQLClient
-    - [ ] N.3 Update `webview-ui/src/components/MyComponent.stories.tsx` — Add stories for new props/states
-    - [ ] N.4 Run `npx vitest run --coverage` and verify ≥90% coverage on all new/modified files
+    - [ ] N.2 `src/test/services/myservice.methodA.test.ts` — ONE FILE PER METHOD. Test methodA() only.
+    - [ ] N.3 `src/test/services/myservice.methodB.test.ts` — ONE FILE PER METHOD. Test methodB() only.
+    - [ ] N.4 Update `webview-ui/src/components/MyComponent.stories.tsx` — Add stories for new props/states
+    - [ ] N.5 Run `npx vitest run --coverage` and verify ≥90% coverage on all new/modified files
+
+**CRITICAL: ONE TEST FILE PER METHOD**
+- Each method gets its own test file: `src/test/services/<service>.<method>.test.ts`
+- NEVER clump multiple methods into one test file
+- MAX 400 LINES per test file — split if exceeded
