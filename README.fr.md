@@ -10,7 +10,7 @@
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
 [![Issues](https://img.shields.io/github/issues/davidthibaulttlm/ai_os_plugin)](https://github.com/davidthibaulttlm/ai_os_plugin/issues)
 [![Stars](https://img.shields.io/github/stars/davidthibaulttlm/ai_os_plugin?style=flat)](https://github.com/davidthibaulttlm/ai_os_plugin)
-[![Made in 🇨🇦 Québec](https://img.shields.io/badge/Made_in-🇨🇦_Québec-blue.svg)]()
+[![Made in Québec, Canada](https://img.shields.io/badge/Made_in-Québec%2C%20Canada-blue.svg)]()
 [![Fait au Québec](https://img.shields.io/badge/Fait_au-Québec-0033A0?colorA=0033A0&colorB=FFFFFF)]()
 
 Extension VS Code auto-hébergée qui se connecte à votre compte GitHub et automatise les flux de travail kanban sur les tableaux [GitHub Projects v2](https://docs.github.com/en/issues/planning-and-tracking-with-projects). Les agents IA travaillent automatiquement sur les problèmes entrant dans les colonnes `AI_SPEC` / `AI_CODE`.
