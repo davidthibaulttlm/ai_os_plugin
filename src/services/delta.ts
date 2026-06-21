@@ -4,7 +4,7 @@ import type { ProjectItemNode } from './graphql';
 import { logger } from './logger';
 
 /** Delta event types */
-export type DeltaEventType = 'item_added' | 'item_moved' | 'item_removed';
+export type DeltaEventType = 'item_added' | 'item_moved' | 'item_removed' | 'item_updated';
 
 /** Delta event representing a change in board state */
 export interface DeltaEvent {
@@ -58,6 +58,14 @@ export function detectDeltas(
         issueId: githubId,
         type: 'item_moved',
         data: { from: last.status, to: status },
+      });
+    } else if (last.title !== title || JSON.stringify(last.labels.sort()) !== JSON.stringify(labels.sort())) {
+      // Title or labels changed
+      logger.info(`[delta.detectDeltas] Updated: #${githubId} "${last.title}" -> "${title}" in ${status}`);
+      events.push({
+        issueId: githubId,
+        type: 'item_updated',
+        data: { oldTitle: last.title, title, labels, status },
       });
     }
   }
