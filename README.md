@@ -122,14 +122,6 @@ npm run publish
 | `aiOs.autoWorkColumns` | `["AI_SPEC", "AI_CODE"]` | Columns that trigger auto-work |
 | `aiOs.reposDir` | `~/ai-os-repos` | Directory for cloned repos |
 
-### Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `GITHUB_TOKEN` | — | Fallback GitHub token (uses `gh` CLI by default) |
-| `POLL_INTERVAL` | `30` | GraphQL polling interval in seconds |
-| `LOG_LEVEL` | `INFO` | Log verbosity level |
-
 ## 📦 Tech Stack
 
 | Layer | Technology |
@@ -179,10 +171,10 @@ npm run test:watch
 
 ### Development Rules
 
-- **Logger in every file** — Every method must log using the `logger` utility
+- **Logger in every file** — Every method/action must log using the `logger` utility
 - **One test file per method** — Never clump multiple methods into one test file
 - **90% code coverage** is mandatory on all new/modified files
-- **aislop quality gates** run on every edit via CI
+- **aislop quality gates** run on every edit via CI with 100/100 score
 
 ## 📄 License
 
@@ -190,7 +182,6 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ## 🔗 Links
 
-- [GitHub Issues](https://github.com/your-org/ai-os-plugin/issues)
 - [GitHub Projects v2 Docs](https://docs.github.com/en/issues/planning-and-tracking-with-projects)
 - [VS Code Extension API](https://code.visualstudio.com/api)
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview)

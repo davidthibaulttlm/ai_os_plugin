@@ -46,10 +46,6 @@ npm run dev          # Run webview dev server
 code --extensionDevelopmentPath=$PWD  # Load extension in VS Code
 ```
 
-## Environment Variables
-
-`GITHUB_TOKEN` (fallback), `POLL_INTERVAL=30`, `BACKEND_PORT=8000`, `LOG_LEVEL=INFO`.
-
 ## Core Design Decisions
 
 1. GraphQL-only for Projects v2 — no REST alternative exists

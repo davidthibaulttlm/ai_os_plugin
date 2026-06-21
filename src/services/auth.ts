@@ -5,8 +5,7 @@ import { logger } from './logger';
 const _execAsync = promisify(exec);
 
 /**
- * AuthService handles GitHub authentication via gh CLI token
- * with GITHUB_TOKEN environment variable fallback.
+ * AuthService handles GitHub authentication via gh CLI token.
  */
 export class AuthService {
   private _token: string | undefined;
@@ -27,8 +26,7 @@ export class AuthService {
   }
 
   /**
-   * Get GitHub token from gh CLI or environment variable.
-   * Priority: 1) Cached token, 2) GITHUB_TOKEN env, 3) gh auth token
+   * Get GitHub token from gh CLI.
    */
   public async getGitHubToken(): Promise<string | undefined> {
     logger.info('[AuthService.getGitHubToken] Starting token retrieval...');
@@ -38,16 +36,6 @@ export class AuthService {
     }
 
     try {
-      // Try environment variable first
-      const envToken = process.env.GITHUB_TOKEN;
-      if (envToken) {
-        this._token = envToken.trim();
-        logger.info(`[AuthService.getGitHubToken] Got token from GITHUB_TOKEN env (length=${this._token.length})`);
-        return this._token;
-      }
-      logger.debug('[AuthService.getGitHubToken] No GITHUB_TOKEN env, trying gh CLI...');
-
-      // Fall back to gh CLI with timeout
       const { stdout } = await this.execWithTimeout('gh auth token', 5000);
       const token = stdout.trim();
       if (token) {
@@ -61,7 +49,7 @@ export class AuthService {
       return undefined;
     }
 
-    logger.warn('[AuthService.getGitHubToken] No token found anywhere');
+    logger.warn('[AuthService.getGitHubToken] No token found');
     return undefined;
   }
 

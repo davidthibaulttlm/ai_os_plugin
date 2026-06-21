@@ -7,8 +7,8 @@ import type { RepoManager } from './repoManager';
 import { logger } from './logger';
 import { writeBoardState, type BoardState } from './stateBridge';
 
-/** Poll interval in milliseconds — configurable via POLL_INTERVAL env var (seconds, default 30) */
-const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL || '30', 10) * 1000;
+/** Poll interval in milliseconds — 30 seconds */
+const POLL_INTERVAL = 30_000;
 
 /** Callback for delta events */
 export type DeltaCallback = (events: DeltaEvent[]) => void;
