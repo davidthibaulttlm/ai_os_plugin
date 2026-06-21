@@ -77,7 +77,7 @@ Extension VS Code auto-hébergée qui se connecte à votre compte GitHub et auto
 | 5 | `HUMAN_CODE_REVIEW` | L'humain révise le code |
 | 6 | `PR_DONE` | Pull request fusionné, fonctionnalité complète |
 
-Ces colonnes sont des **constants codées en dur** — pas configurables par l'utilisateur.
+Ces colonnes sont des **constants codées en dur** — pas configurables par l'utilisateur (pour l'instant).
 
 ## 🚀 Démarrage Rapide
 
