@@ -9,12 +9,15 @@ import { getStateFilePath } from '../services/stateBridge';
 import type { GraphQLClient } from '../services/graphql';
 import type { PollerService } from '../services/poller';
 import type { AgentService } from '../services/agent';
+import type { RepoManager } from '../services/repoManager';
 import type { StateManager } from '../services/state';
+import { checkMissingRepos } from './cloneRepos';
 
 let panel: KanbanPanel | undefined;
 let graphql: GraphQLClient | undefined;
 let poller: PollerService | undefined;
 let agentService: AgentService | undefined;
+let repoManager: RepoManager | undefined;
 let stateManager: StateManager | undefined;
 let _globalStorageUri: string | undefined;
 let boardTreeProvider: any | undefined;
@@ -26,7 +29,8 @@ export function setBoardHandlerDeps(
   a: AgentService | undefined,
   s: StateManager | undefined,
   uri: string | undefined,
-  tree: any | undefined
+  tree: any | undefined,
+  rm: RepoManager | undefined
 ): void {
   panel = p;
   graphql = g;
@@ -35,6 +39,7 @@ export function setBoardHandlerDeps(
   stateManager = s;
   _globalStorageUri = uri;
   boardTreeProvider = tree;
+  repoManager = rm;
 }
 
 export function getPanel(): KanbanPanel | undefined { return panel; }
@@ -226,4 +231,13 @@ export async function handleOpenBoardFromTree(
     poller.start(graphql, boardId, createPollerCallback(), getStateFilePath(context.globalStorageUri.fsPath));
   }
   vscode.window.showInformationMessage(`Opened board "${boardName}"`);
+
+  setTimeout(async () => {
+    if (poller && repoManager) {
+      const items = poller.getItems();
+      if (items.length > 0) {
+        await checkMissingRepos(repoManager, items);
+      }
+    }
+  }, 2000); // Wait for initial poll to complete
 }

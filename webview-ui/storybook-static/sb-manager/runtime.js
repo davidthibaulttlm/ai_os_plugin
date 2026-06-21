@@ -943,7 +943,7 @@ Output:
         })();
         e2.exports = s2;
       }, function(e2, t2) {
-        var r4 = /[-\[\]/\{}\()\*+\?.\\^\$|]/g;
+        var r4 = /[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g;
         e2.exports = function(e3, t3) {
           var n3 = arguments.length > 2 && arguments[2] !== void 0 ? arguments[2] : / +/g, o3 = new RegExp(t3.replace(r4, "\\$&").replace(n3, "|")), i2 = e3.match(o3), a2 = !!i2, s2 = [];
           if (a2) for (var c2 = 0, h2 = i2.length; c2 < h2; c2 += 1) {
@@ -3801,6 +3801,7 @@ function $e7801be82b4b2a53$export$4debdb1a3f0fa79e(context, ref) {
 
 // ../../node_modules/@react-aria/utils/dist/useViewportSize.mjs
 init_react();
+var $5df64b3807dc15ee$var$visualViewport = typeof document < "u" && window.visualViewport;
 
 // ../../node_modules/@react-aria/utils/dist/useDescription.mjs
 init_react();
@@ -9103,6 +9104,8 @@ init_react();
 // ../../node_modules/@react-aria/overlays/dist/useOverlayTrigger.mjs
 init_react();
 
+// ../../node_modules/@react-aria/overlays/dist/usePreventScroll.mjs
+var $49c51c25361d4cd2$var$visualViewport = typeof document < "u" && window.visualViewport;
 
 // ../../node_modules/@react-aria/overlays/dist/PortalProvider.mjs
 init_react();
@@ -9412,6 +9415,8 @@ init_react();
 // ../../node_modules/@react-aria/visually-hidden/dist/VisuallyHidden.mjs
 init_react();
 
+// ../../node_modules/@react-aria/overlays/dist/ariaHideOutside.mjs
+var $5e3802645cc19319$var$supportsInert = typeof HTMLElement < "u" && "inert" in HTMLElement.prototype;
 
 // ../../node_modules/@react-aria/overlays/dist/usePopover.mjs
 init_react();
@@ -10844,7 +10849,7 @@ var Wrapper = styled.div(
   useImperativeHandle(forwardedRef, () => inputRef.current);
   let parseValue = useCallback(
     (value2) => {
-      let [, inputValue2, unit = fixedUnit || baseUnit || ""] = value2.match(/(-?\d+(?:\.\d+)?)(%|[a-z]{1,4})?$/) || [];
+      let [, inputValue2, unit = fixedUnit || baseUnit || ""] = value2.match(/(-?\d+(?:\.\d+)?)(\%|[a-z]{1,4})?$/) || [];
       return { number: Math.max(minValue, Math.min(parseFloat(inputValue2), maxValue)), unit };
     },
     [minValue, maxValue, fixedUnit, baseUnit]
@@ -11090,7 +11095,7 @@ var ViewportWrapper = styled.div(({ active, isDefault, theme }) => ({
     return handles.forEach((el) => el?.addEventListener("mousedown", onStart)), () => handles.forEach((el) => el?.removeEventListener("mousedown", onStart));
   }, [resize, scale]);
   let dimensions = useMemo(() => {
-    let [, nx = "", ux = "px"] = width.match(/^(\d+(?:\.\d+)?)(%|[a-z]{1,4})?$/) || [], [, ny = "", uy = "px"] = height.match(/^(\d+(?:\.\d+)?)(%|[a-z]{1,4})?$/) || [];
+    let [, nx = "", ux = "px"] = width.match(/^(\d+(?:\.\d+)?)(\%|[a-z]{1,4})?$/) || [], [, ny = "", uy = "px"] = height.match(/^(\d+(?:\.\d+)?)(\%|[a-z]{1,4})?$/) || [];
     return {
       frame: {
         width: `calc(${width} * ${scale})`,
@@ -11954,11 +11959,24 @@ var qrcodegen;
       let segs = qrcodegen2.QrSegment.makeSegments(text);
       return _QrCode2.encodeSegments(segs, ecl);
     }
+    // Returns a QR Code representing the given binary data at the given error correction level.
+    // This function always encodes using the binary segment mode, not any text mode. The maximum number of
+    // bytes allowed is 2953. The smallest possible QR Code version is automatically chosen for the output.
+    // The ECC level of the result may be higher than the ecl argument if it can be done without increasing the version.
     static encodeBinary(data, ecl) {
       let seg = qrcodegen2.QrSegment.makeBytes(data);
       return _QrCode2.encodeSegments([seg], ecl);
     }
     /*-- Static factory functions (mid level) --*/
+    // Returns a QR Code representing the given segments with the given encoding parameters.
+    // The smallest possible QR Code version within the given range is automatically
+    // chosen for the output. Iff boostEcl is true, then the ECC level of the result
+    // may be higher than the ecl argument if it can be done without increasing the
+    // version. The mask number is either between 0 to 7 (inclusive) to force that
+    // mask, or -1 to automatically choose an appropriate mask (which may be slow).
+    // This function allows the user to create a custom sequence of segments that switches
+    // between modes (such as alphanumeric and byte) to encode text in less space.
+    // This is a mid-level API; the high-level API is encodeText() and encodeBinary().
     static encodeSegments(segs, ecl, minVersion = 1, maxVersion = 40, mask = -1, boostEcl = !0) {
       if (!(_QrCode2.MIN_VERSION <= minVersion && minVersion <= maxVersion && maxVersion <= _QrCode2.MAX_VERSION) || mask < -1 || mask > 7)
         throw new RangeError("Invalid value");
@@ -12147,6 +12165,8 @@ var qrcodegen;
           !this.isFunction[y2][x2] && invert2 && (this.modules[y2][x2] = !this.modules[y2][x2]);
         }
     }
+    // Calculates and returns the penalty score based on state of this QR Code's current modules.
+    // This is used by the automatic mask choice algorithm to find the mask pattern that yields the lowest score.
     getPenaltyScore() {
       let result = 0;
       for (let y2 = 0; y2 < this.size; y2++) {
@@ -12373,6 +12393,7 @@ var qrcodegen;
       return _QrSegment2.ALPHANUMERIC_REGEX.test(text);
     }
     /*-- Methods --*/
+    // Returns a new copy of the data bits of this segment.
     getData() {
       return this.bitData.slice();
     }
@@ -12397,7 +12418,7 @@ var qrcodegen;
       return result;
     }
   };
-  _QrSegment.NUMERIC_REGEX = /^[0-9]*$/, _QrSegment.ALPHANUMERIC_REGEX = /^[A-Z0-9 $%*+./:-]*$/, _QrSegment.ALPHANUMERIC_CHARSET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:";
+  _QrSegment.NUMERIC_REGEX = /^[0-9]*$/, _QrSegment.ALPHANUMERIC_REGEX = /^[A-Z0-9 $%*+.\/:-]*$/, _QrSegment.ALPHANUMERIC_CHARSET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:";
   let QrSegment = _QrSegment;
   qrcodegen2.QrSegment = _QrSegment;
 })(qrcodegen || (qrcodegen = {}));
@@ -13071,6 +13092,8 @@ function partialRightImpl(func, placeholder, ...partialArgs) {
 var placeholderSymbol2 = /* @__PURE__ */ Symbol("partialRight.placeholder");
 partialRight.placeholder = placeholderSymbol2;
 
+// ../../node_modules/es-toolkit/dist/function/retry.mjs
+var DEFAULT_RETRIES = Number.POSITIVE_INFINITY;
 
 // ../../node_modules/es-toolkit/dist/function/throttle.mjs
 function throttle(func, throttleMs, { signal, edges = ["leading", "trailing"] } = {}) {
@@ -13143,6 +13166,7 @@ var storeOptions = {
     }
   }
 };
+var STORE_CHANNEL_EVENT_NAME = `UNIVERSAL_STORE:${storeOptions.id}`;
 var TRIGGER_TEST_RUN_REQUEST = `${ADDON_ID5}/trigger-test-run-request`, TRIGGER_TEST_RUN_RESPONSE = `${ADDON_ID5}/trigger-test-run-response`;
 
 // src/storybook-error.ts
@@ -13461,6 +13485,7 @@ var SUPPORTED_FRAMEWORKS = [
 
 // src/docs-tools/shared.ts
 var ADDON_ID6 = "storybook/docs", PANEL_ID4 = `${ADDON_ID6}/panel`;
+var SNIPPET_RENDERED = `${ADDON_ID6}/snippet-rendered`;
 
 // src/manager/components/TourGuide/TourGuide.tsx
 init_react();
@@ -14298,7 +14323,7 @@ function keepTogether(data) {
   return popper[side] < floor(reference[opSide]) && (data.offsets.popper[opSide] = floor(reference[opSide]) - popper[measurement]), popper[opSide] > floor(reference[side]) && (data.offsets.popper[opSide] = floor(reference[side])), data;
 }
 function toValue(str, measurement, popperOffsets, referenceOffsets) {
-  var split = str.match(/((?:-|\+)?\d*\.?\d*)(.*)/), value = +split[1], unit = split[2];
+  var split = str.match(/((?:\-|\+)?\d*\.?\d*)(.*)/), value = +split[1], unit = split[2];
   if (!value)
     return str;
   if (unit.indexOf("%") === 0) {
@@ -14313,7 +14338,7 @@ function toValue(str, measurement, popperOffsets, referenceOffsets) {
     return value;
 }
 function parseOffset(offset2, popperOffsets, referenceOffsets, basePlacement) {
-  var offsets = [0, 0], useHeight = ["right", "left"].indexOf(basePlacement) !== -1, fragments = offset2.split(/(\+|-)/).map(function(frag) {
+  var offsets = [0, 0], useHeight = ["right", "left"].indexOf(basePlacement) !== -1, fragments = offset2.split(/(\+|\-)/).map(function(frag) {
     return frag.trim();
   }), divider = fragments.indexOf(find(fragments, function(frag) {
     return frag.search(/,|\s/) !== -1;
@@ -17709,9 +17734,9 @@ var CodeWrapper = styled.div(({ theme }) => ({
             "applying global styles"
           ), ". Once you've got it working for one component, you're ready to make Storybook the home for all of your UI."), react_default.createElement("p", null, "Stories are written in CSF, a format specifically designed to help with UI development. Here's an example:"), react_default.createElement(CodeSnippet, { language: "typescript" }, `// Button.stories.ts
 // Replace your-framework with the framework you are using, e.g. react-vite, nextjs, nextjs-vite, etc.
-import type { Meta, StoryObj } from "@storybook/your-framework";
+import type { Meta, StoryObj } from '@storybook/your-framework';
  
-import { Button } from "./Button";
+import { Button } from './Button';
  
 const meta = {
   // \u{1F447} The component you're working on
@@ -18073,7 +18098,10 @@ export default {
           ),
           content: ({ api }) => react_default.createElement(react_default.Fragment, null, react_default.createElement("p", null, "When you need to test non-visual or particularly complex behavior of a component, add a play function."), react_default.createElement(CodeSnippet, { language: "typescript" }, `// Button.stories.ts
 // Replace your-framework with the framework you are using, e.g. react-vite, nextjs, nextjs-vite, etc.
+import type { Meta, StoryObj } from '@storybook/your-framework';
 import { expect, fn } from 'storybook/test';
+ 
+import { Button } from './Button';
  
 const meta = {
   component: Button,
@@ -18911,6 +18939,17 @@ function memo2(getDeps, fn, opts) {
           str = " " + str;
         return str;
       };
+      console.info(
+        `%c\u23F1 ${pad(resultEndTime, 5)} /${pad(depEndTime, 5)} ms`,
+        `
+            font-size: .6rem;
+            font-weight: bold;
+            color: hsl(${Math.max(
+          0,
+          Math.min(120 - 120 * resultFpsPercentage, 120)
+        )}deg 100% 31%);`,
+        opts?.key
+      );
     }
     return (_d = opts?.onChange) == null || _d.call(opts, result), result;
   }
@@ -24350,6 +24389,7 @@ var { document: document7 } = scope, DEFAULT_MAX_SEARCH_RESULTS = 50, options = 
             ...changes,
             // Prevent clearing the input on blur
             inputValue: state.inputValue,
+            // Return to the tree view after selecting an item
             isOpen: state.inputValue && !state.selectedItem
           };
         case Downshift.stateChangeTypes.mouseUp:
@@ -24813,7 +24853,7 @@ var DEFAULT_HEIGHT = 500, HoverCard2 = styled(Card)({
       outlineAttrs: landmarkProps
     },
     react_default.createElement("h2", { id: "storybook-testing-widget-heading", className: "sb-sr-only" }, "Component tests"),
-    react_default.createElement(Bar2, hasTestProviders ? { onClick: (e2) => toggleCollapsed(e2) } : {}, react_default.createElement(Action, null, hasTestProviders && react_default.createElement(
+    react_default.createElement(Bar2, { ...hasTestProviders ? { onClick: (e2) => toggleCollapsed(e2) } : {} }, react_default.createElement(Action, null, hasTestProviders && react_default.createElement(
       Optional,
       {
         content: react_default.createElement(RunButton, { isRunning, onRunAll }, isRunning ? "Running..." : "Run tests"),
@@ -25487,6 +25527,11 @@ var CHANNEL_EVENT_PREFIX = "UNIVERSAL_STORE:", ProgressState = {
   static create(options2) {
     if (!options2 || typeof options2?.id != "string")
       throw new TypeError("id is required and must be a string, when creating a UniversalStore");
+    options2.debug && console.debug(
+      dedent`[UniversalStore]
+        create`,
+      { options: options2 }
+    );
     let existing = instances.get(options2.id);
     if (existing)
       return console.warn(dedent`UniversalStore with id "${options2.id}" already exists in this environment, re-using existing.

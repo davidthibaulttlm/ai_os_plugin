@@ -3,6 +3,7 @@
 import type { GraphQLClient, ProjectItemNode } from './graphql';
 import { detectDeltas, extractStatus, extractLabels, hashToNumber, type BoardItemState, type DeltaEvent } from './delta';
 import type { AgentService, PrioritizerItem } from './agent';
+import type { RepoManager } from './repoManager';
 import { logger } from './logger';
 import { writeBoardState, type BoardState } from './stateBridge';
 
@@ -26,6 +27,8 @@ export class PollerService {
   private isStopped = false;
   private stateFilePath: string | undefined;
   private agentService: AgentService | undefined;
+  private repoManager: RepoManager | undefined;
+  private lastItems: ProjectItemNode[] = [];
 
   /**
    * Start polling for a specific project.
@@ -110,6 +113,12 @@ export class PollerService {
         });
       }
 
+      if (this.repoManager) {
+        this.checkMergedPrs(items).catch((err) => {
+          logger.error(`PR merge check error: ${(err as Error).message}`);
+        });
+      }
+
       // Notify if there are changes
       if (events.length > 0) {
         this.callback(events);
@@ -122,7 +131,31 @@ export class PollerService {
   }
 
   /**
-   * Update in-memory state with current items.
+   * Check for merged PRs and trigger worktree cleanup.
+   */
+  private async checkMergedPrs(items: ProjectItemNode[]): Promise<void> {
+    logger.debug(`[poller.checkMergedPrs] Checking ${items.length} items for merged PRs`);
+    for (const item of items) {
+      const content = item.content;
+      if (!content) continue;
+      // Check if this is a PR with MERGED state
+      if (content.state === 'MERGED' && content.repository) {
+        const owner = content.repository.owner?.login;
+        const repo = content.repository.name;
+        if (!owner || !repo) continue;
+        logger.info(`[poller.checkMergedPrs] Detected merged PR #${content.number} in ${owner}/${repo}`);
+        try {
+          await this.repoManager!.cleanupWorktree(owner, repo, content.number, content.title);
+          logger.info(`[poller.checkMergedPrs] Cleaned up worktree for merged PR #${content.number}`);
+        } catch (error) {
+          logger.warn(`[poller.checkMergedPrs] Failed to cleanup #${content.number}: ${(error as Error).message} (will retry next poll)`);
+        }
+      }
+    }
+  }
+
+  /**
+   * Store the last poll items for repo availability checks.
    */
   private updateState(items: ProjectItemNode[]): void {
     const newState = new Map<number, BoardItemState>();
@@ -137,6 +170,7 @@ export class PollerService {
     }
 
     this.lastState = newState;
+    this.lastItems = items;
   }
 
   /**
@@ -145,14 +179,20 @@ export class PollerService {
   private feedBoardState(items: ProjectItemNode[]): void {
     if (!this.agentService) return;
 
-    const prioritizerItems: PrioritizerItem[] = items.map((item) => ({
-      id: item.databaseId ?? hashToNumber(item.id),
-      projectItemId: item.id,
-      title: item.content?.title ?? 'Unknown',
-      status: extractStatus(item),
-      labels: extractLabels(item),
-      body: item.content?.body,
-    }));
+    const prioritizerItems: PrioritizerItem[] = items.map((item) => {
+      const owner = item.content?.repository?.owner?.login;
+      const repo = item.content?.repository?.name;
+      return {
+        id: item.databaseId ?? hashToNumber(item.id),
+        projectItemId: item.id,
+        title: item.content?.title ?? 'Unknown',
+        status: extractStatus(item),
+        labels: extractLabels(item),
+        body: item.content?.body,
+        owner,
+        repo,
+      };
+    });
 
     logger.debug(`[poller.feedBoardState] Feeding ${prioritizerItems.length} items to agent service`);
     this.agentService.setBoardState(prioritizerItems);
@@ -167,12 +207,27 @@ export class PollerService {
   }
 
   /**
+   * Set the repo manager reference for PR merge cleanup.
+   */
+  public setRepoManager(repoManager: RepoManager): void {
+    logger.info('[poller.setRepoManager] Setting repo manager reference');
+    this.repoManager = repoManager;
+  }
+
+  /**
+   * Get the last polled items (for repo availability checks).
+   */
+  public getItems(): ProjectItemNode[] {
+    logger.debug(`[poller.getItems] Returning ${this.lastItems.length} items`);
+    return this.lastItems;
+  }
+
+  /**
    * Get the current in-memory state.
    */
   public getState(): Map<number, BoardItemState> {
     return this.lastState;
   }
-
 
   /**
    * Write board state to the shared JSON file for the MCP server.

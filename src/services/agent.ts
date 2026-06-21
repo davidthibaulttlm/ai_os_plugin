@@ -4,7 +4,7 @@ import type { GraphQLClient } from './graphql';
 import { logger } from './logger';
 
 /** Agent trigger hook callback */
-export type AgentTriggerCallback = (issueId: string, columnName: string, title?: string, body?: string) => Promise<void>;
+export type AgentTriggerCallback = (issueId: string, columnName: string, title?: string, body?: string, owner?: string, repo?: string) => Promise<void>;
 
 /** AI-eligible columns for agent work */
 export const AI_ELIGIBLE_COLUMNS = ['AI_CODE', 'AI_SPEC', 'BRAIN_DUMP'] as const;
@@ -20,6 +20,8 @@ export interface PrioritizerItem {
   status: string;
   labels: string[];
   body?: string;
+  owner?: string;
+  repo?: string;
 }
 
 /** Result from selectNextIssue */
@@ -233,9 +235,11 @@ export class AgentService {
       const selectedItem = this.boardItems.find((i) => i.id === issueId);
       const itemTitle = selectedItem?.title;
       const itemBody = selectedItem?.body;
-      logger.info(`[AgentService.startAgent] Invoking callback for #${issueId} in ${targetColumn} title=${itemTitle} body=${itemBody ? 'present' : 'empty'}`);
+      const itemOwner = selectedItem?.owner;
+      const itemRepo = selectedItem?.repo;
+      logger.info(`[AgentService.startAgent] Invoking callback for #${issueId} in ${targetColumn} title=${itemTitle} body=${itemBody ? 'present' : 'empty'} owner=${itemOwner} repo=${itemRepo}`);
       try {
-        await this.callback(String(issueId), targetColumn, itemTitle, itemBody);
+        await this.callback(String(issueId), targetColumn, itemTitle, itemBody, itemOwner, itemRepo);
         logger.info(`[AgentService.startAgent] Callback completed for #${issueId}`);
       } catch (error) {
         logger.error(`[AgentService.startAgent] Error in callback for #${issueId}: ${(error as Error).message}`);
@@ -300,7 +304,9 @@ export class AgentService {
         const selectedItem = this.boardItems.find((i) => String(i.id) === issueId);
         const itemTitle = selectedItem?.title;
         const itemBody = selectedItem?.body;
-        await this.callback(issueId, columnName, itemTitle, itemBody);
+        const itemOwner = selectedItem?.owner;
+        const itemRepo = selectedItem?.repo;
+        await this.callback(issueId, columnName, itemTitle, itemBody, itemOwner, itemRepo);
         logger.info(`[AgentService.onAgentTrigger] Callback completed for issue #${issueId}`);
       } catch (error) {
         logger.error(`[AgentService.onAgentTrigger] Error in callback for issue #${issueId}: ${(error as Error).message}`);

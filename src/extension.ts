@@ -5,6 +5,7 @@ import { StateManager } from './services/state';
 import { GraphQLClient } from './services/graphql';
 import { PollerService } from './services/poller';
 import { AgentService } from './services/agent';
+import { RepoManager } from './services/repoManager';
 import { logger } from './services/logger';
 import { getStateFilePath } from './services/stateBridge';
 import { ClaudeTrigger } from './services/claudeTrigger';
@@ -25,10 +26,12 @@ import {
   setBoardHandlerDeps,
   getPanel,
 } from './commands/boardHandlers';
+import { handleCloneRepos } from './commands/cloneRepos';
 
 let graphql: GraphQLClient | undefined;
 let poller: PollerService | undefined;
 let agentService: AgentService | undefined;
+let repoManager: RepoManager | undefined;
 let stateManager: StateManager | undefined;
 let authServiceInstance: AuthService | undefined;
 let boardTreeProvider: BoardTreeProvider | undefined;
@@ -62,6 +65,19 @@ function registerCommands(context: vscode.ExtensionContext): void {
     }),
     vscode.commands.registerCommand('aiOs.configureClaude', () => handleConfigureClaude(context)),
     vscode.commands.registerCommand('aiOs.disconnectClaude', () => handleDisconnectClaude()),
+    vscode.commands.registerCommand('aiOs.cloneRepos', async () => {
+      logger.info('[aiOs.cloneRepos] Clone repos command invoked');
+      if (!repoManager || !graphql) {
+        vscode.window.showErrorMessage('AI OS not initialized — please authenticate with GitHub first');
+        return;
+      }
+      const boardId = stateManager?.getLastBoardId();
+      if (!boardId) {
+        vscode.window.showErrorMessage('No board is currently open');
+        return;
+      }
+      await handleCloneRepos(repoManager, graphql, boardId);
+    }),
   );
   registerAutoWorkCommands();
   registerStartAgentCommand();
@@ -163,13 +179,18 @@ async function initServices(context: vscode.ExtensionContext): Promise<void> {
   graphql = new GraphQLClient(token);
   poller = new PollerService();
   agentService = new AgentService();
+
+  const reposDir = vscode.workspace.getConfiguration('aiOs').get<string>('reposDir', '~/ai-os-repos');
+  repoManager = new RepoManager(reposDir, token);
+  logger.info(`[initServices] RepoManager initialized with reposDir=${repoManager.getReposDir()}`);
+
   setAuthService(authServiceInstance!);
 
   agentService.setGraphql(graphql);
   poller.setAgentService(agentService);
+  poller.setRepoManager(repoManager);
 
-  // Wire board handler dependencies
-  setBoardHandlerDeps(getPanel(), graphql, poller, agentService, stateManager, context.globalStorageUri.fsPath, boardTreeProvider);
+  setBoardHandlerDeps(getPanel(), graphql, poller, agentService, stateManager, context.globalStorageUri.fsPath, boardTreeProvider, repoManager);
 
   claudeTrigger = new ClaudeTrigger();
   claudeTrigger.setCallback(async (event) => {
@@ -185,24 +206,51 @@ async function initServices(context: vscode.ExtensionContext): Promise<void> {
     getPanel()?.notifyWorkingStatus(issueNumber, active);
   });
 
-  // When Claude process exits, call finishAgent to clear WIP and auto-trigger next issue
   setOnFinishCallback(async (issueNumber: number) => {
     logger.info(`[initServices] Claude finished for #${issueNumber} — calling finishAgent`);
     await agentService!.finishAgent(String(issueNumber));
   });
 
-  agentService.setCallback(async (issueId: string, columnName: string, title?: string, body?: string) => {
-    logger.info(`[initServices] Agent callback for #${issueId} in ${columnName} title=${title} body=${body ? String(body.length) + 'chars' : 'empty'}`);
+  setupAgentCallback(token);
+
+  _globalStorageUri = context.globalStorageUri.fsPath;
+  registerMcpProvider(context, token);
+  showOnboardingNotification();
+  loadProjectsAuto(context);
+}
+
+async function setupAgentCallback(token: string): Promise<void> {
+  logger.info('[setupAgentCallback] Setting up agent callback');
+  agentService!.setCallback(async (issueId: string, columnName: string, title?: string, body?: string, owner?: string, repo?: string) => {
+    logger.info(`[setupAgentCallback] Agent callback for #${issueId} in ${columnName} title=${title} body=${body ? String(body.length) + 'chars' : 'empty'} owner=${owner} repo=${repo}`);
     vscode.window.showInformationMessage(
       `AI Agent triggered for issue #${issueId} in column ${columnName}`
     );
     getPanel()?.notifyAgentProgress(issueId, columnName);
 
-    // Spawn Claude to work on the issue
-    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-    if (!workspaceRoot) {
-      logger.warn('[initServices] No workspace folder — cannot spawn Claude');
-      return;
+    let workDir: string | undefined;
+    if (owner && repo && repoManager) {
+      const issueNumber = parseInt(issueId, 10);
+      const issueTitle = title ?? `Issue #${issueId}`;
+      logger.info(`[setupAgentCallback] Creating/updating worktree for ${owner}/${repo} #${issueNumber}`);
+      const worktreeResult = await repoManager.createWorktree(owner, repo, issueNumber, issueTitle);
+      if (worktreeResult.success && worktreeResult.path) {
+        await repoManager.updateWorktree(worktreeResult.path);
+        workDir = worktreeResult.path;
+        logger.info(`[setupAgentCallback] Using worktree: ${workDir}`);
+      } else {
+        logger.warn(`[setupAgentCallback] Failed to create worktree: ${worktreeResult.error}`);
+        vscode.window.showWarningMessage(`Failed to create worktree: ${worktreeResult.error}`);
+      }
+    }
+
+    if (!workDir) {
+      workDir = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+      if (!workDir) {
+        logger.warn('[setupAgentCallback] No workspace folder or worktree — cannot spawn Claude');
+        vscode.window.showErrorMessage('No workspace folder. Clone repos first or open a workspace.');
+        return;
+      }
     }
 
     const triggerEvent = {
@@ -212,14 +260,8 @@ async function initServices(context: vscode.ExtensionContext): Promise<void> {
       column: columnName,
       reason: 'assigned' as const,
     };
-    await claudeTrigger!.handleTrigger(triggerEvent, token, workspaceRoot);
-    // finishAgent is called by setOnFinishCallback when Claude process exits
+    await claudeTrigger!.handleTrigger(triggerEvent, token, workDir);
   });
-
-  _globalStorageUri = context.globalStorageUri.fsPath;
-  registerMcpProvider(context, token);
-  showOnboardingNotification();
-  loadProjectsAuto(context);
 }
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {

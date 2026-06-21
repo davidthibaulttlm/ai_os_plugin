@@ -68,7 +68,7 @@ describe('AgentService.finishAgent', () => {
     agent.setCallback(callback);
 
     await agent.finishAgent('1');
-    expect(callback).toHaveBeenCalledWith('2', 'AI_SPEC', 'Next', undefined);
+    expect(callback).toHaveBeenCalledWith('2', 'AI_SPEC', 'Next', undefined, undefined, undefined);
   });
 
   it('does NOT auto-trigger when next is same issue', async () => {
@@ -88,7 +88,7 @@ describe('AgentService.finishAgent', () => {
     agent.setCallback(callback);
 
     await agent.finishAgent('1');
-    expect(callback).toHaveBeenCalledWith('2', 'AI_SPEC', 'Different', undefined);
+    expect(callback).toHaveBeenCalledWith('2', 'AI_SPEC', 'Different', undefined, undefined, undefined);
   });
 
   it('does nothing when no next issue available', async () => {
@@ -119,21 +119,21 @@ describe('AgentService.onAgentTrigger', () => {
     const callback = vi.fn().mockResolvedValue(undefined);
     agent.setCallback(callback);
     await agent.onAgentTrigger('42', 'AI_SPEC');
-    expect(callback).toHaveBeenCalledWith('42', 'AI_SPEC', undefined, undefined);
+    expect(callback).toHaveBeenCalledWith('42', 'AI_SPEC', undefined, undefined, undefined, undefined);
   });
 
   it('triggers for AI_CODE', async () => {
     const callback = vi.fn().mockResolvedValue(undefined);
     agent.setCallback(callback);
     await agent.onAgentTrigger('42', 'AI_CODE');
-    expect(callback).toHaveBeenCalledWith('42', 'AI_CODE', undefined, undefined);
+    expect(callback).toHaveBeenCalledWith('42', 'AI_CODE', undefined, undefined, undefined, undefined);
   });
 
   it('triggers for BRAIN_DUMP', async () => {
     const callback = vi.fn().mockResolvedValue(undefined);
     agent.setCallback(callback);
     await agent.onAgentTrigger('42', 'BRAIN_DUMP');
-    expect(callback).toHaveBeenCalledWith('42', 'BRAIN_DUMP', undefined, undefined);
+    expect(callback).toHaveBeenCalledWith('42', 'BRAIN_DUMP', undefined, undefined, undefined, undefined);
   });
 
   it('does NOT trigger for HUMAN columns', async () => {

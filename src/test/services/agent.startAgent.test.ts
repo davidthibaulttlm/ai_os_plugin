@@ -17,7 +17,7 @@ describe('AgentService.startAgent', () => {
     const result = await agent.startAgent();
     expect(result.started).toBe(true);
     expect(result.issueId).toBe(42);
-    expect(callback).toHaveBeenCalledWith('42', 'AI_SPEC', 'Feature', undefined);
+    expect(callback).toHaveBeenCalledWith('42', 'AI_SPEC', 'Feature', undefined, undefined, undefined);
   });
 
   it('passes issue body to callback', async () => {
@@ -27,7 +27,7 @@ describe('AgentService.startAgent', () => {
     agent.setCallback(callback);
 
     await agent.startAgent();
-    expect(callback).toHaveBeenCalledWith('42', 'AI_SPEC', 'Feature', body);
+    expect(callback).toHaveBeenCalledWith('42', 'AI_SPEC', 'Feature', body, undefined, undefined);
   });
 
   it('returns busy when agent already working', async () => {
@@ -59,7 +59,7 @@ describe('AgentService.startAgent', () => {
     expect(result.started).toBe(true);
     expect(result.issueId).toBe(5);
     expect(mockGraphql.moveToColumn).toHaveBeenCalledWith('project-123', 'PVTI_test5', 'AI_SPEC');
-    expect(callback).toHaveBeenCalledWith('5', 'AI_SPEC', 'Idea', undefined);
+    expect(callback).toHaveBeenCalledWith('5', 'AI_SPEC', 'Idea', undefined, undefined, undefined);
   });
 
   it('aborts when auto-move fails', async () => {
