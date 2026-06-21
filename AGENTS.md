@@ -1,19 +1,19 @@
 # AGENTS.md
 
-This file provides guidance to agents when working with code in this repository.
+Guidance for agents working with code in this repo.
 
 ## Project: AI OS — VS Code Extension for GitHub Projects v2 Kanban Automation
 
-**Product**: Self-hosted VS Code extension that connects to a user's GitHub account and automates kanban workflows on GitHub Projects v2 boards. AI agents auto-work issues entering `AI_SPEC` / `AI_CODE` columns.
+**Product**: Self-hosted VS Code extension. Connects to user GitHub account, automates kanban workflows on GitHub Projects v2 boards. AI agents auto-work issues entering `AI_SPEC` / `AI_CODE` columns.
 
 ## Critical Non-Obvious Facts
 
-- **GitHub Projects v2 has NO REST API** — all project operations use GraphQL only (`httpx` async).
-- **Polling model**: 30s GraphQL polling interval (not webhooks). Outbound actions are instant mutations; inbound changes have ~30s latency.
+- **GitHub Projects v2 has NO REST API** — all project ops use GraphQL only (`httpx` async).
+- **Polling model**: 30s GraphQL polling interval (not webhooks). Outbound actions = instant mutations; inbound changes ~30s latency.
 - **Fixed 6-column kanban template**: `BRAIN_DUMP` → `AI_SPEC` → `HUMAN_SPEC_REVIEW` → `AI_CODE` → `HUMAN_CODE_REVIEW` → `PR_DONE`. Not configurable.
-- **Auth via `gh` CLI token** — reuses existing CLI auth, no separate OAuth flow needed for extension.
-- **One GitHub Project = one kanban board aggregating issues/PRs from many repos**. We poll the project, not individual repos.
-- **NO DATABASE** — All state lives in VS Code's `Memento` API (`context.globalState`) and in-memory. Delta detection compares in-memory poll results.
+- **Auth via `gh` CLI token** — reuses CLI auth, no separate OAuth flow for extension.
+- **One GitHub Project = one kanban board** aggregating issues/PRs from many repos. Poll project, not individual repos.
+- **NO DATABASE** — all state in VS Code `Memento` API (`context.globalState`) and in-memory. Delta detection compares in-memory poll results.
 
 ## Tech Stack
 
@@ -28,12 +28,12 @@ This file provides guidance to agents when working with code in this repository.
 
 ## CRITICAL: Tailwind CSS v4 Configuration
 
-**Tailwind v4 uses CSS-first configuration. `tailwind.config.js` is IGNORED for colors/theme.**
+**Tailwind v4 uses CSS-first config. `tailwind.config.js` IGNORED for colors/theme.**
 
 - **Colors/theme MUST be defined in CSS via `@theme` directive** in `webview-ui/src/styles/index.css`.
 - Format: `--color-vscode-sideBar-background: var(--vscode-sideBar-background);`
 - Usage in JSX: `bg-vscode-sideBar-background` (Tailwind auto-generates utility classes from `@theme` vars).
-- **DO NOT use `tailwind.config.js` for colors** — it will NOT work. The file exists only for content paths.
+- **DO NOT use `tailwind.config.js` for colors** — won't work. File exists only for content paths.
 - VS Code theme CSS variables use **camelCase**: `sideBar.background` → `--vscode-sideBar-background` (NOT `--vscode-sidebar-background`).
 - Reference: https://tailwindcss.com/docs/theme and https://code.visualstudio.com/api/references/theme-color
 
@@ -52,7 +52,7 @@ code --extensionDevelopmentPath=$PWD  # Load extension in VS Code
 2. Async throughout: `httpx`, async FastAPI
 3. Delta detection via in-memory diffing (compare each poll result against last-known state)
 4. Fixed kanban template — not user-configurable
-5. VS Code extension eliminates webhook infrastructure (no tunnels needed)
+5. VS Code extension eliminates webhook infrastructure (no tunnels)
 6. No database — state persists via VS Code Memento and in-memory only
 
 ## MANDATORY: Logger in Every File
@@ -73,30 +73,26 @@ code --extensionDevelopmentPath=$PWD  # Load extension in VS Code
 
 ### Logging Checklist (Both Layers)
 
-- **ALWAYS log at the START of every method**: `logger.info('[ClassName.methodName] Starting...')`
-- **ALWAYS log key parameters**: `logger.info('[ClassName.methodName] param=value')`
+- **ALWAYS log at START of every method**: `logger.info('[ClassName.methodName] Starting...')`
+- **ALWAYS log key params**: `logger.info('[ClassName.methodName] param=value')`
 - **ALWAYS log results**: `logger.info('[ClassName.methodName] Result: ...')`
 - **ALWAYS log errors**: `logger.error('[ClassName.methodName] Error: ...')`
 - **ALWAYS log warnings**: `logger.warn('[ClassName.methodName] Warning: ...')`
 - **Use `logger.debug`** for verbose details, `logger.info` for user actions, `logger.warn` for recoverable issues, `logger.error` for failures
-- **NEVER use `console.log`** — use `logger` exclusively. Both loggers output to VS Code's Output panel (View → Output → AI OS).
+- **NEVER use `console.log`** — use `logger` only. Both loggers output to VS Code Output panel (View → Output → AI OS).
 
-**This rule applies to 100% of files without exception.**
+**Rule applies to 100% of files. No exception.**
 
 ## MANDATORY: One Test File Per Method
 
-**EVERY method gets its own test file. NEVER clump multiple methods into one test file.**
+**EVERY method gets own test file. NEVER clump multiple methods into one test file.**
 
 - **Naming**: `src/test/services/<service>.<method>.test.ts` (e.g., `agent.selectNextIssue.test.ts`)
 - **Constants/static methods**: `src/test/services/<service>.constants.test.ts` or `<service>.<staticMethod>.test.ts`
-- **MAX 400 LINES per test file** — if a test file exceeds 400 lines, split it further
+- **MAX 400 LINES per test file** — if exceeds 400 lines, split further
 - **Integration tests**: `src/test/integration/*.integration.test.ts` — one file per command flow
-- **90% code coverage** on all new/modified files is mandatory
+- **90% code coverage** on all new/modified files mandatory
 - Mock `vscode` API with `vi.mock('vscode', ...)` in unit tests
 - Mock `GraphQLClient` with `vi.fn()` spies
 
-**This rule applies to 100% of test files without exception.**
-
-## Full Context
-
-All detailed context is in [`CONTEXT_FOR_NEW_SESSION.md`](CONTEXT_FOR_NEW_SESSION.md) — read before starting work.
+**Rule applies to 100% of test files. No exception.**
