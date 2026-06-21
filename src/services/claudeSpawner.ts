@@ -18,6 +18,13 @@ const activeProcesses = new Map<number, ClaudeProcessEntry>();
 /** Optional callback to notify the webview about working status changes */
 let workingStatusCallback: ((issueNumber: number, active: boolean) => void) | undefined;
 
+/** Optional callback called when Claude process exits — used to trigger finishAgent */
+let onFinishCallback: ((issueNumber: number) => void) | undefined;
+
+export function setOnFinishCallback(cb: (issueNumber: number) => void): void {
+  onFinishCallback = cb;
+}
+
 export function setWorkingStatusCallback(cb: (issueNumber: number, active: boolean) => void): void {
   workingStatusCallback = cb;
 }
@@ -89,6 +96,9 @@ export function spawnClaude(
     }
 
     logger.info(`Claude process for #${issueNumber} exited with code ${code}`);
+
+    // Notify agent service that Claude finished — it will clear WIP and auto-trigger next issue
+    onFinishCallback?.(issueNumber);
   });
 
   child.on('error', (error) => {
@@ -96,6 +106,9 @@ export function spawnClaude(
     workingStatusCallback?.(issueNumber, false);
     logger.error(`Claude process error for #${issueNumber}: ${error.message}`);
     vscode.window.showErrorMessage(`Failed to start Claude: ${error.message}`);
+
+    // On error, still clear WIP so the agent can work on the next issue
+    onFinishCallback?.(issueNumber);
   });
 
   activeProcesses.set(issueNumber, {

@@ -255,13 +255,23 @@ export class AgentService {
       logger.warn(`[AgentService.finishAgent] WIP mismatch — currentWip=${this.currentWip}, requested=${issueId}`);
     }
 
-    // Auto-trigger next issue
-    logger.info('[AgentService.finishAgent] Auto-triggering next issue');
-    try {
-      const result = await this.startAgent();
-      logger.info(`[AgentService.finishAgent] Auto-trigger result: started=${result.started}, issueId=${result.issueId}, reason=${result.reason}`);
-    } catch (error) {
-      logger.error(`[AgentService.finishAgent] Error auto-triggering next: ${(error as Error).message}`);
+    // Auto-trigger next issue — but NOT the same one that just finished
+    logger.info('[AgentService.finishAgent] Checking for next issue');
+    const next = this.selectNextIssue();
+    if (next && String(next.issueId) === issueId) {
+      logger.info(`[AgentService.finishAgent] Next selection is same issue #${issueId} — skipping auto-trigger (board state will update on next poll)`);
+      return;
+    }
+    if (next) {
+      logger.info(`[AgentService.finishAgent] Auto-triggering next issue #${next.issueId}`);
+      try {
+        const result = await this.startAgent();
+        logger.info(`[AgentService.finishAgent] Auto-trigger result: started=${result.started}, issueId=${result.issueId}, reason=${result.reason}`);
+      } catch (error) {
+        logger.error(`[AgentService.finishAgent] Error auto-triggering next: ${(error as Error).message}`);
+      }
+    } else {
+      logger.info('[AgentService.finishAgent] No next issue available');
     }
   }
 

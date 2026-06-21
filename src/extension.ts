@@ -8,7 +8,7 @@ import { AgentService } from './services/agent';
 import { logger } from './services/logger';
 import { getStateFilePath } from './services/stateBridge';
 import { ClaudeTrigger } from './services/claudeTrigger';
-import { killAllClaudeProcesses, setWorkingStatusCallback } from './services/claudeSpawner';
+import { killAllClaudeProcesses, setWorkingStatusCallback, setOnFinishCallback } from './services/claudeSpawner';
 import {
   handleConfigureClaude,
   handleDisconnectClaude,
@@ -18,7 +18,6 @@ import {
 import {
   handleOpenBoard,
   handleAssignAgent,
-  handleStartAgent,
   handleFetchBoards,
   handleSelectBoard,
   handleOpenBoardFromTree,
@@ -63,59 +62,90 @@ function registerCommands(context: vscode.ExtensionContext): void {
     }),
     vscode.commands.registerCommand('aiOs.configureClaude', () => handleConfigureClaude(context)),
     vscode.commands.registerCommand('aiOs.disconnectClaude', () => handleDisconnectClaude()),
-    vscode.commands.registerCommand('aiOs.enableAutoWork', () => {
-      vscode.workspace.getConfiguration('aiOs').update('autoWorkAssignments', true, vscode.ConfigurationTarget.Global);
-      vscode.window.showInformationMessage('Auto-work enabled. Claude will work on triggered issues.');
-    }),
-    vscode.commands.registerCommand('aiOs.toggleAutoWork', () => {
-      const config = vscode.workspace.getConfiguration('aiOs');
-      const current = config.get<boolean>('autoWorkAssignments', false);
-      config.update('autoWorkAssignments', !current, vscode.ConfigurationTarget.Global);
-      vscode.window.showInformationMessage(`Auto-work ${!current ? 'enabled' : 'disabled'}`);
-      boardTreeProvider?.refresh();
-    }),
-    vscode.commands.registerCommand('aiOs.toggleConfirmFirst', () => {
-      const config = vscode.workspace.getConfiguration('aiOs');
-      const current = config.get<boolean>('autoWorkConfirmFirst', true);
-      config.update('autoWorkConfirmFirst', !current, vscode.ConfigurationTarget.Global);
-      vscode.window.showInformationMessage(`Confirm-first ${!current ? 'enabled' : 'disabled'}`);
-      boardTreeProvider?.refresh();
-    }),
-    vscode.commands.registerCommand('aiOs.setMaxTurns', async () => {
-      const current = vscode.workspace.getConfiguration('aiOs').get<number>('autoWorkMaxTurns', 25);
-      const value = await vscode.window.showInputBox({
-        prompt: 'Set max turns for Claude Code (1-100)',
-        value: String(current),
-        validateInput: (v) => {
-          const n = parseInt(v, 10);
-          if (isNaN(n) || n < 1 || n > 100) return 'Must be 1-100';
-          return null;
-        },
-      });
-      if (value) {
-        vscode.workspace.getConfiguration('aiOs').update('autoWorkMaxTurns', parseInt(value, 10), vscode.ConfigurationTarget.Global);
-        boardTreeProvider?.refresh();
-      }
-    }),
-    vscode.commands.registerCommand('aiOs.setAllowedTools', async () => {
-      const current = vscode.workspace.getConfiguration('aiOs').get<string>('autoWorkAllowedTools', '');
-      const value = await vscode.window.showInputBox({
-        prompt: 'Set allowed tools (comma-separated, empty = all)',
-        value: current,
-        placeHolder: 'fs_read,fs_write,Bash(git *)',
-      });
-      if (value !== undefined) {
-        vscode.workspace.getConfiguration('aiOs').update('autoWorkAllowedTools', value, vscode.ConfigurationTarget.Global);
-        boardTreeProvider?.refresh();
-      }
-    }),
-    vscode.commands.registerCommand('aiOs.resetOnboarding', () => {
-      vscode.workspace.getConfiguration('aiOs').update('onboardingDismissed', false, vscode.ConfigurationTarget.Global);
-      vscode.window.showInformationMessage('Onboarding reset. Reload the extension to see the connect dialog.');
-      logger.info('[aiOs.resetOnboarding] Onboarding reset by user');
-    }),
-    vscode.commands.registerCommand('aiOs.startAgent', () => handleStartAgent()),
   );
+  registerAutoWorkCommands();
+  registerStartAgentCommand();
+}
+
+function registerAutoWorkCommands(): void {
+  vscode.commands.registerCommand('aiOs.enableAutoWork', () => {
+    vscode.workspace.getConfiguration('aiOs').update('autoWorkAssignments', true, vscode.ConfigurationTarget.Global);
+    vscode.window.showInformationMessage('Auto-work enabled. Claude will work on triggered issues.');
+  });
+  vscode.commands.registerCommand('aiOs.toggleAutoWork', () => {
+    const config = vscode.workspace.getConfiguration('aiOs');
+    const current = config.get<boolean>('autoWorkAssignments', false);
+    config.update('autoWorkAssignments', !current, vscode.ConfigurationTarget.Global);
+    vscode.window.showInformationMessage(`Auto-work ${!current ? 'enabled' : 'disabled'}`);
+    boardTreeProvider?.refresh();
+  });
+  vscode.commands.registerCommand('aiOs.toggleConfirmFirst', () => {
+    const config = vscode.workspace.getConfiguration('aiOs');
+    const current = config.get<boolean>('autoWorkConfirmFirst', true);
+    config.update('autoWorkConfirmFirst', !current, vscode.ConfigurationTarget.Global);
+    vscode.window.showInformationMessage(`Confirm-first ${!current ? 'enabled' : 'disabled'}`);
+    boardTreeProvider?.refresh();
+  });
+  vscode.commands.registerCommand('aiOs.setMaxTurns', async () => {
+    const current = vscode.workspace.getConfiguration('aiOs').get<number>('autoWorkMaxTurns', 25);
+    const value = await vscode.window.showInputBox({
+      prompt: 'Set max turns for Claude Code (1-100)',
+      value: String(current),
+      validateInput: (v) => {
+        const n = parseInt(v, 10);
+        if (isNaN(n) || n < 1 || n > 100) return 'Must be 1-100';
+        return null;
+      },
+    });
+    if (value) {
+      vscode.workspace.getConfiguration('aiOs').update('autoWorkMaxTurns', parseInt(value, 10), vscode.ConfigurationTarget.Global);
+      boardTreeProvider?.refresh();
+    }
+  });
+  vscode.commands.registerCommand('aiOs.setAllowedTools', async () => {
+    const current = vscode.workspace.getConfiguration('aiOs').get<string>('autoWorkAllowedTools', '');
+    const value = await vscode.window.showInputBox({
+      prompt: 'Set allowed tools (comma-separated, empty = all)',
+      value: current,
+      placeHolder: 'fs_read,fs_write,Bash(git *)',
+    });
+    if (value !== undefined) {
+      vscode.workspace.getConfiguration('aiOs').update('autoWorkAllowedTools', value, vscode.ConfigurationTarget.Global);
+      boardTreeProvider?.refresh();
+    }
+  });
+  vscode.commands.registerCommand('aiOs.resetOnboarding', () => {
+    vscode.workspace.getConfiguration('aiOs').update('onboardingDismissed', false, vscode.ConfigurationTarget.Global);
+    vscode.window.showInformationMessage('Onboarding reset. Reload the extension to see the connect dialog.');
+    logger.info('[aiOs.resetOnboarding] Onboarding reset by user');
+  });
+}
+
+function registerStartAgentCommand(): void {
+  vscode.commands.registerCommand('aiOs.startAgent', async () => {
+    logger.info('[aiOs.startAgent] Start Agent command invoked');
+    if (!agentService) {
+      vscode.window.showErrorMessage('AI OS not initialized — please authenticate with GitHub first');
+      return;
+    }
+    try {
+      const result = await agentService.startAgent();
+      if (result.started && result.issueId) {
+        vscode.window.showInformationMessage(`AI Agent started for issue #${result.issueId}`);
+      } else if (result.reason === 'busy') {
+        vscode.window.showInformationMessage(`Agent is busy working on #${agentService.getCurrentWip()}`);
+      } else if (result.reason === 'empty') {
+        vscode.window.showInformationMessage('No issues available for AI agent');
+      } else if (result.reason === 'auto_move_failed') {
+        vscode.window.showWarningMessage(
+          `Failed to auto-move issue #${result.issueId} from BRAIN_DUMP to AI_SPEC`
+        );
+      }
+    } catch (error) {
+      logger.error(`[aiOs.startAgent] Error: ${(error as Error).message}`);
+      vscode.window.showErrorMessage(`Failed to start agent: ${(error as Error).message}`);
+    }
+  });
 }
 
 async function initServices(context: vscode.ExtensionContext): Promise<void> {
@@ -155,13 +185,34 @@ async function initServices(context: vscode.ExtensionContext): Promise<void> {
     getPanel()?.notifyWorkingStatus(issueNumber, active);
   });
 
+  // When Claude process exits, call finishAgent to clear WIP and auto-trigger next issue
+  setOnFinishCallback(async (issueNumber: number) => {
+    logger.info(`[initServices] Claude finished for #${issueNumber} — calling finishAgent`);
+    await agentService!.finishAgent(String(issueNumber));
+  });
+
   agentService.setCallback(async (issueId: string, columnName: string) => {
     logger.info(`[initServices] Agent callback for #${issueId} in ${columnName}`);
     vscode.window.showInformationMessage(
       `AI Agent triggered for issue #${issueId} in column ${columnName}`
     );
     getPanel()?.notifyAgentProgress(issueId, columnName);
-    await agentService!.finishAgent(issueId);
+
+    // Spawn Claude to work on the issue
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (!workspaceRoot) {
+      logger.warn('[initServices] No workspace folder — cannot spawn Claude');
+      return;
+    }
+
+    const triggerEvent = {
+      issueNumber: parseInt(issueId, 10),
+      title: `Issue #${issueId}`,
+      column: columnName,
+      reason: 'assigned' as const,
+    };
+    await claudeTrigger!.handleTrigger(triggerEvent, token, workspaceRoot);
+    // finishAgent is called by setOnFinishCallback when Claude process exits
   });
 
   _globalStorageUri = context.globalStorageUri.fsPath;
