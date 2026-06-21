@@ -215,6 +215,7 @@ npm run test:watch
 - [ ] Templates de colonnes kanban personnalisés
 - [ ] Support multi-tableau avec vue tableau de bord
 - [ ] Nombre configurable de sessions d'agent parallèles
+- [ ] Système de mémoire pour l'amélioration continue — se souvient des problèmes récurrents et adapte automatiquement le flux de travail
 - [ ] Historique et relecture des conversations d'agent
 - [ ] Publication sur le marketplace VS Code
 

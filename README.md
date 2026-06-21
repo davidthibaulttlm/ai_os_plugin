@@ -215,6 +215,7 @@ npm run test:watch
 - [ ] Custom kanban column templates
 - [ ] Multi-board support with dashboard view
 - [ ] Configurable number of parallel agent sessions
+- [ ] Memory system for continuous improvement — remembers recurring problems and adapts the workflow automatically
 - [ ] Agent conversation history and replay
 - [ ] VS Code marketplace publication
 
