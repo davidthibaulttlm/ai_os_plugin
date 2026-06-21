@@ -199,7 +199,6 @@ export async function handleSelectBoard(): Promise<void> {
     await stateManager?.setLastBoardId(project.id);
     if (poller) {
       agentService?.setProjectId(project.id);
-      poller.stop();
       poller.start(graphql, project.id, createPollerCallback(), getStateFilePath(_globalStorageUri!));
     }
     vscode.window.showInformationMessage(`Board "${project.title}" selected and polling started`);
@@ -231,7 +230,6 @@ export async function handleOpenBoardFromTree(
   });
   if (poller) {
     agentService?.setProjectId(boardId);
-    poller.stop();
     poller.start(graphql, boardId, createPollerCallback(), getStateFilePath(context.globalStorageUri.fsPath));
   }
   vscode.window.showInformationMessage(`Opened board "${boardName}"`);

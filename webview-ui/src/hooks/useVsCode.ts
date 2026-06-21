@@ -83,10 +83,7 @@ export function onMessage<T>(type: string, handler: (data: T) => void): void {
       handler(message.data as T);
     }
   };
-  if (!messageHandlers.has(type)) {
-    messageHandlers.set(type, []);
-  }
-  messageHandlers.get(type)!.push(wrapped);
+  messageHandlers.set(type, [wrapped]);
 }
 
 /**
