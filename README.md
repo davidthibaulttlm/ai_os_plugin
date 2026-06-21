@@ -208,3 +208,21 @@ MIT License — see [LICENSE](LICENSE) for details.
 - [GitHub Projects v2 Docs](https://docs.github.com/en/issues/planning-and-tracking-with-projects)
 - [VS Code Extension API](https://code.visualstudio.com/api)
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview)
+
+## 🏠 Built Locally, Built Open
+
+This project was developed entirely on local hardware — no cloud APIs, no proprietary services. The AI assistant used throughout this project runs as **Qwen3.6-27B** via **llama.cpp**, fully self-hosted and offline-capable.
+
+I firmly believe in **local and autonomous AI governance**: your data stays on your machine, your models run on your terms, and you maintain full control over your development environment.
+
+This project is a testament to the power of **open-source, open-weights AI**. When tools are transparent, auditable, and community-driven, everyone wins.
+
+### 🙏 Acknowledgments
+
+This project would not exist without these incredible open-source projects:
+
+- **[Unsloth](https://huggingface.co/unsloth/Qwen3.6-27B-MTP-GGUF)** — For the Qwen3.6-27B-MTP GGUF model and their amazing work on efficient fine-tuning and model optimization
+- **[llama.cpp](https://github.com/ggml-org/llama.cpp)** — For making it possible to run large language models locally on consumer hardware with blazing speed
+- **[Zoo Code](https://github.com/Zoo-Code-Org/Zoo-Code)** — For the AI-powered coding assistant that helped build this project (fork of Roo Code)
+
+Made with ❤️ and open weights.
