@@ -217,12 +217,12 @@ I firmly believe in **local and autonomous AI governance**: your data stays on y
 
 This project is a testament to the power of **open-source, open-weights AI**. When tools are transparent, auditable, and community-driven, everyone wins.
 
-### 🙏 Acknowledgments
+## 🙏 Acknowledgments
 
 This project would not exist without these incredible open-source projects:
 
 - **[Unsloth](https://huggingface.co/unsloth/Qwen3.6-27B-MTP-GGUF)** — For the Qwen3.6-27B-MTP GGUF model and their amazing work on efficient fine-tuning and model optimization
 - **[llama.cpp](https://github.com/ggml-org/llama.cpp)** — For making it possible to run large language models locally on consumer hardware with blazing speed
-- **[Zoo Code](https://github.com/Zoo-Code-Org/Zoo-Code)** — For the AI-powered coding assistant that helped build this project (fork of Roo Code)
+- **[Zoo Code](https://github.com/Zoo-Code-Org/Zoo-Code)** — For the AI-powered coding assistant that helped build this project (fork of [Roo Code](https://github.com/RooCodeInc/Roo-Code))
 
 Made with ❤️ and open weights.
