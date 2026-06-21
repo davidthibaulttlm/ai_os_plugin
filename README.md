@@ -82,12 +82,24 @@ node --version
 gh --version
 gh auth login
 
+# Claude Code CLI — mandatory for agent execution
+claude --version
+
 # VS Code
 code --version
 
 # vsce (for packaging/publishing)
 npm install -g @vscode/vsce
 ```
+
+### Optional: MCP Integration
+
+The extension exposes an **MCP server** that Claude can connect to for querying kanban board state. You can use it with:
+
+- **Claude Code CLI** — Configure the MCP server in your Claude settings
+- **Claude VS Code Extension** — Connect Claude to the AI OS MCP server to interrogate board data directly from the editor
+
+MCP integration is **optional** — the extension works standalone without it.
 
 ### Development Setup
 
