@@ -27,6 +27,7 @@
     "onCommand:aiOs.configureClaude",
     "onCommand:aiOs.disconnectClaude",
     "onCommand:aiOs.enableAutoWork",
+    "onCommand:aiOs.cloneRepos",
     "onView:aiOs.boardSelector",
     "onLmTool:aiOsGetKanbanBoard",
     "onLmTool:aiOsGetColumnIssues",
@@ -102,6 +103,12 @@
         "title": "Start Agent",
         "category": "AI OS",
         "icon": "$(play)"
+      },
+      {
+        "command": "aiOs.cloneRepos",
+        "title": "Clone Project Repos",
+        "category": "AI OS",
+        "icon": "$(repo)"
       }
     ],
     "configuration": {
@@ -137,6 +144,11 @@
           "type": "boolean",
           "default": true,
           "description": "Show a confirmation notification before spawning Claude Code to work on an issue."
+        },
+        "aiOs.reposDir": {
+          "type": "string",
+          "default": "~/ai-os-repos",
+          "description": "Directory where GitHub repositories are cloned for agent work. Supports ~ for home directory."
         }
       }
     },
@@ -183,6 +195,11 @@
         },
         {
           "command": "aiOs.openSettings",
+          "when": "view == aiOs.boardSelector",
+          "group": "navigation"
+        },
+        {
+          "command": "aiOs.cloneRepos",
           "when": "view == aiOs.boardSelector",
           "group": "navigation"
         }
