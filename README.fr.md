@@ -3,7 +3,8 @@
 <p align="center">
   <a href="README.md">English</a> · <a href="README.fr.md">Français</a>
 </p>
-<hr>
+
+---
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![VS Code](https://img.shields.io/badge/VS%20Code-1.85%2B-blue.svg)](https://code.visualstudio.com/)
