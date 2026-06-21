@@ -181,6 +181,40 @@ npm run test:watch
 5. **VS Code extension** — Eliminates webhook infrastructure (no tunnels needed)
 6. **No database** — State persists via VS Code Memento and in-memory only
 
+## 🗺️ Roadmap
+
+### ✅ Completed
+
+- [x] GitHub Projects v2 integration via GraphQL
+- [x] Interactive kanban board with drag-and-drop
+- [x] Claude Code agent spawning (CLI / extension / app)
+- [x] Auto-trigger on column move (AI_SPEC / AI_CODE)
+- [x] Git worktree management for isolated agent work
+- [x] Agent prioritizer (bugs first, then priority/age)
+- [x] Delta detection for external board changes
+- [x] 30s GraphQL polling for real-time sync
+- [x] MCP server for board state interrogation
+- [x] Settings panel (auto-work columns, repos dir, agent limits)
+- [x] Board tree view in activity bar
+- [x] `gh` CLI authentication
+
+### 🚧 In Progress — MVP
+
+- [ ] Finalize AI agent sandbox (worktree isolation, cleanup on failure)
+- [ ] Coding retroactions (agent writes code → stages → commits → pushes → creates PR → advances card)
+- [ ] Agent output streaming to webview in real-time
+- [ ] Error recovery when agent fails mid-task
+
+### 📋 Planned
+
+- [ ] Support for other kanban providers (Jira, GitLab Issues, Linear)
+- [ ] Support for other repository providers (Bitbucket, GitLab, Gitea)
+- [ ] Support for other AI CLI providers (Codex CLI, OpenCode CLI, local AI provider CLIs)
+- [ ] Custom kanban column templates
+- [ ] Multi-board support with dashboard view
+- [ ] Agent conversation history and replay
+- [ ] VS Code marketplace publication
+
 ## 🤝 Contributing
 
 1. Fork the repository
