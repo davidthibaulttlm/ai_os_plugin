@@ -4,6 +4,12 @@
 [![VS Code](https://img.shields.io/badge/VS%20Code-1.85%2B-blue.svg)](https://code.visualstudio.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3%2B-blue.svg)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-18-blue.svg)](https://react.dev/)
+[![CI](https://github.com/davidthibaulttlm/ai_os_plugin/actions/workflows/aislop.yml/badge.svg)](https://github.com/davidthibaulttlm/ai_os_plugin/actions/workflows/aislop.yml)
+[![Coverage](https://img.shields.io/badge/Coverage-90%25-green)](./coverage)
+[![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-%23FE5196)](https://conventionalcommits.org)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
+[![Issues](https://img.shields.io/github/issues/davidthibaulttlm/ai_os_plugin)](https://github.com/davidthibaulttlm/ai_os_plugin/issues)
+[![Stars](https://img.shields.io/github/stars/davidthibaulttlm/ai_os_plugin?style=flat)](https://github.com/davidthibaulttlm/ai_os_plugin)
 
 Self-hosted VS Code extension that connects to your GitHub account and automates kanban workflows on [GitHub Projects v2](https://docs.github.com/en/issues/planning-and-tracking-with-projects) boards. AI agents automatically work on issues entering `AI_SPEC` / `AI_CODE` columns.
 
@@ -79,7 +85,7 @@ npm install -g @vscode/vsce
 
 ```bash
 # 1. Clone and install dependencies
-git clone https://github.com/your-org/ai-os-plugin.git
+git clone https://github.com/davidthibaulttlm/ai_os_plugin.git
 cd ai-os-plugin
 npm install
 
@@ -182,6 +188,7 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ## 🔗 Links
 
+- [GitHub Issues](https://github.com/davidthibaulttlm/ai_os_plugin/issues)
 - [GitHub Projects v2 Docs](https://docs.github.com/en/issues/planning-and-tracking-with-projects)
 - [VS Code Extension API](https://code.visualstudio.com/api)
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview)
