@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { BoardTreeProvider } from './providers/BoardTreeProvider';
+import { BoardTreeProvider, setTreeProviderDeps } from './providers/BoardTreeProvider';
 import { AuthService } from './services/auth';
 import { StateManager } from './services/state';
 import { GraphQLClient } from './services/graphql';
@@ -60,9 +60,21 @@ function registerCommands(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('aiOs.moveToAICode', () =>
       vscode.window.showInformationMessage('Use drag-and-drop on the kanban board to move items')
     ),
-    vscode.commands.registerCommand('aiOs.openSettings', () => {
+    vscode.commands.registerCommand('aiOs.openSettings', async () => {
+      logger.info('[aiOs.openSettings] Open settings command invoked');
       if (boardTreeProvider) {
-        boardTreeProvider.setMode(boardTreeProvider.mode === 'settings' ? 'boards' : 'settings');
+        const newMode = boardTreeProvider.mode === 'settings' ? 'boards' : 'settings';
+        boardTreeProvider.setMode(newMode);
+        await vscode.commands.executeCommand('setContext', 'aiOs.treeMode', newMode);
+        logger.info(`[aiOs.openSettings] Mode set to ${newMode}`);
+      }
+    }),
+    vscode.commands.registerCommand('aiOs.backToBoards', async () => {
+      logger.info('[aiOs.backToBoards] Back to boards command invoked');
+      if (boardTreeProvider) {
+        boardTreeProvider.setMode('boards');
+        await vscode.commands.executeCommand('setContext', 'aiOs.treeMode', 'boards');
+        logger.info('[aiOs.backToBoards] Mode set to boards');
       }
     }),
     vscode.commands.registerCommand('aiOs.configureClaude', () => handleConfigureClaude(context)),
@@ -81,58 +93,10 @@ function registerCommands(context: vscode.ExtensionContext): void {
       await handleCloneRepos(repoManager, graphql, boardId);
     }),
   );
-  registerAutoWorkCommands();
   registerStartAgentCommand();
 }
 
-function registerAutoWorkCommands(): void {
-  vscode.commands.registerCommand('aiOs.enableAutoWork', () => {
-    vscode.workspace.getConfiguration('aiOs').update('autoWorkAssignments', true, vscode.ConfigurationTarget.Global);
-    vscode.window.showInformationMessage('Auto-work enabled. Claude will work on triggered issues.');
-  });
-  vscode.commands.registerCommand('aiOs.toggleAutoWork', () => {
-    const config = vscode.workspace.getConfiguration('aiOs');
-    const current = config.get<boolean>('autoWorkAssignments', false);
-    config.update('autoWorkAssignments', !current, vscode.ConfigurationTarget.Global);
-    vscode.window.showInformationMessage(`Auto-work ${!current ? 'enabled' : 'disabled'}`);
-    boardTreeProvider?.refresh();
-  });
-  vscode.commands.registerCommand('aiOs.toggleConfirmFirst', () => {
-    const config = vscode.workspace.getConfiguration('aiOs');
-    const current = config.get<boolean>('autoWorkConfirmFirst', true);
-    config.update('autoWorkConfirmFirst', !current, vscode.ConfigurationTarget.Global);
-    vscode.window.showInformationMessage(`Confirm-first ${!current ? 'enabled' : 'disabled'}`);
-    boardTreeProvider?.refresh();
-  });
-  vscode.commands.registerCommand('aiOs.setMaxTurns', async () => {
-    const current = vscode.workspace.getConfiguration('aiOs').get<number>('autoWorkMaxTurns', 25);
-    const value = await vscode.window.showInputBox({
-      prompt: 'Set max turns for Claude Code (1-100)',
-      value: String(current),
-      validateInput: (v) => {
-        const n = parseInt(v, 10);
-        if (isNaN(n) || n < 1 || n > 100) return 'Must be 1-100';
-        return null;
-      },
-    });
-    if (value) {
-      vscode.workspace.getConfiguration('aiOs').update('autoWorkMaxTurns', parseInt(value, 10), vscode.ConfigurationTarget.Global);
-      boardTreeProvider?.refresh();
-    }
-  });
-  vscode.commands.registerCommand('aiOs.setAllowedTools', async () => {
-    const current = vscode.workspace.getConfiguration('aiOs').get<string>('autoWorkAllowedTools', '');
-    const value = await vscode.window.showInputBox({
-      prompt: 'Set allowed tools (comma-separated, empty = all)',
-      value: current,
-      placeHolder: 'fs_read,fs_write,Bash(git *)',
-    });
-    if (value !== undefined) {
-      vscode.workspace.getConfiguration('aiOs').update('autoWorkAllowedTools', value, vscode.ConfigurationTarget.Global);
-      boardTreeProvider?.refresh();
-    }
-  });
-  vscode.commands.registerCommand('aiOs.setReposDir', async () => {
+vscode.commands.registerCommand('aiOs.setReposDir', async () => {
     logger.info('[aiOs.setReposDir] Opening repos directory input');
     const config = vscode.workspace.getConfiguration('aiOs');
     const current = config.get<string>('reposDir', '~/ai-os-repos');
@@ -158,7 +122,6 @@ function registerAutoWorkCommands(): void {
     vscode.window.showInformationMessage('Onboarding reset. Reload the extension to see the connect dialog.');
     logger.info('[aiOs.resetOnboarding] Onboarding reset by user');
   });
-}
 
 function registerStartAgentCommand(): void {
   vscode.commands.registerCommand('aiOs.startAgent', async () => {
@@ -214,6 +177,7 @@ async function initServices(context: vscode.ExtensionContext): Promise<void> {
   poller.setRepoManager(repoManager);
 
   setBoardHandlerDeps(getPanel(), graphql, poller, agentService, stateManager, context.globalStorageUri.fsPath, boardTreeProvider, repoManager);
+  setTreeProviderDeps(repoManager, stateManager);
 
   // Set GITHUB_TOKEN in environment so ClaudeHarness can pass it to spawned processes
   process.env.GITHUB_TOKEN = token;
@@ -328,6 +292,10 @@ async function setupAgentCallback(_token: string): Promise<void> {
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   logger.info('Extension activating...');
+
+  // Set initial context key for tree mode
+  await vscode.commands.executeCommand('setContext', 'aiOs.treeMode', 'boards');
+  logger.info('[activate] Set initial treeMode context key to boards');
 
   try {
     stateManager = new StateManager(context.globalState);

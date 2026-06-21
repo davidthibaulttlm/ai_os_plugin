@@ -202,17 +202,11 @@ ${ctx.owner}/${ctx.repo}
 
     const prompt = this.buildPrompt(ctx);
 
-    const config = vscode.workspace.getConfiguration('aiOs');
-    const maxTurns = config.get<number>('autoWorkMaxTurns', 25);
-    const allowedTools = config.get<string>('autoWorkAllowedTools', '');
-
     logger.info(`[ClaudeHarness.run] Spawning Claude in ${worktreeResult.path}`);
     const token = await this.getGitHubToken();
 
-    const args: string[] = ['-p', prompt, '--max-turns', String(maxTurns)];
-    if (allowedTools) {
-      args.push('--allowed-tools', allowedTools);
-    }
+    const args: string[] = ['-p', prompt];
+    logger.info(`[ClaudeHarness.run] CLI args: ${args.join(' ')}`);
 
     const env: NodeJS.ProcessEnv = {
       ...process.env,

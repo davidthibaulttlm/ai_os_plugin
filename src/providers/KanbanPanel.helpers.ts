@@ -143,7 +143,6 @@ export function getHtmlForWebview(webview: vscode.Webview, extensionUri: vscode.
 <body>
     <div id="root"></div>
     <script nonce="${nonce}">
-      console.log('[AI OS] Inline script starting...');
       window.addEventListener('error', function(e) {
         console.error('[AI OS] JS error:', e.message, e.filename, e.lineno);
       });

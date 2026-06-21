@@ -12,7 +12,7 @@ vi.mock('../../services/logger', () => ({
   },
 }));
 
-const { runPostRunPipeline } = await import('../../services/claudeHarness.pipeline');
+import { runPostRunPipeline } from '../../services/claudeHarness.pipeline';
 
 describe('runPostRunPipeline', () => {
   let mockRepoManager: Partial<RepoManager>;
@@ -27,51 +27,65 @@ describe('runPostRunPipeline', () => {
   };
 
   beforeEach(() => {
+    vi.clearAllMocks();
     mockRepoManager = {
-      hasStagedChanges: vi.fn().mockResolvedValue(true),
-      commitWorktree: vi.fn().mockResolvedValue({ success: true }),
-      pushWorktree: vi.fn().mockResolvedValue({ success: true }),
+      hasStagedChanges: vi.fn() as ReturnType<typeof vi.fn>,
+      commitWorktree: vi.fn() as ReturnType<typeof vi.fn>,
+      pushWorktree: vi.fn() as ReturnType<typeof vi.fn>,
       getBranchName: vi.fn().mockReturnValue('ai-os/test/42-test-issue'),
       detectDefaultBranch: vi.fn().mockResolvedValue('main'),
     };
     mockGraphql = {
-      createPullRequest: vi.fn().mockResolvedValue({ success: true, prUrl: 'https://github.com/pr/1' }),
+      createPullRequest: vi.fn() as ReturnType<typeof vi.fn>,
       execute: vi.fn().mockResolvedValue({ repository: { id: 'repo123' } }),
     };
   });
 
   it('returns early when no staged changes', async () => {
-    mockRepoManager.hasStagedChanges!.mockResolvedValue(false);
+    (mockRepoManager.hasStagedChanges as ReturnType<typeof vi.fn>).mockResolvedValue(false);
     const result = await runPostRunPipeline(ctx, '/worktree', 'test:test:42', mockRepoManager as RepoManager, mockGraphql as GraphQLClient);
     expect(result).toEqual({ success: true, issueNumber: 42, reason: 'No changes staged' });
     expect(mockRepoManager.commitWorktree).not.toHaveBeenCalled();
   });
 
   it('returns COMMIT_FAILED when commit fails', async () => {
-    mockRepoManager.commitWorktree!.mockResolvedValue({ success: false, error: 'git error' });
+    (mockRepoManager.hasStagedChanges as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+    (mockRepoManager.commitWorktree as ReturnType<typeof vi.fn>).mockResolvedValue({ success: false, error: 'git error' });
     const result = await runPostRunPipeline(ctx, '/worktree', 'test:test:42', mockRepoManager as RepoManager, mockGraphql as GraphQLClient);
     expect(result).toEqual({ success: false, issueNumber: 42, reason: 'COMMIT_FAILED', error: 'git error' });
   });
 
   it('returns PUSH_FAILED when push fails', async () => {
-    mockRepoManager.pushWorktree!.mockResolvedValue({ success: false, error: 'push error' });
+    (mockRepoManager.hasStagedChanges as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+    (mockRepoManager.commitWorktree as ReturnType<typeof vi.fn>).mockResolvedValue({ success: true });
+    (mockRepoManager.pushWorktree as ReturnType<typeof vi.fn>).mockResolvedValue({ success: false, error: 'push error' });
     const result = await runPostRunPipeline(ctx, '/worktree', 'test:test:42', mockRepoManager as RepoManager, mockGraphql as GraphQLClient);
     expect(result).toEqual({ success: false, issueNumber: 42, reason: 'PUSH_FAILED', error: 'push error' });
   });
 
   it('returns Complete with PR URL when PR succeeds', async () => {
+    (mockRepoManager.hasStagedChanges as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+    (mockRepoManager.commitWorktree as ReturnType<typeof vi.fn>).mockResolvedValue({ success: true });
+    (mockRepoManager.pushWorktree as ReturnType<typeof vi.fn>).mockResolvedValue({ success: true });
+    (mockGraphql.createPullRequest as ReturnType<typeof vi.fn>).mockResolvedValue({ success: true, prUrl: 'https://github.com/pr/1' });
     const result = await runPostRunPipeline(ctx, '/worktree', 'test:test:42', mockRepoManager as RepoManager, mockGraphql as GraphQLClient);
     expect(result).toEqual({ success: true, issueNumber: 42, reason: 'Complete', prUrl: 'https://github.com/pr/1' });
   });
 
   it('returns Complete without PR URL when PR fails (best-effort)', async () => {
-    mockGraphql.createPullRequest!.mockResolvedValue({ success: false, error: 'pr error' });
+    (mockRepoManager.hasStagedChanges as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+    (mockRepoManager.commitWorktree as ReturnType<typeof vi.fn>).mockResolvedValue({ success: true });
+    (mockRepoManager.pushWorktree as ReturnType<typeof vi.fn>).mockResolvedValue({ success: true });
+    (mockGraphql.createPullRequest as ReturnType<typeof vi.fn>).mockResolvedValue({ success: false, error: 'pr error' });
     const result = await runPostRunPipeline(ctx, '/worktree', 'test:test:42', mockRepoManager as RepoManager, mockGraphql as GraphQLClient);
     expect(result).toEqual({ success: true, issueNumber: 42, reason: 'Complete' });
   });
 
   it('handles PR creation throwing error (best-effort)', async () => {
-    mockGraphql.createPullRequest!.mockRejectedValue(new Error('network error'));
+    (mockRepoManager.hasStagedChanges as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+    (mockRepoManager.commitWorktree as ReturnType<typeof vi.fn>).mockResolvedValue({ success: true });
+    (mockRepoManager.pushWorktree as ReturnType<typeof vi.fn>).mockResolvedValue({ success: true });
+    (mockGraphql.createPullRequest as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network error'));
     const result = await runPostRunPipeline(ctx, '/worktree', 'test:test:42', mockRepoManager as RepoManager, mockGraphql as GraphQLClient);
     expect(result).toEqual({ success: true, issueNumber: 42, reason: 'Complete' });
   });

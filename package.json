@@ -26,8 +26,8 @@
     "onCommand:aiOs.openSettings",
     "onCommand:aiOs.configureClaude",
     "onCommand:aiOs.disconnectClaude",
-    "onCommand:aiOs.enableAutoWork",
     "onCommand:aiOs.cloneRepos",
+    "onCommand:aiOs.backToBoards",
     "onView:aiOs.boardSelector",
     "onLmTool:aiOsGetKanbanBoard",
     "onLmTool:aiOsGetColumnIssues",
@@ -94,11 +94,6 @@
         "category": "AI OS"
       },
       {
-        "command": "aiOs.enableAutoWork",
-        "title": "Enable Auto-Work",
-        "category": "AI OS"
-      },
-      {
         "command": "aiOs.startAgent",
         "title": "Start Agent",
         "category": "AI OS",
@@ -109,28 +104,17 @@
         "title": "Clone Project Repos",
         "category": "AI OS",
         "icon": "$(repo)"
+      },
+      {
+        "command": "aiOs.backToBoards",
+        "title": "Back to Boards",
+        "category": "AI OS",
+        "icon": "$(list-selection)"
       }
     ],
     "configuration": {
       "title": "AI OS",
       "properties": {
-        "aiOs.autoWorkAssignments": {
-          "type": "boolean",
-          "default": false,
-          "description": "Enable auto-work: Claude Code will automatically work on issues assigned to you or moved into trigger columns."
-        },
-        "aiOs.autoWorkMaxTurns": {
-          "type": "number",
-          "default": 50,
-          "minimum": 1,
-          "maximum": 500,
-          "description": "Maximum number of turns Claude Code can execute when auto-working an issue."
-        },
-        "aiOs.autoWorkAllowedTools": {
-          "type": "string",
-          "default": "Read,Edit,Bash",
-          "description": "Comma-separated list of allowed tools for Claude Code auto-work (uses --allowedTools, not --dangerously-skip-permissions)."
-        },
         "aiOs.autoWorkColumns": {
           "type": "array",
           "default": ["AI_SPEC", "AI_CODE"],
@@ -139,11 +123,6 @@
             "enum": ["BRAIN_DUMP", "AI_SPEC", "HUMAN_SPEC_REVIEW", "AI_CODE", "HUMAN_CODE_REVIEW", "PR_DONE"]
           },
           "description": "Kanban columns that trigger auto-work when an issue moves into them."
-        },
-        "aiOs.autoWorkConfirmFirst": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show a confirmation notification before spawning Claude Code to work on an issue."
         },
         "aiOs.reposDir": {
           "type": "string",
@@ -179,27 +158,40 @@
     "menus": {
       "view/title": [
         {
-          "command": "aiOs.fetchBoards",
-          "when": "view == aiOs.boardSelector",
-          "group": "navigation"
-        },
-        {
-          "command": "aiOs.refreshBoard",
-          "when": "view == aiOs.boardSelector",
-          "group": "navigation"
-        },
-        {
           "command": "aiOs.startAgent",
           "when": "view == aiOs.boardSelector",
           "group": "navigation"
         },
         {
-          "command": "aiOs.openSettings",
+          "submenu": "aiOs.actions",
           "when": "view == aiOs.boardSelector",
           "group": "navigation"
         }
+      ],
+      "aiOs.actions": [
+        {
+          "command": "aiOs.fetchBoards",
+          "group": "1_actions"
+        },
+        {
+          "command": "aiOs.openSettings",
+          "when": "aiOs.treeMode == 'boards'",
+          "group": "2_settings"
+        },
+        {
+          "command": "aiOs.backToBoards",
+          "when": "aiOs.treeMode == 'settings'",
+          "group": "2_settings"
+        }
       ]
-    }
+    },
+    "submenus": [
+      {
+        "id": "aiOs.actions",
+        "label": "AI OS Actions",
+        "icon": "$(more)"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run build",

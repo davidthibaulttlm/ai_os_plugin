@@ -54,23 +54,19 @@ export class SettingsPanel {
   }
 
   public updateSettings(): void {
-    const config = vscode.workspace.getConfiguration('aiOs');
+    logger.info('[SettingsPanel.updateSettings] Updating settings');
     const claude = detectClaudeCode();
     const mcpConnected = this.checkMcpConnected();
 
     this.panel.webview.postMessage({
       type: 'updateSettings',
       data: {
-        autoWorkAssignments: config.get('autoWorkAssignments', false),
-        autoWorkMaxTurns: config.get('autoWorkMaxTurns', 50),
-        autoWorkAllowedTools: config.get('autoWorkAllowedTools', 'Read,Edit,Bash'),
-        autoWorkColumns: config.get('autoWorkColumns', ['AI_SPEC', 'AI_CODE']),
-        autoWorkConfirmFirst: config.get('autoWorkConfirmFirst', true),
         claudeExtensionInstalled: claude.extensionInstalled,
         claudeCliInstalled: claude.cliInstalled,
         mcpConnected,
       },
     });
+    logger.info('[SettingsPanel.updateSettings] Result: settings sent');
   }
 
   private dispose(): void {
@@ -128,34 +124,8 @@ export class SettingsPanel {
     </div>
   </div>
 
-  <div class="section">
-    <h3>Auto-Work</h3>
-    <div class="row">
-      <label>Auto-Work Assignments:</label>
-      <input type="checkbox" id="autoWorkToggle">
-    </div>
-    <div class="row">
-      <label>Max Turns:</label>
-      <input type="number" id="maxTurns" min="1" max="500" value="50">
-      <span class="error" id="maxTurnsError"></span>
-    </div>
-    <div class="row">
-      <label>Allowed Tools:</label>
-      <input type="text" id="allowedTools" value="Read,Edit,Bash" style="flex:1;">
-    </div>
-    <div class="row">
-      <label>Trigger Columns:</label>
-      <div id="triggerColumns"></div>
-    </div>
-    <div class="row">
-      <label>Confirm Before Starting:</label>
-      <input type="checkbox" id="confirmFirst">
-    </div>
-  </div>
-
   <script>
     const vscode = acquireVsCodeApi();
-    const columns = ['BRAIN_DUMP', 'AI_SPEC', 'HUMAN_SPEC_REVIEW', 'AI_CODE', 'HUMAN_CODE_REVIEW', 'PR_DONE'];
 
     function setStatus(id, connected, label) {
       const el = document.getElementById(id);
@@ -177,36 +147,6 @@ export class SettingsPanel {
         document.getElementById('connectBtn').style.display = d.mcpConnected ? 'none' : 'inline-block';
         document.getElementById('disconnectBtn').style.display = d.mcpConnected ? 'inline-block' : 'none';
 
-        // Auto-work settings
-        document.getElementById('autoWorkToggle').checked = d.autoWorkAssignments;
-        document.getElementById('maxTurns').value = d.autoWorkMaxTurns;
-        document.getElementById('allowedTools').value = d.autoWorkAllowedTools;
-        document.getElementById('confirmFirst').checked = d.autoWorkConfirmFirst;
-
-        // Trigger columns
-        const container = document.getElementById('triggerColumns');
-        container.innerHTML = '';
-        columns.forEach(col => {
-          const div = document.createElement('div');
-          div.style.display = 'flex';
-          div.style.gap = '4px';
-          div.style.marginBottom = '4px';
-          const cb = document.createElement('input');
-          cb.type = 'checkbox';
-          cb.id = 'col_' + col;
-          cb.checked = d.autoWorkColumns.includes(col);
-          cb.onchange = () => {
-            const selected = columns.filter(c => document.getElementById('col_' + c).checked);
-            vscode.postMessage({ type: 'updateSetting', data: { key: 'autoWorkColumns', value: selected } });
-          };
-          const lbl = document.createElement('label');
-          lbl.htmlFor = 'col_' + col;
-          lbl.textContent = col;
-          lbl.style.minWidth = 'auto';
-          div.appendChild(cb);
-          div.appendChild(lbl);
-          container.appendChild(div);
-        });
       }
     });
 
@@ -219,25 +159,6 @@ export class SettingsPanel {
     };
     document.getElementById('disconnectBtn').onclick = () => {
       vscode.postMessage({ type: 'disconnectMcp' });
-    };
-    document.getElementById('autoWorkToggle').onchange = (e) => {
-      vscode.postMessage({ type: 'updateSetting', data: { key: 'autoWorkAssignments', value: e.target.checked } });
-    };
-    document.getElementById('maxTurns').onblur = (e) => {
-      const val = parseInt(e.target.value, 10);
-      const errEl = document.getElementById('maxTurnsError');
-      if (isNaN(val) || val < 1 || val > 500) {
-        errEl.textContent = 'Value must be between 1 and 500';
-        return;
-      }
-      errEl.textContent = '';
-      vscode.postMessage({ type: 'updateSetting', data: { key: 'autoWorkMaxTurns', value: val } });
-    };
-    document.getElementById('allowedTools').onblur = (e) => {
-      vscode.postMessage({ type: 'updateSetting', data: { key: 'autoWorkAllowedTools', value: e.target.value } });
-    };
-    document.getElementById('confirmFirst').onchange = (e) => {
-      vscode.postMessage({ type: 'updateSetting', data: { key: 'autoWorkConfirmFirst', value: e.target.checked } });
     };
 
     // Request initial settings

@@ -40,13 +40,12 @@ export function spawnClaude(
   options: {
     cwd: string;
     githubToken: string;
-    allowedTools: string;
-    maxTurns: number;
   }
 ): boolean {
+  logger.info(`[claudeSpawner.spawnClaude] Starting for #${issueNumber} cwd=${options.cwd}`);
   // Prevent concurrent processes for the same issue
   if (activeProcesses.has(issueNumber)) {
-    logger.warn(`Claude already working on issue #${issueNumber} — skipping duplicate trigger`);
+    logger.warn(`[claudeSpawner.spawnClaude] Already working on issue #${issueNumber} — skipping duplicate trigger`);
     return false;
   }
 
@@ -54,9 +53,8 @@ export function spawnClaude(
 
   const args = [
     '-p', prompt,
-    '--allowedTools', options.allowedTools,
-    '--max-turns', String(options.maxTurns),
   ];
+  logger.info(`[claudeSpawner.spawnClaude] CLI args: ${args.join(' ')}`);
 
   const env = {
     ...process.env,
@@ -119,7 +117,8 @@ export function spawnClaude(
   });
 
   workingStatusCallback?.(issueNumber, true);
-  logger.info(`Spawned Claude for #${issueNumber} with maxTurns=${options.maxTurns}`);
+  logger.info(`[claudeSpawner.spawnClaude] Spawned Claude for #${issueNumber}`);
+  logger.info(`[claudeSpawner.spawnClaude] Result: success=true`);
   return true;
 }
 
