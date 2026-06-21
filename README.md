@@ -77,7 +77,7 @@ Self-hosted VS Code extension that connects to your GitHub account and automates
 | 5 | `HUMAN_CODE_REVIEW` | Human reviews the code |
 | 6 | `PR_DONE` | Pull request merged, feature complete |
 
-These columns are **hardcoded constants** — not user-configurable.
+These columns are **hardcoded constants** — not user-configurable (for now).
 
 ## 🚀 Quick Start
 
