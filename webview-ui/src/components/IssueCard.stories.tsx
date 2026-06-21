@@ -2,8 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { DndContext } from '@dnd-kit/core';
 import IssueCard from './IssueCard';
-import type { IssueItem } from '../store/boardStore';
-import { useBoardStore } from '../store/boardStore';
+import { useBoardStore, type IssueItem } from "../store/boardStore";
 
 function withAgentState(status: string, outputs: string[], issueNumber: number, working = false) {
   return (Story: () => React.ReactNode) => {

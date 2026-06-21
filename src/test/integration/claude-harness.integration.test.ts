@@ -3,6 +3,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ClaudeHarness } from '../../services/claudeHarness';
 import type { RepoManager } from '../../services/repoManager';
+import { ColumnPromptService } from '../../services/columnPrompt';
 import type { GraphQLClient } from '../../services/graphql';
 
 vi.mock('child_process', () => ({
@@ -66,7 +67,8 @@ describe('ClaudeHarness integration — full lifecycle', () => {
       postMessage: vi.fn().mockResolvedValue(true),
     };
 
-    harness = new ClaudeHarness(mockRepoManager, mockGraphql, mockWebview);
+    const promptService = new ColumnPromptService({ get: vi.fn(), update: vi.fn(), keys: vi.fn(() => []) } as any);
+    harness = new ClaudeHarness(mockRepoManager, mockGraphql, promptService, mockWebview);
   });
 
   it('full lifecycle: worktree → spawn → exit → commit → push → PR', async () => {

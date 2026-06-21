@@ -3,6 +3,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ClaudeHarness } from '../../services/claudeHarness';
 import type { RepoManager } from '../../services/repoManager';
+import { ColumnPromptService } from '../../services/columnPrompt';
 import type { GraphQLClient } from '../../services/graphql';
 
 vi.mock('child_process', () => ({
@@ -42,7 +43,7 @@ describe('ClaudeHarness.run — spawn failure', () => {
       updateWorktree: vi.fn().mockResolvedValue({ success: true }),
       getBranchName: vi.fn().mockReturnValue('ai-os/1-test'),
     } as unknown as RepoManager;
-    harness = new ClaudeHarness(mockRepoManager, {} as GraphQLClient);
+    harness = new ClaudeHarness(mockRepoManager, {} as GraphQLClient, new ColumnPromptService({ get: vi.fn(), update: vi.fn(), keys: vi.fn(() => []) } as any));
   });
 
   it('should return SPAWN_FAILED when claude binary not found', async () => {

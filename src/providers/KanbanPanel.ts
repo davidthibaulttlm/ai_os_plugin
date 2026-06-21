@@ -2,11 +2,13 @@ import * as vscode from 'vscode';
 import type { GraphQLClient } from '../services/graphql';
 import type { BoardData, ExtensionToWebview, IPCMessage, WebviewToExtension } from '../types/ipc';
 import { logger } from '../services/logger';
+import { ColumnPromptService } from '../services/columnPrompt';
 import {
   loadBoardData,
   moveItem,
   reorderItem,
   getHtmlForWebview,
+  handleMessage,
 } from './KanbanPanel.helpers';
 
 /**
@@ -21,6 +23,7 @@ export class KanbanPanel {
   private readonly _extensionUri: vscode.Uri;
   private _disposables: vscode.Disposable[] = [];
   private readonly _graphql: GraphQLClient;
+  private readonly _promptService: ColumnPromptService;
   private _projectId: string | undefined;
   private _onDisposeCallbacks: Array<() => void> = [];
 
@@ -42,12 +45,16 @@ export class KanbanPanel {
     panel: vscode.WebviewPanel,
     extensionUri: vscode.Uri,
     graphql: GraphQLClient,
+    promptService: ColumnPromptService,
     projectId?: string
   ) {
+    logger.info('[KanbanPanel.constructor] Initializing KanbanPanel');
     this._panel = panel;
     this._extensionUri = extensionUri;
     this._graphql = graphql;
+    this._promptService = promptService;
     this._projectId = projectId;
+    logger.info('[KanbanPanel.constructor] Result: initialized');
 
     // Set webview options
     this._panel.webview.options = {
@@ -68,7 +75,18 @@ export class KanbanPanel {
             logger.warn('Invalid IPC message — missing type');
             return;
           }
-          await this._handleMessage(message as WebviewToExtension);
+          await handleMessage({
+            webview: this._panel.webview,
+            projectId: this._projectId,
+            setProjectId: (id: string) => { this._projectId = id; },
+            graphql: this._graphql,
+            promptService: this._promptService,
+            safePostMessage: (msg: ExtensionToWebview) => this._safePostMessage(msg),
+            refresh: () => this.refresh(),
+            loadBoardData: (projectId: string) => this._loadBoardData(projectId),
+            moveItem: (projectId: string, itemId: string, columnId: string) => this._moveItem(projectId, itemId, columnId),
+            reorderItem: (projectId: string, itemId: string, afterId: string | null) => this._reorderItem(projectId, itemId, afterId),
+          }, message as WebviewToExtension);
         } catch (error) {
           logger.error(`Unhandled error in message handler: ${(error as Error).message}`);
           try {
@@ -99,6 +117,7 @@ export class KanbanPanel {
   public static createOrShow(
     extensionUri: vscode.Uri,
     graphql: GraphQLClient,
+    promptService: ColumnPromptService,
     projectId?: string
   ): KanbanPanel {
     const column = vscode.window.activeTextEditor
@@ -132,7 +151,7 @@ export class KanbanPanel {
       }
     );
 
-    KanbanPanel.currentPanel = new KanbanPanel(panel, extensionUri, graphql, projectId);
+    KanbanPanel.currentPanel = new KanbanPanel(panel, extensionUri, graphql, promptService, projectId);
     return KanbanPanel.currentPanel;
   }
 
@@ -264,133 +283,6 @@ export class KanbanPanel {
   }
 
   /**
-   * Handle incoming messages from the webview.
-   */
-  private async _handleMessage(message: WebviewToExtension): Promise<void> {
-    const allowedTypes = ['loadBoard', 'moveItem', 'reorderItem', 'refresh', 'selectIssue', 'assignAgent', '__ping__', '__inline_ping__', '__react_ready__', '__log__'];
-    if (!allowedTypes.includes(message.type)) {
-      logger.warn(`Unknown IPC message type: ${message.type}`);
-      return;
-    }
-
-    switch (message.type) {
-      case 'loadBoard': {
-        if (!message.data?.boardId || typeof message.data.boardId !== 'string') {
-          logger.warn('loadBoard: missing or invalid boardId');
-          return;
-        }
-        this._projectId = message.data.boardId;
-        const boardData = await this._loadBoardData(message.data.boardId);
-        try {
-          this._panel.webview.postMessage({
-            type: 'boardData',
-            data: boardData,
-          } as ExtensionToWebview);
-        } catch { /* disposed */ }
-        break;
-      }
-
-      case 'moveItem': {
-        logger.info(`moveItem received: itemId=${message.data?.itemId}, columnId=${message.data?.columnId}, projectId=${this._projectId}`);
-        if (!this._projectId || !message.data?.itemId || !message.data?.columnId) {
-          logger.warn('moveItem: missing required fields');
-          return;
-        }
-        try {
-          const result = await this._moveItem(
-            this._projectId,
-            message.data.itemId,
-            message.data.columnId
-          );
-          logger.info(`moveItem success: ${JSON.stringify(result)}`);
-          this._safePostMessage({ type: 'itemMoved', data: result });
-        } catch (error) {
-          const errorMsg = (error as Error).message;
-          logger.error(`moveItem FAILED: ${errorMsg}`);
-          this._safePostMessage({ type: 'error', data: { message: `Failed to move item: ${errorMsg}` } });
-        }
-        break;
-      }
-
-      case 'reorderItem': {
-        logger.info(`reorderItem received: itemId=${message.data?.itemId}, afterId=${message.data?.afterId}, projectId=${this._projectId}`);
-        if (!this._projectId || !message.data?.itemId) {
-          logger.warn('reorderItem: missing required fields');
-          return;
-        }
-        try {
-          await this._reorderItem(
-            this._projectId,
-            message.data.itemId,
-            message.data.afterId ?? null
-          );
-          logger.info(`reorderItem success for ${message.data.itemId}`);
-          this._safePostMessage({ type: 'itemReordered', data: { itemId: message.data.itemId } });
-        } catch (error) {
-          const errorMsg = (error as Error).message;
-          logger.error(`reorderItem FAILED: ${errorMsg}`);
-          this._safePostMessage({ type: 'error', data: { message: `Failed to reorder item: ${errorMsg}` } });
-        }
-        break;
-      }
-
-      case 'refresh': {
-        await this.refresh();
-        break;
-      }
-
-      case 'selectIssue': {
-        // Validate URL before opening — only allow https://github.com
-        if (message.data?.issueId) {
-          const url = message.data.issueId;
-          try {
-            const parsed = new URL(url);
-            if (parsed.protocol !== 'https:' || !parsed.hostname.endsWith('github.com')) {
-              logger.warn(`Blocked attempt to open non-GitHub URL: ${url}`);
-              return;
-            }
-            await vscode.env.openExternal(vscode.Uri.parse(url));
-          } catch (error) {
-            logger.warn(`Invalid URL for selectIssue: ${url} - ${(error as Error).message}`);
-          }
-        }
-        break;
-      }
-
-      case 'assignAgent': {
-        if (message.data?.issueId) {
-          this._panel.webview.postMessage({
-            type: 'agentProgress',
-            data: { issueId: message.data.issueId, status: 'started' },
-          } as ExtensionToWebview);
-        }
-        break;
-      }
-
-      case '__log__': {
-        const logData = message.data as { level?: string; message?: string };
-        if (logData?.message) {
-          switch (logData.level) {
-            case 'error':
-              logger.error(`[webview] ${logData.message}`);
-              break;
-            case 'warn':
-              logger.warn(`[webview] ${logData.message}`);
-              break;
-            case 'debug':
-              logger.debug(`[webview] ${logData.message}`);
-              break;
-            default:
-              logger.info(`[webview] ${logData.message}`);
-              break;
-          }
-        }
-        break;
-      }
-    }
-  }
-
-  /**
    * Load board data from GitHub.
    */
   private async _loadBoardData(projectId: string): Promise<BoardData> {
@@ -425,4 +317,5 @@ export class KanbanPanel {
   private _getHtmlForWebview(webview: vscode.Webview): string {
     return getHtmlForWebview(webview, this._extensionUri);
   }
+
 }

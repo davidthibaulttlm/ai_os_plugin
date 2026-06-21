@@ -740,7 +740,6 @@ var require_codegen = __commonJS({
       toString() {
         return this._root.render(this.opts);
       }
-      // returns unique name in the internal scope
       name(prefix) {
         return this._scope.name(prefix);
       }
@@ -919,7 +918,6 @@ var require_codegen = __commonJS({
       throw(error2) {
         return this._leafNode(new Throw(error2));
       }
-      // start self-balancing block
       block(body, nodeCount) {
         this._blockStarts.push(this._nodes.length);
         if (body)
@@ -4172,7 +4170,6 @@ var require_core = __commonJS({
         this.addSchema(schema, key, true, _validateSchema);
         return this;
       }
-      //  Validate schema against its meta-schema
       validateSchema(schema, throwOrLogError) {
         if (typeof schema == "boolean")
           return true;
@@ -4293,7 +4290,6 @@ var require_core = __commonJS({
         const rule = this.RULES.all[keyword];
         return typeof rule == "object" ? rule.definition : !!rule;
       }
-      // Remove keyword
       removeKeyword(keyword) {
         const { RULES } = this;
         delete RULES.keywords[keyword];
@@ -7834,7 +7830,7 @@ var uuidRegex = /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]
 var nanoidRegex = /^[a-z0-9_-]{21}$/i;
 var jwtRegex = /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]*$/;
 var durationRegex = /^[-+]?P(?!$)(?:(?:[-+]?\d+Y)|(?:[-+]?\d+[.,]\d+Y$))?(?:(?:[-+]?\d+M)|(?:[-+]?\d+[.,]\d+M$))?(?:(?:[-+]?\d+W)|(?:[-+]?\d+[.,]\d+W$))?(?:(?:[-+]?\d+D)|(?:[-+]?\d+[.,]\d+D$))?(?:T(?=[\d+-])(?:(?:[-+]?\d+H)|(?:[-+]?\d+[.,]\d+H$))?(?:(?:[-+]?\d+M)|(?:[-+]?\d+[.,]\d+M$))?(?:[-+]?\d+(?:[.,]\d+)?S)?)??$/;
-var emailRegex = /^(?!\.)(?!.*\.\.)([A-Z0-9_'+\-\.]*)[A-Z0-9_+-]@([A-Z0-9][A-Z0-9\-]*\.)+[A-Z]{2,}$/i;
+var emailRegex = /^(?!\.)(?!.*\.\.)([A-Z0-9_'+\-.]*)[A-Z0-9_+-]@([A-Z0-9][A-Z0-9-]*\.)+[A-Z]{2,}$/i;
 var _emojiRegex = `^(\\p{Extended_Pictographic}|\\p{Emoji_Component})+$`;
 var emojiRegex;
 var ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$/;
@@ -11365,7 +11361,6 @@ function extend(schema, shape) {
       return _shape;
     },
     checks: []
-    // delete existing checks
   };
   return clone(schema, def);
 }
@@ -11379,7 +11374,6 @@ function merge(a, b) {
     },
     catchall: b._zod.def.catchall,
     checks: []
-    // delete existing checks
   });
 }
 function partial(Class2, schema, mask) {
@@ -11651,7 +11645,7 @@ var uuid = (version2) => {
     return /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000)$/;
   return new RegExp(`^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-${version2}[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$`);
 };
-var email = /^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$/;
+var email = /^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9-]*\.)+[A-Za-z]{2,}$/;
 var _emoji = `^(\\p{Extended_Pictographic}|\\p{Emoji_Component})+$`;
 function emoji() {
   return new RegExp(_emoji, "u");
@@ -12111,7 +12105,7 @@ var Doc = class {
     const F = Function;
     const args = this?.args;
     const content = this?.content ?? [``];
-    const lines = [...content.map((x) => `  ${x}`)];
+    const lines = content.map((x) => `  ${x}`);
     return new F(...args, lines.join("\n"));
   }
 };
@@ -14037,12 +14031,10 @@ var JSONSchemaGenerator = class {
               if (regexes.length === 1)
                 json.pattern = regexes[0].source;
               else if (regexes.length > 1) {
-                result.schema.allOf = [
-                  ...regexes.map((regex) => ({
+                result.schema.allOf = regexes.map((regex) => ({
                     ...this.target === "draft-7" ? { type: "string" } : {},
                     pattern: regex.source
-                  }))
-                ];
+                  }));
               }
             }
             break;
@@ -16181,11 +16173,6 @@ var ResourceSchema = object2({
    * The URI of this resource.
    */
   uri: string2(),
-  /**
-   * A description of what this resource represents.
-   *
-   * This can be used by clients to improve the LLM's understanding of available resources. It can be thought of like a "hint" to the model.
-   */
   description: optional(string2()),
   /**
    * The MIME type of this resource, if known.
@@ -16214,11 +16201,6 @@ var ResourceTemplateSchema = object2({
    * A URI template (according to RFC 6570) that can be used to construct resource URIs.
    */
   uriTemplate: string2(),
-  /**
-   * A description of what this template is for.
-   *
-   * This can be used by clients to improve the LLM's understanding of available resources. It can be thought of like a "hint" to the model.
-   */
   description: optional(string2()),
   /**
    * The MIME type for all resources that match this template. This should only be included if all resources matching this template have the same type.
@@ -16944,12 +16926,6 @@ var ElicitResultSchema = ResultSchema.extend({
    * - "cancel": User dismissed without making an explicit choice
    */
   action: _enum(["accept", "decline", "cancel"]),
-  /**
-   * The submitted form data, only present when action is "accept".
-   * Contains values matching the requested schema.
-   * Per MCP spec, content is "typically omitted" for decline/cancel actions.
-   * We normalize null to undefined for leniency while maintaining type compatibility.
-   */
   content: preprocess((val) => val === null ? void 0 : val, record(string2(), union([string2(), number2(), boolean2(), array(string2())])).optional())
 });
 var ResourceTemplateReferenceSchema = object2({
@@ -17492,7 +17468,7 @@ var zodPatterns = {
   /**
    * `a-z` was added to replicate /i flag
    */
-  email: /^(?!\.)(?!.*\.\.)([a-zA-Z0-9_'+\-\.]*)[a-zA-Z0-9_+-]@([a-zA-Z0-9][a-zA-Z0-9\-]*\.)+[a-zA-Z]{2,}$/,
+  email: /^(?!\.)(?!.*\.\.)([a-zA-Z0-9_'+\-.]*)[a-zA-Z0-9_+-]@([a-zA-Z0-9][a-zA-Z0-9-]*\.)+[a-zA-Z]{2,}$/,
   /**
    * Constructed a valid Unicode RegExp
    *

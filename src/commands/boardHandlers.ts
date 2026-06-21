@@ -11,6 +11,7 @@ import type { PollerService } from '../services/poller';
 import type { AgentService } from '../services/agent';
 import type { RepoManager } from '../services/repoManager';
 import type { StateManager } from '../services/state';
+import type { ColumnPromptService } from '../services/columnPrompt';
 import { checkMissingRepos } from './cloneRepos';
 
 let panel: KanbanPanel | undefined;
@@ -21,6 +22,7 @@ let repoManager: RepoManager | undefined;
 let stateManager: StateManager | undefined;
 let _globalStorageUri: string | undefined;
 let boardTreeProvider: any | undefined;
+let columnPromptService: ColumnPromptService | undefined;
 
 export function setBoardHandlerDeps(
   p: KanbanPanel | undefined,
@@ -30,7 +32,8 @@ export function setBoardHandlerDeps(
   s: StateManager | undefined,
   uri: string | undefined,
   tree: any | undefined,
-  rm: RepoManager | undefined
+  rm: RepoManager | undefined,
+  cps: ColumnPromptService | undefined
 ): void {
   panel = p;
   graphql = g;
@@ -40,6 +43,7 @@ export function setBoardHandlerDeps(
   _globalStorageUri = uri;
   boardTreeProvider = tree;
   repoManager = rm;
+  columnPromptService = cps;
 }
 
 export function getPanel(): KanbanPanel | undefined { return panel; }
@@ -62,7 +66,7 @@ export async function handleOpenBoard(context: vscode.ExtensionContext): Promise
     vscode.window.showErrorMessage('AI OS not initialized — please authenticate with GitHub first');
     return;
   }
-  await openBoard(context.extensionUri, graphql, stateManager!, (p) => {
+  await openBoard(context.extensionUri, graphql, stateManager!, columnPromptService!, (p) => {
     panel = p;
     p.onDispose(() => {
       poller?.stop();
@@ -219,7 +223,7 @@ export async function handleOpenBoardFromTree(
     panel.dispose();
     panel = undefined;
   }
-  const p = KanbanPanel.createOrShow(context.extensionUri, graphql, boardId);
+  const p = KanbanPanel.createOrShow(context.extensionUri, graphql, columnPromptService!, boardId);
   panel = p;
   p.onDispose(() => {
     poller?.stop();

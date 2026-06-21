@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ClaudeHarness } from '../../services/claudeHarness';
 import type { RepoManager } from '../../services/repoManager';
 import type { GraphQLClient } from '../../services/graphql';
+import { ColumnPromptService } from '../../services/columnPrompt';
 import type { AgentSession } from '../../services/claudeHarness';
 
 vi.mock('child_process', () => ({
@@ -49,7 +50,7 @@ describe('ClaudeHarness.run — concurrent limit', () => {
 
   it('should reject when concurrent limit reached', async () => {
     // maxConcurrentAgents defaults to 3 from fallback
-    const harness = new ClaudeHarness(mockRepoManager, {} as GraphQLClient);
+    const harness = new ClaudeHarness(mockRepoManager, {} as GraphQLClient, new ColumnPromptService({ get: vi.fn(), update: vi.fn(), keys: vi.fn(() => []) } as any));
 
     // Fill sessions to max (3)
     for (let i = 1; i <= 3; i++) {
@@ -82,7 +83,7 @@ describe('ClaudeHarness.run — concurrent limit', () => {
   });
 
   it('should allow run when under concurrent limit', async () => {
-    const harness = new ClaudeHarness(mockRepoManager, {} as GraphQLClient);
+    const harness = new ClaudeHarness(mockRepoManager, {} as GraphQLClient, new ColumnPromptService({ get: vi.fn(), update: vi.fn(), keys: vi.fn(() => []) } as any));
 
     // Only 1 session active, limit is 3
     const fakeSession: AgentSession = {
@@ -112,7 +113,7 @@ describe('ClaudeHarness.run — concurrent limit', () => {
   });
 
   it('should allow run when no sessions active', async () => {
-    const harness = new ClaudeHarness(mockRepoManager, {} as GraphQLClient);
+    const harness = new ClaudeHarness(mockRepoManager, {} as GraphQLClient, new ColumnPromptService({ get: vi.fn(), update: vi.fn(), keys: vi.fn(() => []) } as any));
 
     const result = await harness.run({
       issueNumber: 1,

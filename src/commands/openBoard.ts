@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { KanbanPanel } from '../providers/KanbanPanel';
 import type { GraphQLClient } from '../services/graphql';
 import type { StateManager } from '../services/state';
+import type { ColumnPromptService } from '../services/columnPrompt';
 
 /** Panel creation callback */
 export type PanelCallback = (panel: KanbanPanel) => void;
@@ -14,6 +15,7 @@ export async function openBoard(
   extensionUri: vscode.Uri,
   graphql: GraphQLClient,
   stateManager: StateManager,
+  promptService: ColumnPromptService,
   onPanelCreated?: PanelCallback
 ): Promise<void> {
   try {
@@ -50,7 +52,7 @@ export async function openBoard(
 
     await stateManager.setLastBoardId(project.id);
 
-    const panel = KanbanPanel.createOrShow(extensionUri, graphql, project.id);
+    const panel = KanbanPanel.createOrShow(extensionUri, graphql, promptService, project.id);
     onPanelCreated?.(panel);
   } catch (error) {
     vscode.window.showErrorMessage(

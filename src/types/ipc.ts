@@ -11,6 +11,9 @@ export type WebviewToExtension =
   | { type: 'refresh'; data?: never }
   | { type: 'selectIssue'; data: { issueId: string } }
   | { type: 'assignAgent'; data: { issueId: string } }
+  | { type: 'saveColumnPrompt'; data: { column: string; promptType: 'system' | 'developer'; value: string } }
+  | { type: 'resetColumnPrompt'; data: { column: string; promptType: 'system' | 'developer' } }
+  | { type: 'requestColumnPrompts'; data: { column: string } }
   | { type: '__log__'; data: { level: string; message: string } };
 
 /** Messages from Extension → Webview */
@@ -22,7 +25,8 @@ export type ExtensionToWebview =
   | { type: 'agentProgress'; data: { issueId: string; status: string } }
   | { type: 'workingStatus'; data: { issueNumber: number; active: boolean } }
   | { type: 'agentOutput'; issueNumber: number; line: string; timestamp: number }
-  | { type: 'agentStatus'; issueNumber: number; status: 'running' | 'success' | 'failed'; reason?: string };
+  | { type: 'agentStatus'; issueNumber: number; status: 'running' | 'success' | 'failed'; reason?: string }
+  | { type: 'columnPrompts'; data: { column: string; system: string; developer: string; systemDefault: string; developerDefault: string } };
 
 export interface BoardData {
   columns: { id: string; name: string; color: string }[];

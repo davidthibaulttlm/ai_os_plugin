@@ -11,6 +11,7 @@ import { getStateFilePath } from './services/stateBridge';
 import { ClaudeTrigger } from './services/claudeTrigger';
 import { killAllClaudeProcesses, setWorkingStatusCallback, setOnFinishCallback } from './services/claudeSpawner';
 import { ClaudeHarness } from './services/claudeHarness';
+import { ColumnPromptService } from './services/columnPrompt';
 import {
   handleConfigureClaude,
   handleDisconnectClaude,
@@ -39,6 +40,7 @@ let boardTreeProvider: BoardTreeProvider | undefined;
 let _globalStorageUri: string | undefined;
 let claudeTrigger: ClaudeTrigger | undefined;
 let claudeHarness: ClaudeHarness | undefined;
+let columnPromptService: ColumnPromptService | undefined;
 let mcpProviderDisposable: vscode.Disposable | undefined;
 
 function registerCommands(context: vscode.ExtensionContext): void {
@@ -166,6 +168,8 @@ async function initServices(context: vscode.ExtensionContext): Promise<void> {
   graphql = new GraphQLClient(token);
   poller = new PollerService();
   agentService = new AgentService();
+  columnPromptService = new ColumnPromptService(context.globalState);
+  logger.info('[initServices] ColumnPromptService initialized');
 
   const reposDir = vscode.workspace.getConfiguration('aiOs').get<string>('reposDir', '~/ai-os-repos');
   repoManager = new RepoManager(reposDir, token);
@@ -177,7 +181,7 @@ async function initServices(context: vscode.ExtensionContext): Promise<void> {
   poller.setAgentService(agentService);
   poller.setRepoManager(repoManager);
 
-  setBoardHandlerDeps(getPanel(), graphql, poller, agentService, stateManager, context.globalStorageUri.fsPath, boardTreeProvider, repoManager);
+  setBoardHandlerDeps(getPanel(), graphql, poller, agentService, stateManager, context.globalStorageUri.fsPath, boardTreeProvider, repoManager, columnPromptService);
   setTreeProviderDeps(repoManager, stateManager);
 
   // Set GITHUB_TOKEN in environment so ClaudeHarness can pass it to spawned processes
@@ -186,10 +190,10 @@ async function initServices(context: vscode.ExtensionContext): Promise<void> {
 
   // Instantiate ClaudeHarness with dependencies
   const panel = getPanel();
-  claudeHarness = new ClaudeHarness(repoManager, graphql, panel?.webview);
+  claudeHarness = new ClaudeHarness(repoManager, graphql, columnPromptService, panel?.webview);
   logger.info('[initServices] ClaudeHarness initialized');
 
-  claudeTrigger = new ClaudeTrigger();
+  claudeTrigger = new ClaudeTrigger(columnPromptService);
   claudeTrigger.setCallback(async (event) => {
     const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     if (!workspaceRoot) {

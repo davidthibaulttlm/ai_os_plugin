@@ -3,16 +3,23 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import type { KanbanColumn, IssueItem } from '../store/boardStore';
+import type { KanbanColumn as KanbanColumnType, IssueItem } from '../store/boardStore';
 import IssueCard from './IssueCard';
+import { logger } from '../logger';
 
 interface KanbanColumnProps {
-  column: KanbanColumn;
+  column: KanbanColumnType;
   items: IssueItem[];
+  onOpenSettings: (columnName: string) => void;
 }
 
-export default function KanbanColumn({ column, items }: KanbanColumnProps) {
+export default function KanbanColumn({ column, items, onOpenSettings }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
+
+  const handleSettingsClick = () => {
+    logger.info(`[KanbanColumn.handleSettingsClick] Column: ${column.name}`);
+    onOpenSettings(column.name);
+  };
 
   return (
     <div
@@ -23,11 +30,15 @@ export default function KanbanColumn({ column, items }: KanbanColumnProps) {
     >
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold text-sm text-vscode-sideBar-foreground">
-          {column.name.replace(/_/g, ' ')}
+          {column.name.replace(/_/g, ' ')} ({items.length})
         </h3>
-        <span className="text-xs text-vscode-descriptionForeground">
-          {items.length}
-        </span>
+        <button
+          onClick={handleSettingsClick}
+          className="text-xs text-vscode-descriptionForeground hover:text-vscode-sideBar-foreground cursor-pointer p-1 rounded transition-colors"
+          title="Column settings"
+        >
+          ⚙️
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-[100px]">

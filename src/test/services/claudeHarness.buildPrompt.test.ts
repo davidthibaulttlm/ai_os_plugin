@@ -5,6 +5,7 @@ import { ClaudeHarness } from '../../services/claudeHarness';
 import type { RepoManager } from '../../services/repoManager';
 import type { GraphQLClient } from '../../services/graphql';
 import type { IssueContext } from '../../services/claudeHarness';
+import { ColumnPromptService } from '../../services/columnPrompt';
 
 vi.mock('vscode', () => ({
   workspace: {
@@ -28,7 +29,9 @@ describe('ClaudeHarness.buildPrompt', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    harness = new ClaudeHarness({} as RepoManager, {} as GraphQLClient);
+    const mockMemento = { get: vi.fn(), update: vi.fn(), keys: vi.fn(() => []) };
+    const promptService = new ColumnPromptService(mockMemento as any);
+    harness = new ClaudeHarness({} as RepoManager, {} as GraphQLClient, promptService);
   });
 
   it('should include title and issue number', () => {
@@ -96,7 +99,7 @@ describe('ClaudeHarness.buildPrompt', () => {
     expect(prompt).toContain('AI_SPEC');
   });
 
-  it('should truncate body at newline boundary', () => {
+  it('should not truncate large body', () => {
     const longBody = 'A'.repeat(4200) + '\n' + 'B'.repeat(500);
     const ctx: IssueContext = {
       issueNumber: 1,
@@ -107,7 +110,8 @@ describe('ClaudeHarness.buildPrompt', () => {
       column: 'AI_CODE',
     };
     const prompt = harness.buildPrompt(ctx);
-    expect(prompt).toContain('[TRUNCATED]');
+    expect(prompt).toContain(longBody);
+    expect(prompt).not.toContain('[TRUNCATED]');
   });
 
   it('should include column-specific instructions for AI_SPEC', () => {

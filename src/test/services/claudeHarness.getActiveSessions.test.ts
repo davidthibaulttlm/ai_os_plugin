@@ -2,6 +2,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ClaudeHarness } from '../../services/claudeHarness';
+import { ColumnPromptService } from '../../services/columnPrompt';
 import type { RepoManager } from '../../services/repoManager';
 import type { GraphQLClient } from '../../services/graphql';
 
@@ -27,7 +28,9 @@ describe('ClaudeHarness.getActiveSessions', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    harness = new ClaudeHarness({} as RepoManager, {} as GraphQLClient);
+    const mockMemento = { get: vi.fn(), update: vi.fn(), keys: vi.fn(() => []) };
+    const promptService = new ColumnPromptService(mockMemento as any);
+    harness = new ClaudeHarness({} as RepoManager, {} as GraphQLClient, promptService);
   });
 
   it('should return empty map when no sessions', () => {

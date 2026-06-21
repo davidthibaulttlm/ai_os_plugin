@@ -5,6 +5,7 @@
 
 import { spawnClaude, getWorkingIssues } from './claudeSpawner';
 import { logger } from './logger';
+import type { ColumnPromptService } from './columnPrompt';
 
 export interface TriggerEvent {
   issueNumber: number;
@@ -24,6 +25,13 @@ export type TriggerCallback = (event: TriggerEvent) => void;
 export class ClaudeTrigger {
   private callback: TriggerCallback | undefined;
   private currentUser: string | undefined;
+  private promptService: ColumnPromptService | undefined;
+
+  public constructor(promptService?: ColumnPromptService) {
+    logger.info('[ClaudeTrigger.constructor] Initializing ClaudeTrigger');
+    this.promptService = promptService;
+    logger.info('[ClaudeTrigger.constructor] Result: initialized');
+  }
 
   setCallback(cb: TriggerCallback): void {
     this.callback = cb;
@@ -74,31 +82,44 @@ export class ClaudeTrigger {
    * Build a structured prompt from issue details.
    */
   private buildPrompt(event: TriggerEvent): string {
-    const parts = [
-      `You are working on issue #${event.issueNumber} in column "${event.column}".`,
-      `Title: ${event.title}`,
-    ];
+    logger.info(`[ClaudeTrigger.buildPrompt] issueNumber=${event.issueNumber} column=${event.column}`);
 
-    if (event.body) {
-      // Truncate body to prevent prompt injection and token bloat
-      const maxBodyLength = 4096;
-      const body = event.body.length > maxBodyLength
-        ? event.body.substring(0, maxBodyLength) + '\n\n[TRUNCATED — original body exceeded ' + event.body.length + ' characters]'
-        : event.body;
-      parts.push(`Description:\n${body}`);
+    let bodySection = '';
+    if (event.body && event.body.length > 0) {
+      bodySection = `\n\nDescription:\n${event.body}`;
     }
 
+    let labelsSection = '';
     if (event.labels && event.labels.length > 0) {
-      parts.push(`Labels: ${event.labels.join(', ')}`);
+      labelsSection = `\n\nLabels: ${event.labels.join(', ')}`;
     }
 
-    parts.push('');
-    parts.push('INSTRUCTIONS:');
-    parts.push('- Make the necessary code changes to address this issue');
-    parts.push('- Stage your changes with git add when done');
-    parts.push('- DO NOT commit — leave the changes staged for review');
-    parts.push('- DO NOT push to the remote repository');
+    const userContent = `# Issue #${event.issueNumber}: ${event.title}${bodySection}${labelsSection}
 
-    return parts.join('\n');
+## Column
+${event.column}
+
+## Rules
+- Stage your changes with 'git add' when done
+- Do NOT commit — the harness will commit after you finish
+- Do NOT push — the harness will push after you finish
+- Focus on the task at hand
+- Keep changes minimal and scoped`;
+
+    let prompt: string;
+    if (this.promptService) {
+      prompt = this.promptService.assemblePromptChain(event.column, userContent);
+    } else {
+      // Fallback: inline system instruction if no prompt service available
+      const fallbackSystem = event.column === 'AI_SPEC'
+        ? 'You are an expert software architect and technical writer.'
+        : event.column === 'AI_CODE'
+          ? 'You are a senior software engineer implementing code changes.'
+          : '';
+      prompt = fallbackSystem ? `${fallbackSystem}\n\n${userContent}` : userContent;
+    }
+
+    logger.info(`[ClaudeTrigger.buildPrompt] Result: prompt length=${prompt.length}`);
+    return prompt;
   }
 }

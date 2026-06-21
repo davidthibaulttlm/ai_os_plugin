@@ -3,6 +3,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { spawn } from 'child_process';
 import { ClaudeHarness } from '../../services/claudeHarness';
+import { ColumnPromptService } from '../../services/columnPrompt';
 
 vi.mock('child_process', () => ({
   spawn: vi.fn(() => ({
@@ -54,7 +55,7 @@ describe('ClaudeHarness — spawn without restrictions', () => {
       updateWorktree: vi.fn().mockResolvedValue({ success: true }),
     } as any;
     const mockGraphql = {} as any;
-    const harness = new ClaudeHarness(mockRepoManager, mockGraphql);
+    const harness = new ClaudeHarness(mockRepoManager, mockGraphql, new ColumnPromptService({ get: vi.fn(), update: vi.fn(), keys: vi.fn(() => []) } as any));
     await harness.run({
       issueNumber: 42,
       owner: 'test',
@@ -76,7 +77,7 @@ describe('ClaudeHarness — spawn without restrictions', () => {
       updateWorktree: vi.fn().mockResolvedValue({ success: true }),
     } as any;
     const mockGraphql = {} as any;
-    const harness = new ClaudeHarness(mockRepoManager, mockGraphql);
+    const harness = new ClaudeHarness(mockRepoManager, mockGraphql, new ColumnPromptService({ get: vi.fn(), update: vi.fn(), keys: vi.fn(() => []) } as any));
     await harness.run({
       issueNumber: 42,
       owner: 'test',
@@ -97,7 +98,7 @@ describe('ClaudeHarness — spawn without restrictions', () => {
       updateWorktree: vi.fn().mockResolvedValue({ success: true }),
     } as any;
     const mockGraphql = {} as any;
-    const harness = new ClaudeHarness(mockRepoManager, mockGraphql);
+    const harness = new ClaudeHarness(mockRepoManager, mockGraphql, new ColumnPromptService({ get: vi.fn(), update: vi.fn(), keys: vi.fn(() => []) } as any));
     await harness.run({
       issueNumber: 42,
       owner: 'test',

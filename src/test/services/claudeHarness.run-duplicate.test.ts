@@ -3,6 +3,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ClaudeHarness } from '../../services/claudeHarness';
 import type { RepoManager } from '../../services/repoManager';
+import { ColumnPromptService } from '../../services/columnPrompt';
 import type { GraphQLClient } from '../../services/graphql';
 import type { AgentSession } from '../../services/claudeHarness';
 
@@ -46,7 +47,7 @@ describe('ClaudeHarness.run — duplicate spawn prevention', () => {
       getBranchName: vi.fn().mockReturnValue('ai-os/1-test'),
       hasStagedChanges: vi.fn().mockResolvedValue(false),
     } as unknown as RepoManager;
-    harness = new ClaudeHarness(mockRepoManager, {} as GraphQLClient);
+    harness = new ClaudeHarness(mockRepoManager, {} as GraphQLClient, new ColumnPromptService({ get: vi.fn(), update: vi.fn(), keys: vi.fn(() => []) } as any));
   });
 
   it('should return ALREADY_RUNNING when session exists for same issue', async () => {

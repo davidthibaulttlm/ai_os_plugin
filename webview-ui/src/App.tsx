@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useVsCode, onMessage, offMessage } from './hooks/useVsCode';
 import { useBoardStore, persistBoardState, type KanbanColumn, type IssueItem } from "./store/boardStore";
 import KanbanBoard from './components/KanbanBoard';
@@ -18,6 +18,7 @@ function replaceColumnItems(currentItems: IssueItem[], columnStatus: string, new
 export default function App() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusType, setStatusType] = useState<'info' | 'error' | 'success' | null>(null);
+  const [columnPromptData, setColumnPromptData] = useState<{ column: string; system: string; developer: string; systemDefault: string; developerDefault: string } | null>(null);
 
   // Persist board state to VS Code's acquireVsCodeApi().setState()
   useEffect(() => {
@@ -79,6 +80,11 @@ export default function App() {
       setAgentStatus(data.issueNumber, data.status, data.reason);
     });
 
+    onMessage<{ column: string; system: string; developer: string; systemDefault: string; developerDefault: string }>('columnPrompts', (data) => {
+      logger.info(`[App.useEffect] columnPrompts received for ${data.column}`);
+      setColumnPromptData(data);
+    });
+
     // Set loading — the extension will send boardData when ready
     setLoading(true);
 
@@ -91,6 +97,7 @@ export default function App() {
       offMessage('workingStatus');
       offMessage('agentOutput');
       offMessage('agentStatus');
+      offMessage('columnPrompts');
     };
   }, []);
 
@@ -226,6 +233,21 @@ export default function App() {
     }, 5000);
   };
 
+  const handleSaveColumnPrompt = useCallback((column: string, promptType: 'system' | 'developer', value: string) => {
+    logger.info(`[App.handleSaveColumnPrompt] column=${column} type=${promptType}`);
+    postMessage('saveColumnPrompt', { column, promptType, value });
+  }, [postMessage]);
+
+  const handleResetColumnPrompt = useCallback((column: string, promptType: 'system' | 'developer') => {
+    logger.info(`[App.handleResetColumnPrompt] column=${column} type=${promptType}`);
+    postMessage('resetColumnPrompt', { column, promptType });
+  }, [postMessage]);
+
+  const handleRequestColumnPrompts = useCallback((column: string) => {
+    logger.info(`[App.handleRequestColumnPrompts] column=${column}`);
+    postMessage('requestColumnPrompts', { column });
+  }, [postMessage]);
+
   return (
     <div className="h-screen flex flex-col bg-vscode-panel-background">
       {statusMessage && (
@@ -237,7 +259,14 @@ export default function App() {
           {statusMessage}
         </div>
       )}
-      <KanbanBoard onMoveItem={handleMoveItem} onReorderItem={handleReorderItem} />
+      <KanbanBoard
+        onMoveItem={handleMoveItem}
+        onReorderItem={handleReorderItem}
+        onSaveColumnPrompt={handleSaveColumnPrompt}
+        onResetColumnPrompt={handleResetColumnPrompt}
+        onRequestColumnPrompts={handleRequestColumnPrompts}
+        columnPromptData={columnPromptData}
+      />
     </div>
   );
 }

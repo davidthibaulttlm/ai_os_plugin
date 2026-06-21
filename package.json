@@ -128,6 +128,26 @@
           "type": "string",
           "default": "~/ai-os-repos",
           "description": "Directory where GitHub repositories are cloned for agent work. Supports ~ for home directory."
+        },
+        "aiOs.columnPrompts.aiSpec.system": {
+          "type": "string",
+          "default": "You are an expert software architect and technical writer. Your task is to write detailed technical specifications for software issues. You produce clear, actionable specs that a developer can implement from.",
+          "description": "System prompt for the AI_SPEC column. Defines the AI agent's role and expertise for writing technical specifications."
+        },
+        "aiOs.columnPrompts.aiSpec.developer": {
+          "type": "string",
+          "default": "Write a technical specification with these sections:\n1. Overview — brief summary of the feature/fix\n2. Architecture — high-level design decisions and approach\n3. API Contracts — interfaces, endpoints, data models (if applicable)\n4. Implementation Plan — step-by-step implementation order\n5. Testing Strategy — how to verify the implementation\n\nFollow the existing codebase conventions. Reference existing files and patterns. Keep the spec focused and actionable.",
+          "description": "Developer prompt for the AI_SPEC column. Provides spec template sections and formatting requirements."
+        },
+        "aiOs.columnPrompts.aiCode.system": {
+          "type": "string",
+          "default": "You are a senior software engineer implementing code changes. You write clean, tested, production-ready code that follows the project's existing patterns and conventions.",
+          "description": "System prompt for the AI_CODE column. Defines the AI agent's role and expertise for implementing code."
+        },
+        "aiOs.columnPrompts.aiCode.developer": {
+          "type": "string",
+          "default": "Implement the code for this issue. Follow these rules:\n1. Read the specification if one exists in the issue body\n2. Follow existing code patterns, naming conventions, and architecture\n3. Write tests for new functionality\n4. Stage your changes with 'git add' when done\n5. Do NOT commit — the harness will commit after you finish\n6. Do NOT push — the harness will push after you finish\n7. Keep changes minimal and scoped to the issue\n8. Log all method entries with the project logger",
+          "description": "Developer prompt for the AI_CODE column. Provides implementation rules and code conventions."
         }
       }
     },

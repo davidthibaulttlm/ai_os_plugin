@@ -7,6 +7,7 @@ import type { RepoManager } from './repoManager';
 import type { GraphQLClient } from './graphql';
 import type { AgentSession, AgentResult, IssueContext, WebviewPoster } from './claudeHarness.types';
 import { runPostRunPipeline } from './claudeHarness.pipeline';
+import type { ColumnPromptService } from './columnPrompt';
 
 /** Next column mapping for successful completion */
 const _NEXT_COLUMN_MAP: Record<string, string> = {
@@ -23,6 +24,7 @@ export class ClaudeHarness {
   private sessions = new Map<string, AgentSession>();
   private repoManager: RepoManager;
   private graphql: GraphQLClient;
+  private promptService: ColumnPromptService;
   private webview: WebviewPoster | undefined;
   private maxConcurrentAgents: number;
   private timeoutSeconds: number;
@@ -30,11 +32,13 @@ export class ClaudeHarness {
   public constructor(
     repoManager: RepoManager,
     graphql: GraphQLClient,
+    promptService: ColumnPromptService,
     webview?: WebviewPoster
   ) {
     logger.info('[ClaudeHarness.constructor] Initializing ClaudeHarness');
     this.repoManager = repoManager;
     this.graphql = graphql;
+    this.promptService = promptService;
     this.webview = webview;
 
     const config = vscode.workspace.getConfiguration('aiOs');
@@ -54,16 +58,9 @@ export class ClaudeHarness {
   public buildPrompt(ctx: IssueContext): string {
     logger.info(`[ClaudeHarness.buildPrompt] issueNumber=${ctx.issueNumber} column=${ctx.column}`);
 
-    const maxBodyLen = 4096;
     let bodySection = '';
     if (ctx.body && ctx.body.length > 0) {
-      let body = ctx.body;
-      if (body.length > maxBodyLen) {
-        let truncPoint = body.lastIndexOf('\n', maxBodyLen - 1);
-        if (truncPoint < 0) truncPoint = maxBodyLen;
-        body = body.substring(0, truncPoint) + '\n[TRUNCATED]';
-      }
-      bodySection = `\n\n## Description\n${body}`;
+      bodySection = `\n\n## Description\n${ctx.body}`;
     }
 
     let labelsSection = '';
@@ -71,19 +68,10 @@ export class ClaudeHarness {
       labelsSection = `\n\n## Labels\n${ctx.labels.join(', ')}`;
     }
 
-    const columnInstructions = ctx.column === 'AI_SPEC'
-      ? 'Write a detailed technical specification for this issue. Include architecture decisions, API contracts, and implementation plan.'
-      : ctx.column === 'AI_CODE'
-        ? 'Implement the code for this issue. Follow the specification if one exists. Write tests. Stage your changes with git add.'
-        : 'Analyze this issue and prepare initial thoughts or a specification draft.';
-
-    const prompt = `# Issue #${ctx.issueNumber}: ${ctx.title}${bodySection}${labelsSection}
+    const userContent = `# Issue #${ctx.issueNumber}: ${ctx.title}${bodySection}${labelsSection}
 
 ## Column
 ${ctx.column}
-
-## Instructions
-${columnInstructions}
 
 ## Repository
 ${ctx.owner}/${ctx.repo}
@@ -94,6 +82,8 @@ ${ctx.owner}/${ctx.repo}
 - Do NOT push — the harness will push after you finish
 - Focus on the task at hand
 - Keep changes minimal and scoped`;
+
+    const prompt = this.promptService.assemblePromptChain(ctx.column, userContent);
 
     logger.info(`[ClaudeHarness.buildPrompt] Result: prompt length=${prompt.length}`);
     return prompt;

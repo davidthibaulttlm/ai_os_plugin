@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   DndContext,
   pointerWithin,
@@ -13,14 +13,26 @@ import {
 import { useBoardStore, type IssueItem } from "../store/boardStore";
 import KanbanColumn from './KanbanColumn';
 import IssueCard from './IssueCard';
+import ColumnSettingsModal from './ColumnSettingsModal';
 import { logger } from '../logger';
 
 interface KanbanBoardProps {
   onMoveItem: (itemId: string, columnId: string, columnName: string) => void;
   onReorderItem: (itemId: string, afterId: string | null) => void;
+  onSaveColumnPrompt: (column: string, promptType: 'system' | 'developer', value: string) => void;
+  onResetColumnPrompt: (column: string, promptType: 'system' | 'developer') => void;
+  onRequestColumnPrompts: (column: string) => void;
+  columnPromptData: { column: string; system: string; developer: string; systemDefault: string; developerDefault: string } | null;
 }
 
-export default function KanbanBoard({ onMoveItem, onReorderItem }: KanbanBoardProps) {
+export default function KanbanBoard({
+  onMoveItem,
+  onReorderItem,
+  onSaveColumnPrompt,
+  onResetColumnPrompt,
+  onRequestColumnPrompts,
+  columnPromptData,
+}: KanbanBoardProps) {
   const { columns, items, loading, error } = useBoardStore();
 
   const sensors = useSensors(
@@ -29,6 +41,33 @@ export default function KanbanBoard({ onMoveItem, onReorderItem }: KanbanBoardPr
   );
 
   const [activeItem, setActiveItem] = useState<IssueItem | null>(null);
+  const [modalColumn, setModalColumn] = useState<string | null>(null);
+  const [modalSystemPrompt, setModalSystemPrompt] = useState('');
+  const [modalDeveloperPrompt, setModalDeveloperPrompt] = useState('');
+  const [modalSystemDefault, setModalSystemDefault] = useState('');
+  const [modalDeveloperDefault, setModalDeveloperDefault] = useState('');
+
+  // Update modal prompts when data arrives from extension host
+  useEffect(() => {
+    if (columnPromptData && columnPromptData.column === modalColumn) {
+      logger.info(`[KanbanBoard.useEffect] Updating modal prompts for ${columnPromptData.column}`);
+      setModalSystemPrompt(columnPromptData.system);
+      setModalDeveloperPrompt(columnPromptData.developer);
+      setModalSystemDefault(columnPromptData.systemDefault);
+      setModalDeveloperDefault(columnPromptData.developerDefault);
+    }
+  }, [columnPromptData, modalColumn]);
+
+  const handleOpenSettings = useCallback((columnName: string) => {
+    logger.info(`[KanbanBoard.handleOpenSettings] Opening settings for column: ${columnName}`);
+    setModalColumn(columnName);
+    onRequestColumnPrompts(columnName);
+  }, [onRequestColumnPrompts]);
+
+  const handleCloseModal = useCallback(() => {
+    logger.info(`[KanbanBoard.handleCloseModal] Closing modal for column: ${modalColumn}`);
+    setModalColumn(null);
+  }, [modalColumn]);
 
   const handleDragStart = (event: DragStartEvent) => {
     const item = items.find((i) => i.id === event.active.id);
@@ -133,9 +172,23 @@ export default function KanbanBoard({ onMoveItem, onReorderItem }: KanbanBoardPr
             key={column.id}
             column={column}
             items={items.filter((item) => item.status === column.name)}
+            onOpenSettings={handleOpenSettings}
           />
         ))}
       </div>
+
+      {modalColumn && (
+        <ColumnSettingsModal
+          column={modalColumn}
+          onClose={handleCloseModal}
+          onSavePrompt={onSaveColumnPrompt}
+          onResetPrompt={onResetColumnPrompt}
+          systemPrompt={modalSystemPrompt}
+          developerPrompt={modalDeveloperPrompt}
+          systemDefault={modalSystemDefault}
+          developerDefault={modalDeveloperDefault}
+        />
+      )}
       <DragOverlay>
         {activeItem ? <IssueCard item={activeItem} /> : null}
       </DragOverlay>
