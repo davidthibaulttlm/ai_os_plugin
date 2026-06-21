@@ -28,6 +28,7 @@ npm-debug.log*
 
 # Build artifacts
 webview-ui/dist/
+webview-ui/storybook-static/
 
 # Temporary files
 tmp/

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import { expect, within } from 'storybook/test';
 import { DndContext } from '@dnd-kit/core';
 import KanbanColumn from './KanbanColumn';
 import type { KanbanColumn as KanbanColumnType, IssueItem } from '../store/boardStore';
@@ -41,6 +42,14 @@ export const Empty: Story = {
   args: {
     column: brainDumpColumn,
     items: [],
+    onOpenSettings: () => {},
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // Column header renders with correct name
+    expect(canvas.getByText('BRAIN_DUMP (0)')).toBeInTheDocument();
+    const settingsBtn = canvas.getByTitle('Column settings');
+    expect(settingsBtn).toBeInTheDocument();
   },
 };
 
@@ -73,6 +82,15 @@ export const WithItems: Story = {
   args: {
     column: aiSpecColumn,
     items: sampleItems,
+    onOpenSettings: () => {},
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // Column header shows correct count
+    expect(canvas.getByText('AI_SPEC (2)')).toBeInTheDocument();
+    // Both issue cards render
+    expect(canvas.getByText('Implement user authentication')).toBeInTheDocument();
+    expect(canvas.getByText('Add API rate limiting')).toBeInTheDocument();
   },
 };
 
@@ -90,6 +108,14 @@ export const ManyItems: Story = {
   args: {
     column: prDoneColumn,
     items: manyItems,
+    onOpenSettings: () => {},
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // Column header shows correct count
+    expect(canvas.getByText('PR_DONE (10)')).toBeInTheDocument();
+    // First item visible
+    expect(canvas.getByText('Completed feature 1')).toBeInTheDocument();
   },
 };
 
@@ -133,5 +159,13 @@ export const PriorityOrder: Story = {
   args: {
     column: aiSpecColumn,
     items: priorityOrderedItems,
+    onOpenSettings: () => {},
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    expect(canvas.getByText('AI_SPEC (3)')).toBeInTheDocument();
+    expect(canvas.getByText('Critical bug - highest priority')).toBeInTheDocument();
+    expect(canvas.getByText('High priority feature')).toBeInTheDocument();
+    expect(canvas.getByText('Medium priority task')).toBeInTheDocument();
   },
 };

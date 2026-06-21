@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import { expect, within } from 'storybook/test';
 import Modal from './Modal';
 
 const meta = {
@@ -16,45 +17,62 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {
-  args: {
-    title: 'Example Modal',
-    onClose: () => {},
-    children: (
-      <div>
-        <p className="mb-4">This is a reusable modal dialog.</p>
-        <div className="flex justify-end">
-          <button className="px-4 py-2 bg-vscode-button-background text-vscode-button-foreground rounded hover:bg-vscode-button-hoverBackground cursor-pointer text-sm">
-            Close
-          </button>
-        </div>
-      </div>
-    ),
-  },
-};
+function ModalButton({ children }: { children: React.ReactNode }) {
+  return (
+    <button className="px-4 py-2 bg-vscode-button-background text-vscode-button-foreground rounded hover:bg-vscode-button-hoverBackground cursor-pointer text-sm">
+      {children}
+    </button>
+  );
+}
 
-export const Wide: Story = {
-  args: {
-    title: 'Wide Modal',
-    onClose: () => {},
-    maxWidth: 'max-w-[800px]',
-    children: (
-      <div>
-        <p className="mb-4">This modal uses a wider max-width.</p>
-        <div className="flex justify-end">
-          <button className="px-4 py-2 bg-vscode-button-background text-vscode-button-foreground rounded hover:bg-vscode-button-hoverBackground cursor-pointer text-sm">
-            Close
-          </button>
-        </div>
-      </div>
-    ),
-  },
-};
+function expectText(canvasElement: HTMLElement, ...texts: string[]) {
+  const canvas = within(canvasElement);
+  texts.forEach((text) => expect(canvas.getByText(text)).toBeInTheDocument());
+}
+
+function createModalStory(
+  title: string,
+  texts: string[],
+  children: React.ReactNode,
+  maxWidth?: string
+): Story {
+  const args: any = { title, onClose: () => void 0, children };
+  if (maxWidth) args.maxWidth = maxWidth;
+  return {
+    args,
+    play: async ({ canvasElement }) => {
+      expectText(canvasElement, ...texts);
+    },
+  };
+}
+
+export const Default = createModalStory(
+  'Example Modal',
+  ['Example Modal', 'This is a reusable modal dialog.'],
+  <div>
+    <p className="mb-4">This is a reusable modal dialog.</p>
+    <div className="flex justify-end">
+      <ModalButton>Close</ModalButton>
+    </div>
+  </div>
+) as Story;
+
+export const Wide = createModalStory(
+  'Wide Modal',
+  ['Wide Modal', 'This modal uses a wider max-width.'],
+  <div>
+    <p className="mb-4">This modal uses a wider max-width.</p>
+    <div className="flex justify-end">
+      <ModalButton>Close</ModalButton>
+    </div>
+  </div>,
+  'max-w-[800px]'
+) as Story;
 
 export const WithForm: Story = {
   args: {
     title: 'Edit Settings',
-    onClose: () => {},
+    onClose: () => { /* no-op for storybook */ },
     children: (
       <div className="flex flex-col gap-4">
         <div>
@@ -72,11 +90,15 @@ export const WithForm: Story = {
           />
         </div>
         <div className="flex justify-end mt-4">
-          <button className="px-4 py-2 bg-vscode-button-background text-vscode-button-foreground rounded hover:bg-vscode-button-hoverBackground cursor-pointer text-sm">
-            Save
-          </button>
+          <ModalButton>Save</ModalButton>
         </div>
       </div>
     ),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    expect(canvas.getByText('Edit Settings')).toBeInTheDocument();
+    expect(canvas.getByText('Name')).toBeInTheDocument();
+    expect(canvas.getByText('Description')).toBeInTheDocument();
   },
 };

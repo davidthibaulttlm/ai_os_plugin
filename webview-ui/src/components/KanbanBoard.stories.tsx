@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { fn } from 'storybook/test';
+import { expect, fn, within } from 'storybook/test';
 import KanbanBoard from './KanbanBoard';
 import { useBoardStore, type KanbanColumn, type IssueItem } from "../store/boardStore";
 
@@ -38,9 +38,23 @@ export const EmptyBoard: Story = {
   args: {
     onMoveItem: fn(),
     onReorderItem: fn(),
+    onSaveColumnPrompt: fn(),
+    onResetColumnPrompt: fn(),
+    onRequestColumnPrompts: fn(),
+    columnPromptData: null,
   },
   parameters: {
     items: [],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // All 6 columns render
+    expect(canvas.getByText('BRAIN_DUMP (0)')).toBeInTheDocument();
+    expect(canvas.getByText('AI_SPEC (0)')).toBeInTheDocument();
+    expect(canvas.getByText('HUMAN_SPEC_REVIEW (0)')).toBeInTheDocument();
+    expect(canvas.getByText('AI_CODE (0)')).toBeInTheDocument();
+    expect(canvas.getByText('HUMAN_CODE_REVIEW (0)')).toBeInTheDocument();
+    expect(canvas.getByText('PR_DONE (0)')).toBeInTheDocument();
   },
 };
 
@@ -57,8 +71,22 @@ export const PopulatedBoard: Story = {
   args: {
     onMoveItem: fn(),
     onReorderItem: fn(),
+    onSaveColumnPrompt: fn(),
+    onResetColumnPrompt: fn(),
+    onRequestColumnPrompts: fn(),
+    columnPromptData: null,
   },
   parameters: {
     items: populatedItems,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // Items distributed across columns
+    expect(canvas.getByText('Brain dump idea')).toBeInTheDocument();
+    expect(canvas.getByText('AI writing spec')).toBeInTheDocument();
+    expect(canvas.getByText('Human reviewing spec')).toBeInTheDocument();
+    expect(canvas.getByText('AI coding feature')).toBeInTheDocument();
+    expect(canvas.getByText('Code review in progress')).toBeInTheDocument();
+    expect(canvas.getByText('Merged feature')).toBeInTheDocument();
   },
 };

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import { expect, within } from 'storybook/test';
 import ColumnSettingsModal from './ColumnSettingsModal';
 
 const meta = {
@@ -15,44 +16,65 @@ type Story = StoryObj<typeof meta>;
 const defaultSystemPrompt = 'You are an expert software architect and technical writer.';
 const defaultDeveloperPrompt = 'Write a technical specification with these sections...';
 
-export const AISpecModal: Story = {
-  args: {
-    column: 'AI_SPEC',
-    systemPrompt: defaultSystemPrompt,
-    developerPrompt: defaultDeveloperPrompt,
-    systemDefault: defaultSystemPrompt,
-    developerDefault: defaultDeveloperPrompt,
-  },
+const mockOnClose = () => void 0;
+const mockOnSavePrompt = (_column: string, _promptType: 'system' | 'developer', _value: string) => void 0;
+const mockOnResetPrompt = (_column: string, _promptType: 'system' | 'developer') => void 0;
+
+const baseArgs = {
+  onClose: mockOnClose,
+  onSavePrompt: mockOnSavePrompt,
+  onResetPrompt: mockOnResetPrompt,
 };
 
-export const AICodeModal: Story = {
-  args: {
-    column: 'AI_CODE',
-    systemPrompt: 'You are a senior software engineer.',
-    developerPrompt: 'Implement the code for this issue.',
-    systemDefault: 'You are a senior software engineer.',
-    developerDefault: 'Implement the code for this issue.',
-  },
+function expectColumnTitle(canvasElement: HTMLElement, title: string) {
+  const canvas = within(canvasElement);
+  expect(canvas.getByText(`Column Settings: ${title}`)).toBeInTheDocument();
+}
+
+function createStory(
+  column: string,
+  systemPrompt: string,
+  developerPrompt: string,
+  systemDefault: string,
+  developerDefault: string,
+  extraChecks?: (canvas: ReturnType<typeof within>) => void
+): Story {
+  return {
+    args: {
+      ...baseArgs,
+      column,
+      systemPrompt,
+      developerPrompt,
+      systemDefault,
+      developerDefault,
+    },
+    play: async ({ canvasElement }) => {
+      const canvas = within(canvasElement);
+      expectColumnTitle(canvasElement, column.replace(/_/g, ' '));
+      extraChecks?.(canvas);
+    },
+  };
+}
+
+const aiSpecChecks = (canvas: ReturnType<typeof within>) => {
+  expect(canvas.getByText('System Prompt')).toBeInTheDocument();
+  expect(canvas.getByText('Developer Prompt')).toBeInTheDocument();
 };
 
-export const HumanColumnDisabled: Story = {
-  args: {
-    column: 'HUMAN_SPEC_REVIEW',
-    systemPrompt: '',
-    developerPrompt: '',
-    systemDefault: '',
-    developerDefault: '',
-    onSavePrompt: () => {},
-    onResetPrompt: () => {},
-  },
-};
+export const AISpecModal = createStory(
+  'AI_SPEC', defaultSystemPrompt, defaultDeveloperPrompt, defaultSystemPrompt, defaultDeveloperPrompt, aiSpecChecks
+) as Story;
 
-export const CustomPrompts: Story = {
-  args: {
-    column: 'AI_SPEC',
-    systemPrompt: 'Custom system prompt written by user.',
-    developerPrompt: 'Custom developer prompt with specific rules.',
-    systemDefault: defaultSystemPrompt,
-    developerDefault: defaultDeveloperPrompt,
-  },
-};
+export const AICodeModal = createStory(
+  'AI_CODE', 'You are a senior software engineer.', 'Implement the code for this issue.',
+  'You are a senior software engineer.', 'Implement the code for this issue.'
+) as Story;
+
+export const HumanColumnDisabled = createStory(
+  'HUMAN_SPEC_REVIEW', '', '', '', ''
+) as Story;
+
+export const CustomPrompts = createStory(
+  'AI_SPEC', 'Custom system prompt written by user.', 'Custom developer prompt with specific rules.',
+  defaultSystemPrompt, defaultDeveloperPrompt
+) as Story;
