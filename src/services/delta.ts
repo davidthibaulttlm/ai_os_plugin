@@ -19,6 +19,7 @@ export interface BoardItemState {
   status: string;
   title: string;
   labels: string[];
+  body?: string;
 }
 
 /**

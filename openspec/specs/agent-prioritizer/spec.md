@@ -195,3 +195,41 @@ npx vscode-test
 
 - Add `coverage.thresholds.global = 90` to Vitest config
 - CI gate: `npx vitest run --coverage --coverage.reporter=text-summary` must pass
+
+## MODIFIED Requirements (from send-issue-content-to-claude)
+
+### Requirement: PrioritizerItem structure
+The `PrioritizerItem` interface SHALL include an optional `body` field of type `string`. The interface MUST support items with and without body content.
+
+#### Scenario: Item with body
+- **WHEN** a `PrioritizerItem` is created from a GraphQL issue that has a body
+- **THEN** the item includes `body` with the issue description text
+
+#### Scenario: Item without body
+- **WHEN** a `PrioritizerItem` is created from a GraphQL item with no body
+- **THEN** the `body` field is `undefined` and the item is valid
+
+### Requirement: Agent trigger callback signature
+The `AgentTriggerCallback` type SHALL accept parameters: `issueId: string`, `columnName: string`, `title?: string`, `body?: string`. Implementations MUST pass the title and body from board state when invoking the callback.
+
+#### Scenario: Callback invoked with body and title
+- **WHEN** `startAgent()` invokes the callback for an issue with a body and title
+- **THEN** the callback receives `(issueId, columnName, title, body)` with all values
+
+#### Scenario: Callback invoked without body
+- **WHEN** `startAgent()` invokes the callback for an issue without a body
+- **THEN** the callback receives `(issueId, columnName, title, undefined)`
+
+### Requirement: startAgent passes title and body to callback
+The `startAgent()` method SHALL extract the title and body from the selected `PrioritizerItem` and pass them to the callback.
+
+#### Scenario: startAgent passes title and body
+- **WHEN** `startAgent()` selects an issue that has a body and title in board state
+- **THEN** the callback is invoked with the title and body text
+
+### Requirement: onAgentTrigger passes title and body to callback
+The `onAgentTrigger()` method SHALL look up the title and body from board state and pass them to the callback.
+
+#### Scenario: onAgentTrigger passes title and body
+- **WHEN** `onAgentTrigger()` is called for an issue that exists in board state with a body
+- **THEN** the callback is invoked with the title and body text

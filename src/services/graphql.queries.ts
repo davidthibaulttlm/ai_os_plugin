@@ -5,6 +5,7 @@ export const CONTENT_FRAGMENT = `
     id
     number
     title
+    body
     url
     state
     repository {
@@ -232,6 +233,7 @@ export interface IssueContent {
   id: string;
   number: number;
   title: string;
+  body?: string;
   url: string;
   state: string;
   repository: { id: string; name: string; owner: { login: string } };

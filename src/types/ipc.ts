@@ -10,7 +10,8 @@ export type WebviewToExtension =
   | { type: 'reorderItem'; data: { itemId: string; afterId: string | null } }
   | { type: 'refresh'; data?: never }
   | { type: 'selectIssue'; data: { issueId: string } }
-  | { type: 'assignAgent'; data: { issueId: string } };
+  | { type: 'assignAgent'; data: { issueId: string } }
+  | { type: '__log__'; data: { level: string; message: string } };
 
 /** Messages from Extension → Webview */
 export type ExtensionToWebview =

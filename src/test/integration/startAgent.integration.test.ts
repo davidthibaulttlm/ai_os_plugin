@@ -102,7 +102,7 @@ describe('Start Agent Integration', () => {
 
   it('command registration: vscode.commands.executeCommand("aiOs.startAgent") executes without error', async () => {
     agentService.setBoardState([
-      { id: 1, title: 'Test', status: 'AI_SPEC', labels: [] },
+      { id: 1, projectItemId: 'PVTI_test1', title: 'Test', status: 'AI_SPEC', labels: [] },
     ]);
     agentService.setCallback(async () => {});
 
@@ -117,7 +117,7 @@ describe('Start Agent Integration', () => {
 
   it('notification appears in VS Code window after command execution', async () => {
     agentService.setBoardState([
-      { id: 42, title: 'Fix bug', status: 'AI_CODE', labels: ['bug'] },
+      { id: 42, projectItemId: 'PVTI_test42', title: 'Fix bug', status: 'AI_CODE', labels: ['bug'] },
     ]);
     agentService.setCallback(async () => {});
 
@@ -132,8 +132,8 @@ describe('Start Agent Integration', () => {
 
   it('full flow: select → start → finish → auto-trigger next', async () => {
     agentService.setBoardState([
-      { id: 1, title: 'First', status: 'AI_SPEC', labels: [] },
-      { id: 2, title: 'Second', status: 'AI_SPEC', labels: [] },
+      { id: 1, projectItemId: 'PVTI_test1', title: 'First', status: 'AI_SPEC', labels: [] },
+      { id: 2, projectItemId: 'PVTI_test2', title: 'Second', status: 'AI_SPEC', labels: [] },
     ]);
 
     const launched: string[] = [];
@@ -149,8 +149,8 @@ describe('Start Agent Integration', () => {
 
     // Simulate agent moving issue #1 to HUMAN column (agent completed work)
     agentService.setBoardState([
-      { id: 1, title: 'First', status: 'HUMAN_SPEC_REVIEW', labels: [] },
-      { id: 2, title: 'Second', status: 'AI_SPEC', labels: [] },
+      { id: 1, projectItemId: 'PVTI_test1', title: 'First', status: 'HUMAN_SPEC_REVIEW', labels: [] },
+      { id: 2, projectItemId: 'PVTI_test2', title: 'Second', status: 'AI_SPEC', labels: [] },
     ]);
 
     // Simulate finishing — should auto-trigger #2
@@ -160,8 +160,8 @@ describe('Start Agent Integration', () => {
 
   it('WIP prevents duplicate agent starts', async () => {
     agentService.setBoardState([
-      { id: 1, title: 'Feature', status: 'AI_SPEC', labels: [] },
-      { id: 2, title: 'Another', status: 'AI_SPEC', labels: [] },
+      { id: 1, projectItemId: 'PVTI_test1', title: 'Feature', status: 'AI_SPEC', labels: [] },
+      { id: 2, projectItemId: 'PVTI_test2', title: 'Another', status: 'AI_SPEC', labels: [] },
     ]);
     agentService.setCallback(async () => {});
 

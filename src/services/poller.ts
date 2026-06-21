@@ -132,7 +132,8 @@ export class PollerService {
       const status = extractStatus(item);
       const title = item.content?.title ?? 'Unknown';
       const labels = extractLabels(item);
-      newState.set(githubId, { githubId, status, title, labels });
+      const body = item.content?.body;
+      newState.set(githubId, { githubId, status, title, labels, body });
     }
 
     this.lastState = newState;
@@ -146,9 +147,11 @@ export class PollerService {
 
     const prioritizerItems: PrioritizerItem[] = items.map((item) => ({
       id: item.databaseId ?? hashToNumber(item.id),
+      projectItemId: item.id,
       title: item.content?.title ?? 'Unknown',
       status: extractStatus(item),
       labels: extractLabels(item),
+      body: item.content?.body,
     }));
 
     logger.debug(`[poller.feedBoardState] Feeding ${prioritizerItems.length} items to agent service`);

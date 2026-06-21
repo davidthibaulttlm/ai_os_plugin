@@ -4,7 +4,7 @@ import type { GraphQLClient } from './graphql';
 import { logger } from './logger';
 
 /** Agent trigger hook callback */
-export type AgentTriggerCallback = (issueId: string, columnName: string) => Promise<void>;
+export type AgentTriggerCallback = (issueId: string, columnName: string, title?: string, body?: string) => Promise<void>;
 
 /** AI-eligible columns for agent work */
 export const AI_ELIGIBLE_COLUMNS = ['AI_CODE', 'AI_SPEC', 'BRAIN_DUMP'] as const;
@@ -15,9 +15,11 @@ export const HUMAN_COLUMNS = ['HUMAN_SPEC_REVIEW', 'HUMAN_CODE_REVIEW', 'PR_DONE
 /** Board item for prioritizer */
 export interface PrioritizerItem {
   id: number;
+  projectItemId: string;
   title: string;
   status: string;
   labels: string[];
+  body?: string;
 }
 
 /** Result from selectNextIssue */
@@ -38,6 +40,7 @@ export interface PrioritizerSelection {
 export class AgentService {
   private callback: AgentTriggerCallback | undefined;
   private currentWip: string | null = null;
+  private bugWipSet = new Set<string>();
   private boardItems: PrioritizerItem[] = [];
   private graphql: GraphQLClient | undefined;
   private projectId: string | undefined;
@@ -78,8 +81,8 @@ export class AgentService {
    * Check if agent is currently busy.
    */
   public isBusy(): boolean {
-    const busy = this.currentWip !== null;
-    logger.debug(`[AgentService.isBusy] currentWip=${this.currentWip} -> ${busy}`);
+    const busy = this.currentWip !== null || this.bugWipSet.size > 0;
+    logger.debug(`[AgentService.isBusy] currentWip=${this.currentWip} bugWipSet=${Array.from(this.bugWipSet).join(', ')} -> ${busy}`);
     return busy;
   }
 
@@ -163,7 +166,7 @@ export class AgentService {
       return false;
     }
 
-    // Find the item's project-level ID
+    // Find the item's project-level ID (GraphQL node ID, not issue number)
     const item = this.boardItems.find((i) => i.id === issueId && i.status === 'BRAIN_DUMP');
     if (!item) {
       logger.warn(`[AgentService.autoMoveFromBrainDump] Issue #${issueId} not found in BRAIN_DUMP`);
@@ -171,8 +174,8 @@ export class AgentService {
     }
 
     try {
-      // Use moveToColumn which resolves fieldId and optionId from project fields
-      const ok = await this.graphql.moveToColumn(this.projectId, String(issueId), 'AI_SPEC');
+      // Use projectItemId (GraphQL node ID) for the mutation, not issue number
+      const ok = await this.graphql.moveToColumn(this.projectId, item.projectItemId, 'AI_SPEC');
       if (ok) {
         logger.info(`[AgentService.autoMoveFromBrainDump] Successfully moved #${issueId} to AI_SPEC`);
       } else {
@@ -212,7 +215,7 @@ export class AgentService {
       }
     }
 
-    // Set WIP (unless it's a bug breaking WIP limit)
+    // Set WIP (bugs bypass WIP limit but are still tracked)
     const isBug = AgentService.isBug(
       this.boardItems.find((i) => i.id === issueId)?.labels ?? []
     );
@@ -220,15 +223,19 @@ export class AgentService {
       this.currentWip = String(issueId);
       logger.info(`[AgentService.startAgent] WIP set to #${issueId}`);
     } else {
-      logger.info(`[AgentService.startAgent] Bug detected — bypassing WIP limit for #${issueId}`);
+      this.bugWipSet.add(String(issueId));
+      logger.info(`[AgentService.startAgent] Bug WIP tracked: #${issueId} (active bug WIPs: ${Array.from(this.bugWipSet).join(', ')})`);
     }
 
     // Invoke callback
     if (this.callback) {
       const targetColumn = column === 'BRAIN_DUMP' ? 'AI_SPEC' : column;
-      logger.info(`[AgentService.startAgent] Invoking callback for #${issueId} in ${targetColumn}`);
+      const selectedItem = this.boardItems.find((i) => i.id === issueId);
+      const itemTitle = selectedItem?.title;
+      const itemBody = selectedItem?.body;
+      logger.info(`[AgentService.startAgent] Invoking callback for #${issueId} in ${targetColumn} title=${itemTitle} body=${itemBody ? 'present' : 'empty'}`);
       try {
-        await this.callback(String(issueId), targetColumn);
+        await this.callback(String(issueId), targetColumn, itemTitle, itemBody);
         logger.info(`[AgentService.startAgent] Callback completed for #${issueId}`);
       } catch (error) {
         logger.error(`[AgentService.startAgent] Error in callback for #${issueId}: ${(error as Error).message}`);
@@ -247,13 +254,13 @@ export class AgentService {
   public async finishAgent(issueId: string): Promise<void> {
     logger.info(`[AgentService.finishAgent] Finishing agent for #${issueId}`);
 
-    // Clear WIP if matches
+    // Clear WIP — check both regular WIP and bug WIP set
     if (this.currentWip === issueId) {
       this.currentWip = null;
       logger.info(`[AgentService.finishAgent] WIP cleared (was #${issueId})`);
-    } else {
-      logger.warn(`[AgentService.finishAgent] WIP mismatch — currentWip=${this.currentWip}, requested=${issueId}`);
     }
+    this.bugWipSet.delete(issueId);
+    logger.debug(`[AgentService.finishAgent] Removed #${issueId} from bug WIP set. Remaining: ${Array.from(this.bugWipSet).join(', ')}`);
 
     // Auto-trigger next issue — but NOT the same one that just finished
     logger.info('[AgentService.finishAgent] Checking for next issue');
@@ -290,7 +297,10 @@ export class AgentService {
     if (this.callback) {
       logger.info(`[AgentService.onAgentTrigger] Invoking callback for issue #${issueId} in ${columnName}`);
       try {
-        await this.callback(issueId, columnName);
+        const selectedItem = this.boardItems.find((i) => String(i.id) === issueId);
+        const itemTitle = selectedItem?.title;
+        const itemBody = selectedItem?.body;
+        await this.callback(issueId, columnName, itemTitle, itemBody);
         logger.info(`[AgentService.onAgentTrigger] Callback completed for issue #${issueId}`);
       } catch (error) {
         logger.error(`[AgentService.onAgentTrigger] Error in callback for issue #${issueId}: ${(error as Error).message}`);

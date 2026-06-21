@@ -13,6 +13,7 @@ import {
 import { useBoardStore, type IssueItem } from "../store/boardStore";
 import KanbanColumn from './KanbanColumn';
 import IssueCard from './IssueCard';
+import { logger } from '../logger';
 
 interface KanbanBoardProps {
   onMoveItem: (itemId: string, columnId: string, columnName: string) => void;
@@ -37,25 +38,19 @@ export default function KanbanBoard({ onMoveItem, onReorderItem }: KanbanBoardPr
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveItem(null);
     const { active, over } = event;
-    console.log('[AI OS Drag] handleDragEnd START', { activeId: active.id, overId: over?.id });
 
     if (!over || active.id === over.id) {
-      console.log('[AI OS Drag] No move needed', { reason: over ? 'same item' : 'no target' });
+      logger.debug(`[KanbanBoard.handleDragEnd] No move needed`);
       return;
     }
 
     const activeId = active.id as string;
     const overId = over.id as string;
+    logger.info(`[KanbanBoard.handleDragEnd] Drag end: activeId=${activeId}, overId=${overId}`);
 
     // Check if dropped over another card
     const activeItem = items.find((i) => i.id === activeId);
     const overItem = items.find((i) => i.id === overId);
-    console.log('[AI OS Drag] Items resolved', {
-      activeItemFound: !!activeItem,
-      activeItemStatus: activeItem?.status,
-      overItemFound: !!overItem,
-      overItemStatus: overItem?.status,
-    });
 
     // Check if dropped directly on a column
     let droppedColumn = columns.find((col) => col.id === overId);
@@ -64,7 +59,6 @@ export default function KanbanBoard({ onMoveItem, onReorderItem }: KanbanBoardPr
     if (!droppedColumn && overItem) {
       droppedColumn = columns.find((col) => col.name === overItem.status);
     }
-    console.log('[AI OS Drag] Column resolved', { columnFound: !!droppedColumn, columnName: droppedColumn?.name });
 
     if (droppedColumn && activeItem) {
       // Same-column reorder
@@ -93,20 +87,15 @@ export default function KanbanBoard({ onMoveItem, onReorderItem }: KanbanBoardPr
             afterId = overId;
           }
         }
-        console.log('[AI OS Drag] SAME-COLUMN REORDER — calling onReorderItem', {
-          itemId: activeId,
-          afterId,
-          column: droppedColumn.name,
-          droppedOnColumn: !overItem,
-        });
+        logger.info(`[KanbanBoard.handleDragEnd] Same-column reorder: itemId=${activeId}, afterId=${afterId}, column=${droppedColumn.name}`);
         onReorderItem(activeId, afterId);
       } else {
         // Cross-column move
-        console.log('[AI OS Drag] Cross-column move', { itemId: activeId, from: activeItem.status, to: droppedColumn.name });
+        logger.info(`[KanbanBoard.handleDragEnd] Cross-column move: itemId=${activeId}, from=${activeItem.status}, to=${droppedColumn.name}`);
         onMoveItem(activeId, droppedColumn.id, droppedColumn.name);
       }
     } else {
-      console.error('[AI OS Drag] No column found for drop target', { overId, availableColumns: columns.map(c => ({ id: c.id, name: c.name })) });
+      logger.error(`[KanbanBoard.handleDragEnd] No column found for drop target: overId=${overId}`);
     }
   };
 

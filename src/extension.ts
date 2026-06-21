@@ -191,8 +191,8 @@ async function initServices(context: vscode.ExtensionContext): Promise<void> {
     await agentService!.finishAgent(String(issueNumber));
   });
 
-  agentService.setCallback(async (issueId: string, columnName: string) => {
-    logger.info(`[initServices] Agent callback for #${issueId} in ${columnName}`);
+  agentService.setCallback(async (issueId: string, columnName: string, title?: string, body?: string) => {
+    logger.info(`[initServices] Agent callback for #${issueId} in ${columnName} title=${title} body=${body ? String(body.length) + 'chars' : 'empty'}`);
     vscode.window.showInformationMessage(
       `AI Agent triggered for issue #${issueId} in column ${columnName}`
     );
@@ -207,7 +207,8 @@ async function initServices(context: vscode.ExtensionContext): Promise<void> {
 
     const triggerEvent = {
       issueNumber: parseInt(issueId, 10),
-      title: `Issue #${issueId}`,
+      title: title ?? `Issue #${issueId}`,
+      body,
       column: columnName,
       reason: 'assigned' as const,
     };

@@ -164,12 +164,14 @@ export class GraphQLClient {
     );
 
     if (!statusField || !statusField.options) {
-      throw new Error(`Cannot find Status field or options for column: ${columnName}`);
+      logger.error(`[GraphQLClient.moveToColumn] Cannot find Status field or options for column: ${columnName}`);
+      return false;
     }
 
     const option = statusField.options.find((o) => o.name === columnName);
     if (!option) {
-      throw new Error(`Column "${columnName}" not found in project fields`);
+      logger.error(`[GraphQLClient.moveToColumn] Column "${columnName}" not found in project fields`);
+      return false;
     }
 
     return this.moveItem(projectId, itemId, statusField.id, option.id);
@@ -194,7 +196,8 @@ export class GraphQLClient {
         },
       }
     );
-    return result.updateProjectV2ItemPosition.items.nodes.length > 0;
+    const nodes = result.updateProjectV2ItemPosition.items.nodes;
+    return nodes.length > 0 && nodes[0].id === itemId;
   }
 
   /**

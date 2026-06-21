@@ -260,7 +260,7 @@ export class KanbanPanel {
    * Handle incoming messages from the webview.
    */
   private async _handleMessage(message: WebviewToExtension): Promise<void> {
-    const allowedTypes = ['loadBoard', 'moveItem', 'reorderItem', 'refresh', 'selectIssue', 'assignAgent', '__ping__', '__inline_ping__', '__react_ready__'];
+    const allowedTypes = ['loadBoard', 'moveItem', 'reorderItem', 'refresh', 'selectIssue', 'assignAgent', '__ping__', '__inline_ping__', '__react_ready__', '__log__'];
     if (!allowedTypes.includes(message.type)) {
       logger.warn(`Unknown IPC message type: ${message.type}`);
       return;
@@ -356,6 +356,27 @@ export class KanbanPanel {
             type: 'agentProgress',
             data: { issueId: message.data.issueId, status: 'started' },
           } as ExtensionToWebview);
+        }
+        break;
+      }
+
+      case '__log__': {
+        const logData = message.data as { level?: string; message?: string };
+        if (logData?.message) {
+          switch (logData.level) {
+            case 'error':
+              logger.error(`[webview] ${logData.message}`);
+              break;
+            case 'warn':
+              logger.warn(`[webview] ${logData.message}`);
+              break;
+            case 'debug':
+              logger.debug(`[webview] ${logData.message}`);
+              break;
+            default:
+              logger.info(`[webview] ${logData.message}`);
+              break;
+          }
         }
         break;
       }

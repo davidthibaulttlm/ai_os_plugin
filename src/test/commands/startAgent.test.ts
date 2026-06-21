@@ -72,7 +72,7 @@ describe('handleStartAgent command', () => {
 
   it('calls selectNextIssue() and launches agent', async () => {
     agentService.setBoardState([
-      { id: 42, title: 'Test issue', status: 'AI_SPEC', labels: [] },
+      { id: 42, projectItemId: 'PVTI_test42', title: 'Test issue', status: 'AI_SPEC', labels: [] },
     ]);
 
     let launchedIssue: string | undefined;
@@ -90,7 +90,7 @@ describe('handleStartAgent command', () => {
 
   it('shows success notification with issue number and title', async () => {
     agentService.setBoardState([
-      { id: 99, title: 'Fix critical bug', status: 'AI_CODE', labels: ['bug'] },
+      { id: 99, projectItemId: 'PVTI_test99', title: 'Fix critical bug', status: 'AI_CODE', labels: ['bug'] },
     ]);
 
     agentService.setCallback(async () => {});
@@ -105,8 +105,8 @@ describe('handleStartAgent command', () => {
   it('shows busy notification when WIP limit reached', async () => {
     // Set up a non-bug issue first to occupy WIP
     agentService.setBoardState([
-      { id: 1, title: 'Feature', status: 'AI_SPEC', labels: [] },
-      { id: 2, title: 'Another', status: 'AI_SPEC', labels: [] },
+      { id: 1, projectItemId: 'PVTI_test1', title: 'Feature', status: 'AI_SPEC', labels: [] },
+      { id: 2, projectItemId: 'PVTI_test2', title: 'Another', status: 'AI_SPEC', labels: [] },
     ]);
 
     agentService.setCallback(async () => {});
@@ -143,7 +143,7 @@ describe('handleStartAgent command', () => {
 
   it('shows auto_move_failed warning when move fails', async () => {
     agentService.setBoardState([
-      { id: 5, title: 'Brain dump item', status: 'BRAIN_DUMP', labels: [] },
+      { id: 5, projectItemId: 'PVTI_test5', title: 'Brain dump item', status: 'BRAIN_DUMP', labels: [] },
     ]);
 
     // No graphql client set, so autoMoveFromBrainDump will fail
@@ -159,7 +159,7 @@ describe('handleStartAgent command', () => {
   it('allows bug even when busy', async () => {
     // Set WIP with a non-bug
     agentService.setBoardState([
-      { id: 1, title: 'Feature', status: 'AI_SPEC', labels: [] },
+      { id: 1, projectItemId: 'PVTI_test1', title: 'Feature', status: 'AI_SPEC', labels: [] },
     ]);
     agentService.setCallback(async () => {});
 
@@ -168,8 +168,8 @@ describe('handleStartAgent command', () => {
 
     // Now add a bug
     agentService.setBoardState([
-      { id: 1, title: 'Feature', status: 'AI_SPEC', labels: [] },
-      { id: 2, title: 'Critical bug', status: 'AI_SPEC', labels: ['bug'] },
+      { id: 1, projectItemId: 'PVTI_test1', title: 'Feature', status: 'AI_SPEC', labels: [] },
+      { id: 2, projectItemId: 'PVTI_test2', title: 'Critical bug', status: 'AI_SPEC', labels: ['bug'] },
     ]);
 
     await simulateHandleStartAgent(agentService);

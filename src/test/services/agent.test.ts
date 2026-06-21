@@ -14,14 +14,14 @@ describe('AgentService.isBusy', () => {
   });
 
   it('returns true after startAgent sets WIP', async () => {
-    agent.setBoardState([{ id: 1, title: 'Test', status: 'AI_SPEC', labels: [] }]);
+    agent.setBoardState([{ id: 1, projectItemId: 'PVTI_test1', title: 'Test', status: 'AI_SPEC', labels: [] }]);
     agent.setCallback(vi.fn().mockResolvedValue(undefined));
     await agent.startAgent();
     expect(agent.isBusy()).toBe(true);
   });
 
   it('returns false after WIP cleared', async () => {
-    agent.setBoardState([{ id: 1, title: 'Test', status: 'AI_SPEC', labels: [] }]);
+    agent.setBoardState([{ id: 1, projectItemId: 'PVTI_test1', title: 'Test', status: 'AI_SPEC', labels: [] }]);
     agent.setCallback(vi.fn().mockResolvedValue(undefined));
     await agent.startAgent();
     expect(agent.isBusy()).toBe(true);
@@ -39,8 +39,8 @@ describe('AgentService.setBoardState', () => {
 
   it('stores board items', () => {
     const items = [
-      { id: 1, title: 'Issue 1', status: 'AI_SPEC', labels: [] },
-      { id: 2, title: 'Issue 2', status: 'AI_CODE', labels: ['bug'] },
+      { id: 1, projectItemId: 'PVTI_test1', title: 'Issue 1', status: 'AI_SPEC', labels: [] },
+      { id: 2, projectItemId: 'PVTI_test2', title: 'Issue 2', status: 'AI_CODE', labels: ['bug'] },
     ];
     agent.setBoardState(items);
     expect(agent.selectNextIssue()).not.toBeNull();
@@ -63,17 +63,17 @@ describe('AgentService.finishAgent', () => {
 
   it('auto-triggers next issue after finishing', async () => {
     agent['currentWip'] = '1';
-    agent.setBoardState([{ id: 2, title: 'Next', status: 'AI_SPEC', labels: [] }]);
+    agent.setBoardState([{ id: 2, projectItemId: 'PVTI_test2', title: 'Next', status: 'AI_SPEC', labels: [] }]);
     const callback = vi.fn().mockResolvedValue(undefined);
     agent.setCallback(callback);
 
     await agent.finishAgent('1');
-    expect(callback).toHaveBeenCalledWith('2', 'AI_SPEC');
+    expect(callback).toHaveBeenCalledWith('2', 'AI_SPEC', 'Next', undefined);
   });
 
   it('does NOT auto-trigger when next is same issue', async () => {
     agent['currentWip'] = '1';
-    agent.setBoardState([{ id: 1, title: 'Same', status: 'AI_SPEC', labels: [] }]);
+    agent.setBoardState([{ id: 1, projectItemId: 'PVTI_test1', title: 'Same', status: 'AI_SPEC', labels: [] }]);
     const callback = vi.fn().mockResolvedValue(undefined);
     agent.setCallback(callback);
 
@@ -83,12 +83,12 @@ describe('AgentService.finishAgent', () => {
 
   it('auto-triggers when next is different issue', async () => {
     agent['currentWip'] = '1';
-    agent.setBoardState([{ id: 2, title: 'Different', status: 'AI_SPEC', labels: [] }]);
+    agent.setBoardState([{ id: 2, projectItemId: 'PVTI_test2', title: 'Different', status: 'AI_SPEC', labels: [] }]);
     const callback = vi.fn().mockResolvedValue(undefined);
     agent.setCallback(callback);
 
     await agent.finishAgent('1');
-    expect(callback).toHaveBeenCalledWith('2', 'AI_SPEC');
+    expect(callback).toHaveBeenCalledWith('2', 'AI_SPEC', 'Different', undefined);
   });
 
   it('does nothing when no next issue available', async () => {
@@ -119,21 +119,21 @@ describe('AgentService.onAgentTrigger', () => {
     const callback = vi.fn().mockResolvedValue(undefined);
     agent.setCallback(callback);
     await agent.onAgentTrigger('42', 'AI_SPEC');
-    expect(callback).toHaveBeenCalledWith('42', 'AI_SPEC');
+    expect(callback).toHaveBeenCalledWith('42', 'AI_SPEC', undefined, undefined);
   });
 
   it('triggers for AI_CODE', async () => {
     const callback = vi.fn().mockResolvedValue(undefined);
     agent.setCallback(callback);
     await agent.onAgentTrigger('42', 'AI_CODE');
-    expect(callback).toHaveBeenCalledWith('42', 'AI_CODE');
+    expect(callback).toHaveBeenCalledWith('42', 'AI_CODE', undefined, undefined);
   });
 
   it('triggers for BRAIN_DUMP', async () => {
     const callback = vi.fn().mockResolvedValue(undefined);
     agent.setCallback(callback);
     await agent.onAgentTrigger('42', 'BRAIN_DUMP');
-    expect(callback).toHaveBeenCalledWith('42', 'BRAIN_DUMP');
+    expect(callback).toHaveBeenCalledWith('42', 'BRAIN_DUMP', undefined, undefined);
   });
 
   it('does NOT trigger for HUMAN columns', async () => {
@@ -161,20 +161,20 @@ describe('AgentService.onAgentTrigger', () => {
 describe('AgentService.autoMoveFromBrainDump', () => {
   it('returns false when no GraphQL client', async () => {
     const agent = new AgentService();
-    agent.setBoardState([{ id: 1, title: 'Test', status: 'BRAIN_DUMP', labels: [] }]);
+    agent.setBoardState([{ id: 1, projectItemId: 'PVTI_test1', title: 'Test', status: 'BRAIN_DUMP', labels: [] }]);
     expect(await agent.autoMoveFromBrainDump(1)).toBe(false);
   });
 
   it('returns false when no projectId', async () => {
     const agent = new AgentService();
-    agent.setBoardState([{ id: 1, title: 'Test', status: 'BRAIN_DUMP', labels: [] }]);
+    agent.setBoardState([{ id: 1, projectItemId: 'PVTI_test1', title: 'Test', status: 'BRAIN_DUMP', labels: [] }]);
     agent.setGraphql({ moveToColumn: vi.fn() } as any);
     expect(await agent.autoMoveFromBrainDump(1)).toBe(false);
   });
 
   it('returns false when issue not in BRAIN_DUMP', async () => {
     const agent = new AgentService();
-    agent.setBoardState([{ id: 1, title: 'Test', status: 'AI_SPEC', labels: [] }]);
+    agent.setBoardState([{ id: 1, projectItemId: 'PVTI_test1', title: 'Test', status: 'AI_SPEC', labels: [] }]);
     agent.setGraphql({ moveToColumn: vi.fn() } as any);
     agent.setProjectId('project-1');
     expect(await agent.autoMoveFromBrainDump(1)).toBe(false);
@@ -200,7 +200,7 @@ describe('AgentService.getCurrentWip', () => {
   });
 
   it('returns issue ID after startAgent', async () => {
-    agent.setBoardState([{ id: 42, title: 'Test', status: 'AI_SPEC', labels: [] }]);
+    agent.setBoardState([{ id: 42, projectItemId: 'PVTI_test42', title: 'Test', status: 'AI_SPEC', labels: [] }]);
     agent.setCallback(vi.fn().mockResolvedValue(undefined));
     await agent.startAgent();
     expect(agent.getCurrentWip()).toBe('42');

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useVsCode, onMessage, offMessage } from './hooks/useVsCode';
 import { useBoardStore, persistBoardState, type KanbanColumn, type IssueItem } from "./store/boardStore";
 import KanbanBoard from './components/KanbanBoard';
+import { logger } from './logger';
 
 /** Replace items for a given status column in-place, using an iterator over the new order */
 function replaceColumnItems(currentItems: IssueItem[], columnStatus: string, newColumnItems: IssueItem[]): IssueItem[] {
@@ -84,16 +85,17 @@ export default function App() {
   }, [postMessage, setBoardData, setLoading, setError]);
 
   const handleMoveItem = (itemId: string, columnId: string, columnName: string) => {
+    logger.info(`[App.handleMoveItem] Starting move: itemId=${itemId}, columnId=${columnId}, columnName=${columnName}`);
     const item = useBoardStore.getState().items.find((i) => i.id === itemId);
     if (!item) {
+      logger.error(`[App.handleMoveItem] Item ${itemId} not found in store`);
       setStatusMessage(`ERROR: Item ${itemId} not found in store`);
       setStatusType('error');
-      console.error('[AI OS Webview] Item not found in store', { itemId, availableIds: useBoardStore.getState().items.map(i => i.id) });
       return;
     }
 
     const originalStatus = item.status;
-    console.log('[AI OS Webview] handleMoveItem', { itemId, columnId, columnName, from: originalStatus, to: columnName });
+    logger.info(`[App.handleMoveItem] Moving #${item.number} from ${originalStatus} to ${columnName}`);
 
     // Optimistic update - use column name for status (matching how items are filtered in KanbanBoard)
     optimisticMove(itemId, columnName);
@@ -101,38 +103,38 @@ export default function App() {
     // Send to extension host with column ID (GitHub option ID for GraphQL mutation)
     setStatusMessage(`Moving item #${item.number} to ${columnName}...`);
     setStatusType('info');
-    console.log('[AI OS Webview] Sending moveItem to extension host', { itemId, columnId });
     postMessage('moveItem', { itemId, columnId });
 
-    // Listen for response to revert on error
-    const responseHandler = (event: MessageEvent) => {
-      const message = event.data as { type: string; data?: { message?: string; id?: string; status?: string } };
-      if (message?.type === 'error') {
-        console.error('[AI OS Webview] Move failed', { error: message.data?.message });
-        revertMove(itemId, originalStatus);
-        setStatusMessage(`MOVE FAILED: ${message.data?.message ?? 'Unknown error'}`);
-        setStatusType('error');
-      } else if (message?.type === 'itemMoved') {
-        console.log('[AI OS Webview] Move confirmed by server', { data: message.data });
-        setStatusMessage(`Moved item #${item.number} to ${columnName}`);
-        setStatusType('success');
-      }
-      window.removeEventListener('message', responseHandler);
+    // Use one-time onMessage handlers with timeout cleanup instead of raw window.addEventListener
+    const moveErrorHandler = (data: { message?: string }) => {
+      logger.error(`[App.handleMoveItem] Move failed: ${data.message ?? 'Unknown error'}`);
+      revertMove(itemId, originalStatus);
+      setStatusMessage(`MOVE FAILED: ${data.message ?? 'Server rejected the move'}`);
+      setStatusType('error');
     };
-    window.addEventListener('message', responseHandler);
+    const moveSuccessHandler = () => {
+      logger.info(`[App.handleMoveItem] Move confirmed for #${item.number} to ${columnName}`);
+      setStatusMessage(`Moved item #${item.number} to ${columnName}`);
+      setStatusType('success');
+    };
 
-    // Auto-remove listener after 5s to prevent memory leak if no response
+    onMessage<{ message?: string }>('error', moveErrorHandler);
+    onMessage<{ id?: string; status?: string }>('itemMoved', moveSuccessHandler);
+
+    // Auto-remove handlers after 5s to prevent stale callbacks
     setTimeout(() => {
-      window.removeEventListener('message', responseHandler);
+      offMessage('error');
+      offMessage('itemMoved');
     }, 5000);
   };
 
   const handleReorderItem = (itemId: string, afterId: string | null) => {
+    logger.info(`[App.handleReorderItem] Starting reorder: itemId=${itemId}, afterId=${afterId}`);
     const currentItems = useBoardStore.getState().items;
     const activeItem = currentItems.find((i) => i.id === itemId);
 
     if (!activeItem) {
-      console.error('[AI OS Webview] Reorder: active item not found', { itemId });
+      logger.error(`[App.handleReorderItem] Active item ${itemId} not found`);
       return;
     }
 
@@ -143,7 +145,7 @@ export default function App() {
     const activeColIndex = columnItems.findIndex((i) => i.id === itemId);
 
     if (activeColIndex === -1) {
-      console.error('[AI OS Webview] Reorder: active item not found in column', { itemId, columnStatus });
+      logger.error(`[App.handleReorderItem] Active item ${itemId} not found in column ${columnStatus}`);
       return;
     }
 
@@ -151,7 +153,7 @@ export default function App() {
     const afterColIndex = afterId ? columnItems.findIndex((i) => i.id === afterId) : -1;
 
     if (afterId && afterColIndex === -1) {
-      console.error('[AI OS Webview] Reorder: target item not found in column', { afterId, columnStatus });
+      logger.error(`[App.handleReorderItem] Target item ${afterId} not found in column ${columnStatus}`);
       return;
     }
 
@@ -162,7 +164,7 @@ export default function App() {
     const adjustedAfterIndex = activeColIndex < afterColIndex ? afterColIndex - 1 : afterColIndex;
     newColumnItems.splice(adjustedAfterIndex + 1, 0, removed);
 
-    console.log('[AI OS Webview] handleReorderItem', { itemId, afterId, columnStatus, activeColIndex, afterColIndex });
+    logger.info(`[App.handleReorderItem] Reordering in ${columnStatus}: activeIndex=${activeColIndex}, afterIndex=${afterColIndex}`);
 
     // Rebuild the full items array: replace items in this column with the new order,
     // keeping items from other columns in their original positions
@@ -176,28 +178,27 @@ export default function App() {
     setStatusType('info');
     postMessage('reorderItem', { itemId, afterId });
 
-    // Listen for response to revert on error
+    // Use one-time onMessage handlers with timeout cleanup instead of raw window.addEventListener
     const originalItems = [...currentItems];
-    const responseHandler = (event: MessageEvent) => {
-      const message = event.data as { type: string; data?: { message?: string; itemId?: string } };
-      console.log('[AI OS Webview] Reorder responseHandler received', { messageType: message?.type, fullMessage: message });
-      if (message?.type === 'error') {
-        console.error('[AI OS Webview] Reorder FAILED — reverting', { error: message.data?.message });
-        reorderItems(originalItems);
-        setStatusMessage(`REORDER FAILED: ${message.data?.message ?? 'Unknown error'}`);
-        setStatusType('error');
-      } else if (message?.type === 'itemReordered') {
-        console.log('[AI OS Webview] Reorder confirmed by server');
-        setStatusMessage('Item reordered');
-        setStatusType('success');
-      }
-      window.removeEventListener('message', responseHandler);
+    const reorderErrorHandler = (data: { message?: string }) => {
+      logger.error(`[App.handleReorderItem] Reorder failed: ${data.message ?? 'Unknown error'}`);
+      reorderItems(originalItems);
+      setStatusMessage(`REORDER FAILED: ${data.message ?? 'Server rejected the reorder'}`);
+      setStatusType('error');
     };
-    window.addEventListener('message', responseHandler);
+    const reorderSuccessHandler = () => {
+      logger.info(`[App.handleReorderItem] Reorder confirmed for ${itemId}`);
+      setStatusMessage('Item reordered');
+      setStatusType('success');
+    };
 
-    // Auto-remove listener after 5s to prevent memory leak if no response
+    onMessage<{ message?: string }>('error', reorderErrorHandler);
+    onMessage<{ itemId?: string }>('itemReordered', reorderSuccessHandler);
+
+    // Auto-remove handlers after 5s to prevent stale callbacks
     setTimeout(() => {
-      window.removeEventListener('message', responseHandler);
+      offMessage('error');
+      offMessage('itemReordered');
     }, 5000);
   };
 

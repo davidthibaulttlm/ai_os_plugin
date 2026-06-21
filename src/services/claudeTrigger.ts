@@ -99,7 +99,12 @@ export class ClaudeTrigger {
     ];
 
     if (event.body) {
-      parts.push(`Description:\n${event.body}`);
+      // Truncate body to prevent prompt injection and token bloat
+      const maxBodyLength = 4096;
+      const body = event.body.length > maxBodyLength
+        ? event.body.substring(0, maxBodyLength) + '\n\n[TRUNCATED — original body exceeded ' + event.body.length + ' characters]'
+        : event.body;
+      parts.push(`Description:\n${body}`);
     }
 
     if (event.labels && event.labels.length > 0) {
