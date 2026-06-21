@@ -99,8 +99,10 @@ export class PollerService {
 
       this.updateState(items);
 
-      // Feed board state to agent service (with labels)
-      this.feedBoardState(items);
+      // Only feed board state to agent service when changes are detected
+      if (events.length > 0) {
+        this.feedBoardState(items);
+      }
 
       if (this.stateFilePath) {
         this.writeStateBridge(items).catch((err) => {
