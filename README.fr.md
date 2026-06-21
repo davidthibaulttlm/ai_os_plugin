@@ -211,6 +211,7 @@ npm run test:watch
 - [ ] Support pour d'autres fournisseurs kanban (Jira, GitLab Issues, Linear)
 - [ ] Support pour d'autres fournisseurs de référentiels (Bitbucket, GitLab, Gitea)
 - [ ] Support pour d'autres fournisseurs CLI IA (Codex CLI, OpenCode CLI, CLIs de fournisseurs IA locaux)
+- [ ] Colonnes de tableau personnalisables (le template actuel à 6 colonnes est codé en dur pour le flux de travail de l'auteur)
 - [ ] Templates de colonnes kanban personnalisés
 - [ ] Support multi-tableau avec vue tableau de bord
 - [ ] Historique et relecture des conversations d'agent

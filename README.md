@@ -211,6 +211,7 @@ npm run test:watch
 - [ ] Support for other kanban providers (Jira, GitLab Issues, Linear)
 - [ ] Support for other repository providers (Bitbucket, GitLab, Gitea)
 - [ ] Support for other AI CLI providers (Codex CLI, OpenCode CLI, local AI provider CLIs)
+- [ ] Customizable board columns (current 6-column template is hardcoded to author's workflow)
 - [ ] Custom kanban column templates
 - [ ] Multi-board support with dashboard view
 - [ ] Agent conversation history and replay
