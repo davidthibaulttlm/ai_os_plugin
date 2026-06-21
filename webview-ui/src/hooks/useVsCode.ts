@@ -34,9 +34,11 @@ export function useVsCode() {
         return;
       }
 
-      const handler = messageHandlers.get(message.type as string);
-      if (handler) {
-        handler(message);
+      const handlers = messageHandlers.get(message.type as string);
+      if (handlers) {
+        for (const handler of handlers) {
+          handler(message);
+        }
       }
     };
 
@@ -67,23 +69,30 @@ export function useVsCode() {
 
 /**
  * Message handler registry for incoming messages from extension host.
+ * Supports multiple handlers per type (e.g. app-level + one-time success handlers).
  */
-const messageHandlers = new Map<string, (message: Record<string, unknown>) => void>();
+const messageHandlers = new Map<string, Array<(message: Record<string, unknown>) => void>>();
 
 /**
  * Register a handler for a specific message type.
+ * Multiple handlers can be registered for the same type.
  */
 export function onMessage<T>(type: string, handler: (data: T) => void): void {
-  messageHandlers.set(type, (message) => {
+  const wrapped = (message: Record<string, unknown>) => {
     if (message.data) {
       handler(message.data as T);
     }
-  });
+  };
+  if (!messageHandlers.has(type)) {
+    messageHandlers.set(type, []);
+  }
+  messageHandlers.get(type)!.push(wrapped);
 }
 
 /**
- * Remove a previously registered handler for a specific message type.
+ * Remove ALL handlers for a message type (use in useEffect cleanup).
  */
 export function offMessage(type: string): void {
   messageHandlers.delete(type);
 }
+

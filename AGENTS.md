@@ -59,6 +59,34 @@ code --extensionDevelopmentPath=$PWD  # Load extension in VS Code
 5. VS Code extension eliminates webhook infrastructure (no tunnels needed)
 6. No database — state persists via VS Code Memento and in-memory only
 
+## MANDATORY: Logger in Every File
+
+**EVERY method in EVERY file MUST log. No exceptions.**
+
+### Extension Host / Backend (`src/`)
+
+- **Import**: `import { logger } from './services/logger';` (adjust relative path)
+- **Source**: [`src/services/logger.ts`](src/services/logger.ts) — wraps `vscode.window.createOutputChannel('AI OS')`
+- **Format**: `logger.info('[ClassName.methodName] detail')`
+
+### Webview (`webview-ui/src/`)
+
+- **Import**: `import { logger } from './logger';` (adjust relative path)
+- **Source**: [`webview-ui/src/logger.ts`](webview-ui/src/logger.ts) — posts to extension host via IPC (`__log__` message), falls back to `console.*` in Storybook
+- **Format**: `logger.info('[ComponentName.methodName] detail')`
+
+### Logging Checklist (Both Layers)
+
+- **ALWAYS log at the START of every method**: `logger.info('[ClassName.methodName] Starting...')`
+- **ALWAYS log key parameters**: `logger.info('[ClassName.methodName] param=value')`
+- **ALWAYS log results**: `logger.info('[ClassName.methodName] Result: ...')`
+- **ALWAYS log errors**: `logger.error('[ClassName.methodName] Error: ...')`
+- **ALWAYS log warnings**: `logger.warn('[ClassName.methodName] Warning: ...')`
+- **Use `logger.debug`** for verbose details, `logger.info` for user actions, `logger.warn` for recoverable issues, `logger.error` for failures
+- **NEVER use `console.log`** — use `logger` exclusively. Both loggers output to VS Code's Output panel (View → Output → AI OS).
+
+**This rule applies to 100% of files without exception.**
+
 ## MANDATORY: One Test File Per Method
 
 **EVERY method gets its own test file. NEVER clump multiple methods into one test file.**

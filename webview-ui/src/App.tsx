@@ -82,7 +82,7 @@ export default function App() {
       offMessage('error');
       offMessage('workingStatus');
     };
-  }, [postMessage, setBoardData, setLoading, setError]);
+  }, []);
 
   const handleMoveItem = (itemId: string, columnId: string, columnName: string) => {
     logger.info(`[App.handleMoveItem] Starting move: itemId=${itemId}, columnId=${columnId}, columnName=${columnName}`);
@@ -105,27 +105,35 @@ export default function App() {
     setStatusType('info');
     postMessage('moveItem', { itemId, columnId });
 
-    // Use one-time onMessage handlers with timeout cleanup instead of raw window.addEventListener
-    const moveErrorHandler = (data: { message?: string }) => {
-      logger.error(`[App.handleMoveItem] Move failed: ${data.message ?? 'Unknown error'}`);
-      revertMove(itemId, originalStatus);
-      setStatusMessage(`MOVE FAILED: ${data.message ?? 'Server rejected the move'}`);
-      setStatusType('error');
+    // One-time window listeners for this specific move response
+    // Use raw addEventListener with { once: true } to avoid interfering with app-level registry handlers
+    const moveErrorHandler = (event: MessageEvent) => {
+      const message = event.data;
+      if (message?.type === 'error') {
+        logger.error(`[App.handleMoveItem] Move failed: ${message.data?.message ?? 'Unknown error'}`);
+        revertMove(itemId, originalStatus);
+        setStatusMessage(`MOVE FAILED: ${message.data?.message ?? 'Server rejected the move'}`);
+        setStatusType('error');
+      }
     };
-    const moveSuccessHandler = () => {
-      logger.info(`[App.handleMoveItem] Move confirmed for #${item.number} to ${columnName}`);
-      setStatusMessage(`Moved item #${item.number} to ${columnName}`);
-      setStatusType('success');
+    const moveSuccessHandler = (event: MessageEvent) => {
+      const message = event.data;
+      if (message?.type === 'itemMoved') {
+        logger.info(`[App.handleMoveItem] Move confirmed for #${item.number} to ${columnName}`);
+        setStatusMessage(`Moved item #${item.number} to ${columnName}`);
+        setStatusType('success');
+      }
     };
 
-    onMessage<{ message?: string }>('error', moveErrorHandler);
-    onMessage<{ id?: string; status?: string }>('itemMoved', moveSuccessHandler);
+    window.addEventListener('message', moveSuccessHandler, { once: true });
+    window.addEventListener('message', moveErrorHandler, { once: true });
 
-    // Auto-remove handlers after 5s to prevent stale callbacks
+    // Safety timeout: remove listeners if response never arrives
     setTimeout(() => {
-      offMessage('error');
-      offMessage('itemMoved');
+      window.removeEventListener('message', moveSuccessHandler);
+      window.removeEventListener('message', moveErrorHandler);
     }, 5000);
+
   };
 
   const handleReorderItem = (itemId: string, afterId: string | null) => {
@@ -178,27 +186,33 @@ export default function App() {
     setStatusType('info');
     postMessage('reorderItem', { itemId, afterId });
 
-    // Use one-time onMessage handlers with timeout cleanup instead of raw window.addEventListener
+    // One-time window listeners for this specific reorder response
     const originalItems = [...currentItems];
-    const reorderErrorHandler = (data: { message?: string }) => {
-      logger.error(`[App.handleReorderItem] Reorder failed: ${data.message ?? 'Unknown error'}`);
-      reorderItems(originalItems);
-      setStatusMessage(`REORDER FAILED: ${data.message ?? 'Server rejected the reorder'}`);
-      setStatusType('error');
+    const reorderErrorHandler = (event: MessageEvent) => {
+      const message = event.data;
+      if (message?.type === 'error') {
+        logger.error(`[App.handleReorderItem] Reorder failed: ${message.data?.message ?? 'Unknown error'}`);
+        reorderItems(originalItems);
+        setStatusMessage(`REORDER FAILED: ${message.data?.message ?? 'Server rejected the reorder'}`);
+        setStatusType('error');
+      }
     };
-    const reorderSuccessHandler = () => {
-      logger.info(`[App.handleReorderItem] Reorder confirmed for ${itemId}`);
-      setStatusMessage('Item reordered');
-      setStatusType('success');
+    const reorderSuccessHandler = (event: MessageEvent) => {
+      const message = event.data;
+      if (message?.type === 'itemReordered') {
+        logger.info(`[App.handleReorderItem] Reorder confirmed for ${itemId}`);
+        setStatusMessage('Item reordered');
+        setStatusType('success');
+      }
     };
 
-    onMessage<{ message?: string }>('error', reorderErrorHandler);
-    onMessage<{ itemId?: string }>('itemReordered', reorderSuccessHandler);
+    window.addEventListener('message', reorderSuccessHandler, { once: true });
+    window.addEventListener('message', reorderErrorHandler, { once: true });
 
-    // Auto-remove handlers after 5s to prevent stale callbacks
+    // Safety timeout: remove listeners if response never arrives
     setTimeout(() => {
-      offMessage('error');
-      offMessage('itemReordered');
+      window.removeEventListener('message', reorderSuccessHandler);
+      window.removeEventListener('message', reorderErrorHandler);
     }, 5000);
   };
 
