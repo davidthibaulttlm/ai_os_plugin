@@ -168,10 +168,10 @@ export class BoardTreeProvider implements vscode.TreeDataProvider<BoardTreeItem>
         tooltip: '',
         contextValue: 'spacer',
       } as BoardTreeItem,
-      // Section header: CLAUDE INTEGRATION
+      // Section header: CLAUDE MCP INTEGRATION
       {
-        label: 'CLAUDE INTEGRATION',
-        tooltip: 'Claude Code connection settings',
+        label: 'CLAUDE MCP INTEGRATION',
+        tooltip: 'Install a MCP server into Claude',
         iconPath: new vscode.ThemeIcon('cloud-upload'),
         collapsibleState: vscode.TreeItemCollapsibleState.None,
         contextValue: 'sectionHeader',
