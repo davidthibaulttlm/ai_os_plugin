@@ -263,6 +263,20 @@ async function setupAgentCallback(_token: string): Promise<void> {
     if (owner && repo && repoManager) {
       const issueNumber = parseInt(issueId, 10);
       const issueTitle = title ?? `Issue #${issueId}`;
+      logger.info(`[setupAgentCallback] Checking if repo ${owner}/${repo} is cloned`);
+      const isCloned = repoManager.isRepoCloned(owner, repo);
+      logger.info(`[setupAgentCallback] Repo ${owner}/${repo} cloned=${isCloned}`);
+      if (!isCloned) {
+        logger.warn(`[setupAgentCallback] Repo ${owner}/${repo} not cloned — attempting clone`);
+        const cloneResults = await repoManager.cloneOrUpdateRepos([{ owner, repo }]);
+        const cloneOk = cloneResults.length > 0 && cloneResults[0].success;
+        logger.info(`[setupAgentCallback] Clone result: success=${cloneOk} error=${cloneResults[0].error ?? 'none'}`);
+        if (!cloneOk) {
+          logger.error(`[setupAgentCallback] Failed to clone ${owner}/${repo}: ${cloneResults[0].error}`);
+          vscode.window.showWarningMessage(`Failed to clone ${owner}/${repo}: ${cloneResults[0].error}`);
+          return;
+        }
+      }
       logger.info(`[setupAgentCallback] Creating/updating worktree for ${owner}/${repo} #${issueNumber}`);
       const worktreeResult = await repoManager.createWorktree(owner, repo, issueNumber, issueTitle);
       if (worktreeResult.success && worktreeResult.path) {

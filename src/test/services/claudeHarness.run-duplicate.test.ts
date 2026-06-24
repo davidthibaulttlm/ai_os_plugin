@@ -39,6 +39,8 @@ describe('ClaudeHarness.run — duplicate spawn prevention', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRepoManager = {
+      isRepoCloned: vi.fn().mockReturnValue(true),
+      cloneOrUpdateRepos: vi.fn().mockResolvedValue([{ success: true }]),
       createWorktree: vi.fn().mockResolvedValue({
         success: true,
         path: '/tmp/repos/test-repo/worktrees/1-test',

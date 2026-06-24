@@ -160,6 +160,26 @@ ${ctx.owner}/${ctx.repo}
       };
     }
 
+    logger.info(`[ClaudeHarness.run] Checking if repo ${ctx.owner}/${ctx.repo} is cloned`);
+    const isCloned = this.repoManager.isRepoCloned(ctx.owner, ctx.repo);
+    logger.info(`[ClaudeHarness.run] Repo ${ctx.owner}/${ctx.repo} cloned=${isCloned}`);
+    if (!isCloned) {
+      logger.warn(`[ClaudeHarness.run] Repo ${ctx.owner}/${ctx.repo} not cloned — attempting clone`);
+      const cloneResults = await this.repoManager.cloneOrUpdateRepos([{ owner: ctx.owner, repo: ctx.repo }]);
+      const cloneOk = cloneResults.length > 0 && cloneResults[0].success;
+      logger.info(`[ClaudeHarness.run] Clone result for ${ctx.owner}/${ctx.repo}: success=${cloneOk} error=${cloneResults[0].error ?? 'none'}`);
+      if (!cloneOk) {
+        logger.error(`[ClaudeHarness.run] Failed to clone ${ctx.owner}/${ctx.repo}: ${cloneResults[0].error}`);
+        this.postAgentStatus(ctx.issueNumber, 'failed', 'REPO_NOT_CLONED');
+        return {
+          success: false,
+          issueNumber: ctx.issueNumber,
+          reason: 'REPO_NOT_CLONED',
+          error: cloneResults[0].error,
+        };
+      }
+    }
+
     logger.info(`[ClaudeHarness.run] Preparing worktree for ${ctx.owner}/${ctx.repo} #${ctx.issueNumber}`);
     const worktreeResult = await this.repoManager.createWorktree(
       ctx.owner,

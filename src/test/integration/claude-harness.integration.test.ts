@@ -41,6 +41,8 @@ describe('ClaudeHarness integration — full lifecycle', () => {
     vi.clearAllMocks();
 
     mockRepoManager = {
+      isRepoCloned: vi.fn().mockReturnValue(true),
+      cloneOrUpdateRepos: vi.fn().mockResolvedValue([{ success: true }]),
       createWorktree: vi.fn().mockResolvedValue({
         success: true,
         path: '/tmp/repos/test-repo/worktrees/42-feature',

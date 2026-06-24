@@ -255,6 +255,12 @@ export class RepoManager {
     return this.queueRepoOp(owner, repo, async () => {
       try {
         const repoPath = this.getRepoPath(owner, repo);
+        const cloned = this.isRepoCloned(owner, repo);
+        logger.info(`[RepoManager.createWorktree] Repo cloned check: ${cloned} for ${owner}/${repo} at ${repoPath}`);
+        if (!cloned) {
+          logger.warn(`[RepoManager.createWorktree] Repo ${owner}/${repo} is NOT cloned — cannot create worktree`);
+          return { success: false, error: `Repo ${owner}/${repo} is not cloned. Run clone command first.` };
+        }
         const branchName = this.getBranchName(repo, issueNumber, title);
         const worktreePath = this.getWorktreePath(owner, repo, issueNumber, title);
         if (fs.existsSync(worktreePath)) {

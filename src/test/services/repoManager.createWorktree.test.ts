@@ -30,7 +30,11 @@ describe('RepoManager.createWorktree', () => {
 
   it('returns existing worktree path when it exists', async () => {
     (fs.existsSync as ReturnType<typeof vi.fn>).mockImplementation((path: string) => {
-      return path.includes('.worktrees/42-fix-bug');
+      // isRepoCloned checks for .git dir
+      if (path.includes('/owner/repo/.git')) return true;
+      // worktree path check
+      if (path.includes('.worktrees/42-fix-bug')) return true;
+      return false;
     });
 
     const result = await mgr.createWorktree('owner', 'repo', 42, 'Fix bug');

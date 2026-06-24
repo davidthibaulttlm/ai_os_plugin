@@ -48,6 +48,8 @@ describe('ClaudeHarness — spawn without restrictions', () => {
 
   it('should not read maxTurns or allowedTools from config', async () => {
     const mockRepoManager = {
+      isRepoCloned: vi.fn().mockReturnValue(true),
+      cloneOrUpdateRepos: vi.fn().mockResolvedValue([{ success: true }]),
       createWorktree: vi.fn().mockResolvedValue({
         success: true,
         path: '/tmp/worktree/test-42',
@@ -70,6 +72,8 @@ describe('ClaudeHarness — spawn without restrictions', () => {
 
   it('should spawn claude without --max-turns flag', async () => {
     const mockRepoManager = {
+      isRepoCloned: vi.fn().mockReturnValue(true),
+      cloneOrUpdateRepos: vi.fn().mockResolvedValue([{ success: true }]),
       createWorktree: vi.fn().mockResolvedValue({
         success: true,
         path: '/tmp/worktree/test-42',
@@ -91,6 +95,8 @@ describe('ClaudeHarness — spawn without restrictions', () => {
 
   it('should spawn claude without --allowed-tools flag', async () => {
     const mockRepoManager = {
+      isRepoCloned: vi.fn().mockReturnValue(true),
+      cloneOrUpdateRepos: vi.fn().mockResolvedValue([{ success: true }]),
       createWorktree: vi.fn().mockResolvedValue({
         success: true,
         path: '/tmp/worktree/test-42',
