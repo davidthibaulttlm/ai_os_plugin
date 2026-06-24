@@ -30,6 +30,7 @@ describe('AgentService.triggerCallback', () => {
       title: 'Test issue',
       status: 'AI_CODE',
       labels: [],
+      assignees: [],
       owner: 'testowner',
       repo: 'testrepo',
     }]);
@@ -52,6 +53,7 @@ describe('AgentService.triggerCallback', () => {
       title: 'Issue with body',
       status: 'AI_SPEC',
       labels: [],
+      assignees: [],
       body: 'This is the body',
     }]);
 

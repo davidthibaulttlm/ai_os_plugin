@@ -39,6 +39,7 @@ function createItem(options: {
       state: 'open',
       repository: { id: 'repo-id', name: 'repo', owner: { login: 'owner' } },
       labels: { nodes: labels.map((name) => ({ name, color: 'ffffff' })) },
+      assignees: { nodes: [] },
     },
   };
 }
@@ -76,7 +77,7 @@ describe('PollerService.feedBoardState conditional', () => {
     // setBoardState should be called
     expect(mockSetBoardState).toHaveBeenCalledTimes(1);
     expect(mockSetBoardState).toHaveBeenCalledWith([
-      { id: 1, projectItemId: 'test-node-id', title: 'New Issue', status: 'AI_SPEC', labels: [], body: undefined, owner: 'owner', repo: 'repo' },
+      { id: 1, projectItemId: 'test-node-id', title: 'New Issue', status: 'AI_SPEC', labels: [], assignees: [], body: undefined, owner: 'owner', repo: 'repo' },
     ]);
 
     // Callback should also be notified
@@ -167,7 +168,7 @@ describe('PollerService.feedBoardState conditional', () => {
     // Status changed from AI_SPEC to AI_CODE — delta detected
     expect(mockSetBoardState).toHaveBeenCalledTimes(1);
     expect(mockSetBoardState).toHaveBeenCalledWith([
-      { id: 1, projectItemId: 'test-node-id', title: 'Issue', status: 'AI_CODE', labels: [], body: undefined, owner: 'owner', repo: 'repo' },
+      { id: 1, projectItemId: 'test-node-id', title: 'Issue', status: 'AI_CODE', labels: [], assignees: [], body: undefined, owner: 'owner', repo: 'repo' },
     ]);
     poller2.stop();
   });

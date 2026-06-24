@@ -82,6 +82,7 @@ describe('Clone repos integration flow', () => {
         title: 'Fix login',
         status: 'AI_SPEC',
         labels: [],
+        assignees: [],
         owner: 'test-owner',
         repo: 'test-repo',
         body: 'Body text',

@@ -168,3 +168,21 @@ export const AgentFailed: Story = {
     withAgentState('failed', ['Error: spawn claude ENOENT'], 75),
   ],
 };
+
+export const WithAssignees: Story = {
+  args: {
+    item: {
+      ...baseItem,
+      id: 'assignees_1',
+      title: 'Implement assignee filtering',
+      number: 200,
+      status: 'AI_SPEC',
+      url: 'https://github.com/example/repo/issues/200',
+      labels: ['feature'],
+      assignees: [
+        { login: 'alice', avatarUrl: 'https://avatars.githubusercontent.com/u/1?v=4' },
+        { login: 'bob', avatarUrl: 'https://avatars.githubusercontent.com/u/2?v=4' },
+      ],
+    },
+  },
+};

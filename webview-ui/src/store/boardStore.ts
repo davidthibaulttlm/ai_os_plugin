@@ -32,6 +32,7 @@ export type IssueItem = {
   repo: string;
   priority?: string;
   labels?: string[];
+  assignees?: { login: string; avatarUrl: string }[];
 }
 
 /** Board state shape */

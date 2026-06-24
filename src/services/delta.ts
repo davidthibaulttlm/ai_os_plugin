@@ -4,7 +4,7 @@ import type { ProjectItemNode } from './graphql';
 import { logger } from './logger';
 
 /** Delta event types */
-export type DeltaEventType = 'item_added' | 'item_moved' | 'item_removed' | 'item_updated';
+export type DeltaEventType = 'item_added' | 'item_moved' | 'item_removed' | 'item_updated' | 'item_assigned';
 
 /** Delta event representing a change in board state */
 export interface DeltaEvent {
@@ -19,6 +19,7 @@ export interface BoardItemState {
   status: string;
   title: string;
   labels: string[];
+  assignees: { login: string }[];
   body?: string;
 }
 
@@ -39,8 +40,9 @@ export function detectDeltas(
     const status = extractStatus(item);
     const title = item.content?.title ?? 'Unknown';
     const labels = extractLabels(item);
+    const assignees = extractAssignees(item);
 
-    currentMap.set(githubId, { githubId, status, title, labels });
+    currentMap.set(githubId, { githubId, status, title, labels, assignees });
 
     const last = lastState.get(githubId);
     if (!last) {
@@ -51,22 +53,38 @@ export function detectDeltas(
         type: 'item_added',
         data: { status, title },
       });
-    } else if (last.status !== status) {
+    } else {
       // Status changed (item moved)
-      logger.info(`[delta.detectDeltas] Moved: #${githubId} "${title}" from ${last.status} -> ${status}`);
-      events.push({
-        issueId: githubId,
-        type: 'item_moved',
-        data: { from: last.status, to: status },
-      });
-    } else if (last.title !== title || JSON.stringify(last.labels.sort()) !== JSON.stringify(labels.sort())) {
+      if (last.status !== status) {
+        logger.info(`[delta.detectDeltas] Moved: #${githubId} "${title}" from ${last.status} -> ${status}`);
+        events.push({
+          issueId: githubId,
+          type: 'item_moved',
+          data: { from: last.status, to: status },
+        });
+      }
+
+      // Assignees changed
+      const lastAssigneeLogins = last.assignees.map((a) => a.login).sort();
+      const currentAssigneeLogins = assignees.map((a) => a.login).sort();
+      if (JSON.stringify(lastAssigneeLogins) !== JSON.stringify(currentAssigneeLogins)) {
+        logger.info(`[delta.detectDeltas] Assigned: #${githubId} "${title}" assignees changed`);
+        events.push({
+          issueId: githubId,
+          type: 'item_assigned',
+          data: { assignees, status },
+        });
+      }
+
       // Title or labels changed
-      logger.info(`[delta.detectDeltas] Updated: #${githubId} "${last.title}" -> "${title}" in ${status}`);
-      events.push({
-        issueId: githubId,
-        type: 'item_updated',
-        data: { oldTitle: last.title, title, labels, status },
-      });
+      if (last.title !== title || JSON.stringify(last.labels.sort()) !== JSON.stringify(labels.sort())) {
+        logger.info(`[delta.detectDeltas] Updated: #${githubId} "${last.title}" -> "${title}" in ${status}`);
+        events.push({
+          issueId: githubId,
+          type: 'item_updated',
+          data: { oldTitle: last.title, title, labels, status },
+        });
+      }
     }
   }
 
@@ -110,6 +128,16 @@ export function extractLabels(item: import('./graphql').ProjectItemNode): string
   const labels = item.content?.labels?.nodes?.map((l) => l.name) ?? [];
   logger.debug(`[delta.extractLabels] Found ${labels.length} labels: ${labels.join(', ')}`);
   return labels;
+}
+
+/**
+ * Extract assignees from a project item's content.
+ */
+export function extractAssignees(item: import('./graphql').ProjectItemNode): { login: string }[] {
+  logger.debug(`[delta.extractAssignees] Extracting assignees for item id=${item.id}`);
+  const assignees = item.content?.assignees?.nodes?.map((a) => ({ login: a.login })) ?? [];
+  logger.debug(`[delta.extractAssignees] Found ${assignees.length} assignees: ${assignees.map((a) => a.login).join(', ')}`);
+  return assignees;
 }
 
 /**

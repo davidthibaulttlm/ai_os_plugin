@@ -27,6 +27,7 @@ describe('AgentService callback with repo context', () => {
         title: 'Test Issue',
         status: 'AI_SPEC',
         labels: [],
+        assignees: [],
         owner: 'myowner',
         repo: 'myrepo',
       },
@@ -43,6 +44,7 @@ describe('AgentService callback with repo context', () => {
         title: 'No Repo Issue',
         status: 'AI_CODE',
         labels: [],
+        assignees: [],
       },
     ]);
     await agent.startAgent();
@@ -57,6 +59,7 @@ describe('AgentService callback with repo context', () => {
         title: 'Trigger Issue',
         status: 'AI_SPEC',
         labels: [],
+        assignees: [],
         owner: 'trigger-owner',
         repo: 'trigger-repo',
       },

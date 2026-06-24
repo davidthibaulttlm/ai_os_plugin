@@ -1,7 +1,7 @@
 /** Background polling service — polls GitHub every 30s for board changes */
 
 import type { GraphQLClient, ProjectItemNode } from './graphql';
-import { detectDeltas, extractStatus, extractLabels, hashToNumber, type BoardItemState, type DeltaEvent } from './delta';
+import { detectDeltas, extractStatus, extractLabels, extractAssignees, hashToNumber, type BoardItemState, type DeltaEvent } from './delta';
 import type { AgentService, PrioritizerItem } from './agent';
 import type { RepoManager } from './repoManager';
 import { logger } from './logger';
@@ -165,8 +165,9 @@ export class PollerService {
       const status = extractStatus(item);
       const title = item.content?.title ?? 'Unknown';
       const labels = extractLabels(item);
+      const assignees = extractAssignees(item);
       const body = item.content?.body;
-      newState.set(githubId, { githubId, status, title, labels, body });
+      newState.set(githubId, { githubId, status, title, labels, assignees, body });
     }
 
     this.lastState = newState;
@@ -182,12 +183,14 @@ export class PollerService {
     const prioritizerItems: PrioritizerItem[] = items.map((item) => {
       const owner = item.content?.repository?.owner?.login;
       const repo = item.content?.repository?.name;
+      const assignees = item.content?.assignees?.nodes?.map((a) => ({ login: a.login, avatarUrl: a.avatarUrl })) ?? [];
       return {
         id: item.databaseId ?? hashToNumber(item.id),
         projectItemId: item.id,
         title: item.content?.title ?? 'Unknown',
         status: extractStatus(item),
         labels: extractLabels(item),
+        assignees,
         body: item.content?.body,
         owner,
         repo,

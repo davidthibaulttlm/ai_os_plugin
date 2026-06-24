@@ -16,6 +16,9 @@ export const CONTENT_FRAGMENT = `
     labels(first: 10) {
       nodes { name, color }
     }
+    assignees(first: 5) {
+      nodes { login, avatarUrl }
+    }
 `;
 
 // GraphQL Queries
@@ -260,6 +263,7 @@ export interface IssueContent {
   state: string;
   repository: { id: string; name: string; owner: { login: string } };
   labels: { nodes: { name: string; color: string }[] };
+  assignees: { nodes: { login: string; avatarUrl: string }[] };
 }
 
 export interface ProjectItemNode {

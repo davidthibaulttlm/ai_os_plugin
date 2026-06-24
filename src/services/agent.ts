@@ -30,6 +30,7 @@ export interface PrioritizerItem {
   title: string;
   status: string;
   labels: string[];
+  assignees: { login: string; avatarUrl: string }[];
   body?: string;
   owner?: string;
   repo?: string;
@@ -40,6 +41,12 @@ export interface PrioritizerSelection {
   issueId: number;
   title: string;
   column: string;
+}
+
+/** Result from finishAgent indicating what happened after completion */
+export interface FinishAgentResult {
+  /** Reason when no next issue was auto-triggered */
+  reason?: 'no_assigned_issues' | 'same_issue' | 'none';
 }
 
 /**
@@ -57,6 +64,7 @@ export class AgentService {
   private boardItems: PrioritizerItem[] = [];
   private graphql: GraphQLClient | undefined;
   private projectId: string | undefined;
+  private currentUser: string | undefined;
 
   /**
    * Set the callback for agent triggers.
@@ -88,6 +96,14 @@ export class AgentService {
   public setProjectId(id: string): void {
     logger.info(`[AgentService.setProjectId] Setting projectId=${id}`);
     this.projectId = id;
+  }
+
+  /**
+   * Store current user login for assignee filtering.
+   */
+  public setCurrentUser(login: string): void {
+    logger.info(`[AgentService.setCurrentUser] Setting currentUser=${login}`);
+    this.currentUser = login;
   }
 
   /**
@@ -125,10 +141,21 @@ export class AgentService {
     logger.info(`[AgentService.selectNextIssue] currentWip=${this.currentWip} boardItems=${this.boardItems.length}`);
 
     // Filter to AI-eligible columns only
-    const eligible = this.boardItems.filter(
+    let eligible = this.boardItems.filter(
       (item) => AI_ELIGIBLE_COLUMNS.includes(item.status as typeof AI_ELIGIBLE_COLUMNS[number])
     );
     logger.info(`[AgentService.selectNextIssue] ${eligible.length} items in AI-eligible columns`);
+
+    // Filter to issues assigned to current user only
+    if (this.currentUser) {
+      const before = eligible.length;
+      eligible = eligible.filter(
+        (item) => item.assignees?.some((a) => a.login === this.currentUser)
+      );
+      logger.info(`[AgentService.selectNextIssue] Filtered ${before} -> ${eligible.length} items assigned to ${this.currentUser}`);
+    } else {
+      logger.warn('[AgentService.selectNextIssue] No currentUser set — skipping assignee filter');
+    }
 
     // Scan eligible columns for bugs first
     const bugs = eligible.filter((item) => AgentService.isBug(item.labels));
@@ -210,7 +237,7 @@ export class AgentService {
     const selection = this.selectNextIssue();
 
     if (!selection) {
-      const reason = this.currentWip !== null ? 'busy' : 'empty';
+      const reason = this.currentWip !== null ? 'busy' : (this.currentUser ? 'no_assigned_issues' : 'empty');
       logger.info(`[AgentService.startAgent] No selection — reason: ${reason}`);
       return { started: false, reason };
     }
@@ -266,7 +293,7 @@ export class AgentService {
    * Called when agent completes work on an issue.
    * Clears WIP and auto-triggers next issue.
    */
-  public async finishAgent(issueId: string): Promise<void> {
+  public async finishAgent(issueId: string): Promise<FinishAgentResult> {
     logger.info(`[AgentService.finishAgent] Finishing agent for #${issueId}`);
 
     // Clear WIP — check both regular WIP and bug WIP set
@@ -282,7 +309,7 @@ export class AgentService {
     const next = this.selectNextIssue();
     if (next && String(next.issueId) === issueId) {
       logger.info(`[AgentService.finishAgent] Next selection is same issue #${issueId} — skipping auto-trigger (board state will update on next poll)`);
-      return;
+      return { reason: 'same_issue' };
     }
     if (next) {
       logger.info(`[AgentService.finishAgent] Auto-triggering next issue #${next.issueId}`);
@@ -292,8 +319,11 @@ export class AgentService {
       } catch (error) {
         logger.error(`[AgentService.finishAgent] Error auto-triggering next: ${(error as Error).message}`);
       }
+      return { reason: 'none' };
     } else {
       logger.info('[AgentService.finishAgent] No next issue available');
+      const reason = this.currentUser ? 'no_assigned_issues' : 'none';
+      return { reason };
     }
   }
 

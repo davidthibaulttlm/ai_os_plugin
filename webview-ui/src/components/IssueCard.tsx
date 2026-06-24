@@ -90,6 +90,20 @@ export default function IssueCard({ item }: IssueCardProps) {
           ))}
         </div>
       )}
+      {item.assignees && item.assignees.length > 0 && (
+        <div className="flex items-center -space-x-2 mt-2">
+          {item.assignees.slice(0, 5).map((assignee) => (
+            <img
+              key={assignee.login}
+              src={assignee.avatarUrl}
+              alt={assignee.login}
+              title={assignee.login}
+              onError={(e) => { (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%23666%22 width=%22100%22 height=%22100%22 rx=%2250%22/><text x=%2250%22 y=%2265%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2240%22>' + encodeURIComponent(assignee.login[0]) + '</text></svg>'; }}
+              className="w-6 h-6 rounded-full border border-vscode-editor-background"
+            />
+          ))}
+        </div>
+      )}
       {isWorking && (
         <div className="flex items-center gap-1 mt-2">
           <div className="w-2 h-2 rounded-full bg-vscode-progressBar-background animate-pulse" />

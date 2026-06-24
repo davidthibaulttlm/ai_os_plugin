@@ -37,6 +37,7 @@ function createItem(options: {
       url: 'https://github.com/test/repo/issues/1',
       state: 'open',
       repository: { id: 'repo-id', name: 'repo', owner: { login: 'owner' } },
+      assignees: { nodes: [] },
       labels: { nodes: labels.map((name) => ({ name, color: 'ffffff' })) },
     },
   };
@@ -85,6 +86,7 @@ describe('extractStatus', () => {
         state: 'open',
         repository: { id: 'r', name: 'r', owner: { login: 'o' } },
         labels: { nodes: [] },
+        assignees: { nodes: [] },
       },
     };
     expect(extractStatus(item)).toBe('UNKNOWN');
@@ -133,7 +135,7 @@ describe('hashToNumber', () => {
 
 describe('detectDeltas', () => {
   it('detects new items', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[] }>();
+    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
     const item = createItem({ databaseId: 42, status: 'AI_SPEC', title: 'New feature' });
     const events = detectDeltas(lastState, [item]);
 
@@ -144,8 +146,8 @@ describe('detectDeltas', () => {
   });
 
   it('detects moved items (status changed)', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[] }>();
-    lastState.set(1, { githubId: 1, status: 'BRAIN_DUMP', title: 'Move me', labels: [] });
+    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
+    lastState.set(1, { githubId: 1, status: 'BRAIN_DUMP', title: 'Move me', labels: [], assignees: [] });
 
     const item = createItem({ databaseId: 1, status: 'AI_CODE', title: 'Move me' });
     const events = detectDeltas(lastState, [item]);
@@ -157,8 +159,8 @@ describe('detectDeltas', () => {
   });
 
   it('detects removed items', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[] }>();
-    lastState.set(99, { githubId: 99, status: 'AI_SPEC', title: 'Removed', labels: [] });
+    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
+    lastState.set(99, { githubId: 99, status: 'AI_SPEC', title: 'Removed', labels: [], assignees: [] });
 
     const events = detectDeltas(lastState, []);
 
@@ -168,8 +170,8 @@ describe('detectDeltas', () => {
   });
 
   it('returns no events when state is unchanged', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[] }>();
-    lastState.set(1, { githubId: 1, status: 'AI_SPEC', title: 'Same', labels: [] });
+    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
+    lastState.set(1, { githubId: 1, status: 'AI_SPEC', title: 'Same', labels: [], assignees: [] });
 
     const item = createItem({ databaseId: 1, status: 'AI_SPEC', title: 'Same' });
     const events = detectDeltas(lastState, [item]);
@@ -188,9 +190,9 @@ describe('detectDeltas', () => {
   });
 
   it('detects multiple deltas in one pass', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[] }>();
-    lastState.set(1, { githubId: 1, status: 'BRAIN_DUMP', title: 'Moved', labels: [] });
-    lastState.set(2, { githubId: 2, status: 'AI_SPEC', title: 'Removed', labels: [] });
+    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
+    lastState.set(1, { githubId: 1, status: 'BRAIN_DUMP', title: 'Moved', labels: [], assignees: [] });
+    lastState.set(2, { githubId: 2, status: 'AI_SPEC', title: 'Removed', labels: [], assignees: [] });
 
     const items: ProjectItemNode[] = [
       createItem({ databaseId: 1, status: 'AI_CODE', title: 'Moved' }),

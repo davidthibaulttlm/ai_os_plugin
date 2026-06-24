@@ -10,7 +10,7 @@ describe('AgentService.startAgent', () => {
   });
 
   it('starts agent for top issue', async () => {
-    agent.setBoardState([{ id: 42, projectItemId: 'PVTI_test42', title: 'Feature', status: 'AI_SPEC', labels: [] }]);
+    agent.setBoardState([{ id: 42, projectItemId: 'PVTI_test42', title: 'Feature', status: 'AI_SPEC', labels: [], assignees: [] }]);
     const callback = vi.fn().mockResolvedValue(undefined);
     agent.setCallback(callback);
 
@@ -22,7 +22,7 @@ describe('AgentService.startAgent', () => {
 
   it('passes issue body to callback', async () => {
     const body = 'Fix the login page crash when user submits empty form';
-    agent.setBoardState([{ id: 42, projectItemId: 'PVTI_test42', title: 'Feature', status: 'AI_SPEC', labels: [], body }]);
+    agent.setBoardState([{ id: 42, projectItemId: 'PVTI_test42', title: 'Feature', status: 'AI_SPEC', labels: [], assignees: [], body }]);
     const callback = vi.fn().mockResolvedValue(undefined);
     agent.setCallback(callback);
 
@@ -31,7 +31,7 @@ describe('AgentService.startAgent', () => {
   });
 
   it('returns busy when agent already working', async () => {
-    agent.setBoardState([{ id: 1, projectItemId: 'PVTI_test1', title: 'Test', status: 'AI_SPEC', labels: [] }]);
+    agent.setBoardState([{ id: 1, projectItemId: 'PVTI_test1', title: 'Test', status: 'AI_SPEC', labels: [], assignees: [] }]);
     agent.setCallback(vi.fn().mockResolvedValue(undefined));
     await agent.startAgent();
 
@@ -51,7 +51,7 @@ describe('AgentService.startAgent', () => {
     const mockGraphql = { moveToColumn: vi.fn().mockResolvedValue(true) } as unknown as GraphQLClient;
     agent.setGraphql(mockGraphql);
     agent.setProjectId('project-123');
-    agent.setBoardState([{ id: 5, projectItemId: 'PVTI_test5', title: 'Idea', status: 'BRAIN_DUMP', labels: [] }]);
+    agent.setBoardState([{ id: 5, projectItemId: 'PVTI_test5', title: 'Idea', status: 'BRAIN_DUMP', labels: [], assignees: [] }]);
     const callback = vi.fn().mockResolvedValue(undefined);
     agent.setCallback(callback);
 
@@ -66,7 +66,7 @@ describe('AgentService.startAgent', () => {
     const mockGraphql = { moveToColumn: vi.fn().mockResolvedValue(false) } as unknown as GraphQLClient;
     agent.setGraphql(mockGraphql);
     agent.setProjectId('project-123');
-    agent.setBoardState([{ id: 5, projectItemId: 'PVTI_test5', title: 'Idea', status: 'BRAIN_DUMP', labels: [] }]);
+    agent.setBoardState([{ id: 5, projectItemId: 'PVTI_test5', title: 'Idea', status: 'BRAIN_DUMP', labels: [], assignees: [] }]);
     const callback = vi.fn().mockResolvedValue(undefined);
     agent.setCallback(callback);
 
@@ -77,15 +77,15 @@ describe('AgentService.startAgent', () => {
   });
 
   it('bug bypasses WIP limit', async () => {
-    agent.setBoardState([{ id: 1, projectItemId: 'PVTI_test1', title: 'Normal', status: 'AI_SPEC', labels: [] }]);
+    agent.setBoardState([{ id: 1, projectItemId: 'PVTI_test1', title: 'Normal', status: 'AI_SPEC', labels: [], assignees: [] }]);
     const callback = vi.fn().mockResolvedValue(undefined);
     agent.setCallback(callback);
     await agent.startAgent();
     expect(agent.isBusy()).toBe(true);
 
     agent.setBoardState([
-      { id: 1, projectItemId: 'PVTI_test1', title: 'Normal', status: 'AI_SPEC', labels: [] },
-      { id: 2, projectItemId: 'PVTI_test2', title: 'Bug', status: 'AI_CODE', labels: ['bug'] },
+      { id: 1, projectItemId: 'PVTI_test1', title: 'Normal', status: 'AI_SPEC', labels: [], assignees: [] },
+      { id: 2, projectItemId: 'PVTI_test2', title: 'Bug', status: 'AI_CODE', labels: ['bug'], assignees: [] },
     ]);
     const result = await agent.startAgent();
     expect(result.started).toBe(true);
@@ -93,7 +93,7 @@ describe('AgentService.startAgent', () => {
   });
 
   it('does nothing when no callback registered', async () => {
-    agent.setBoardState([{ id: 1, projectItemId: 'PVTI_test1', title: 'Test', status: 'AI_SPEC', labels: [] }]);
+    agent.setBoardState([{ id: 1, projectItemId: 'PVTI_test1', title: 'Test', status: 'AI_SPEC', labels: [], assignees: [] }]);
     const result = await agent.startAgent();
     expect(result.started).toBe(true);
     expect(result.issueId).toBe(1);

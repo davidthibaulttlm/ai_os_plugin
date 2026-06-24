@@ -37,6 +37,7 @@ function createItem(options: {
       url: 'https://github.com/test/repo/issues/1',
       state: 'open',
       repository: { id: 'repo-id', name: 'repo', owner: { login: 'owner' } },
+      assignees: { nodes: [] },
       labels: { nodes: labels.map((name) => ({ name, color: 'ffffff' })) },
     },
   };
@@ -44,8 +45,8 @@ function createItem(options: {
 
 describe('detectDeltas - item_updated', () => {
   it('detects title changes', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[] }>();
-    lastState.set(1, { githubId: 1, status: 'AI_SPEC', title: 'Old Title', labels: [] });
+    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
+    lastState.set(1, { githubId: 1, status: 'AI_SPEC', title: 'Old Title', labels: [], assignees: [] });
 
     const item = createItem({ databaseId: 1, status: 'AI_SPEC', title: 'New Title' });
     const events = detectDeltas(lastState, [item]);
@@ -58,8 +59,8 @@ describe('detectDeltas - item_updated', () => {
   });
 
   it('detects label changes', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[] }>();
-    lastState.set(1, { githubId: 1, status: 'AI_SPEC', title: 'Same Title', labels: ['bug'] });
+    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
+    lastState.set(1, { githubId: 1, status: 'AI_SPEC', title: 'Same Title', labels: ['bug'], assignees: [] });
 
     const item = createItem({ databaseId: 1, status: 'AI_SPEC', title: 'Same Title', labels: ['bug', 'priority/high'] });
     const events = detectDeltas(lastState, [item]);
@@ -70,8 +71,8 @@ describe('detectDeltas - item_updated', () => {
   });
 
   it('does NOT fire when only label order changes (same labels)', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[] }>();
-    lastState.set(1, { githubId: 1, status: 'AI_SPEC', title: 'Same', labels: ['bug', 'priority/high'] });
+    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
+    lastState.set(1, { githubId: 1, status: 'AI_SPEC', title: 'Same', labels: ['bug', 'priority/high'], assignees: [] });
 
     const item = createItem({ databaseId: 1, status: 'AI_SPEC', title: 'Same', labels: ['priority/high', 'bug'] });
     const events = detectDeltas(lastState, [item]);
@@ -79,22 +80,21 @@ describe('detectDeltas - item_updated', () => {
     expect(events).toHaveLength(0);
   });
 
-  it('status change takes priority over title change', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[] }>();
-    lastState.set(1, { githubId: 1, status: 'BRAIN_DUMP', title: 'Old Title', labels: [] });
+  it('emits both item_moved and item_updated when status and title change', () => {
+    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
+    lastState.set(1, { githubId: 1, status: 'BRAIN_DUMP', title: 'Old Title', labels: [], assignees: [] });
 
     const item = createItem({ databaseId: 1, status: 'AI_CODE', title: 'New Title' });
     const events = detectDeltas(lastState, [item]);
 
-    expect(events).toHaveLength(1);
-    expect(events[0].type).toBe('item_moved');
-    expect(events[0].data).toHaveProperty('from', 'BRAIN_DUMP');
-    expect(events[0].data).toHaveProperty('to', 'AI_CODE');
+    expect(events).toHaveLength(2);
+    expect(events.map((e) => e.type)).toContain('item_moved');
+    expect(events.map((e) => e.type)).toContain('item_updated');
   });
 
   it('no event when nothing changes', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[] }>();
-    lastState.set(1, { githubId: 1, status: 'AI_SPEC', title: 'Same', labels: ['bug'] });
+    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
+    lastState.set(1, { githubId: 1, status: 'AI_SPEC', title: 'Same', labels: ['bug'], assignees: [] });
 
     const item = createItem({ databaseId: 1, status: 'AI_SPEC', title: 'Same', labels: ['bug'] });
     const events = detectDeltas(lastState, [item]);

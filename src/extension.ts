@@ -139,6 +139,8 @@ function registerStartAgentCommand(): void {
         vscode.window.showInformationMessage(`AI Agent started for issue #${result.issueId}`);
       } else if (result.reason === 'busy') {
         vscode.window.showInformationMessage(`Agent is busy working on #${agentService.getCurrentWip()}`);
+      } else if (result.reason === 'no_assigned_issues') {
+        vscode.window.showWarningMessage('No issues assigned to you. Assign yourself to an issue first.');
       } else if (result.reason === 'empty') {
         vscode.window.showInformationMessage('No issues available for AI agent');
       } else if (result.reason === 'auto_move_failed') {
@@ -180,6 +182,15 @@ async function initServices(context: vscode.ExtensionContext): Promise<void> {
   agentService.setGraphql(graphql);
   poller.setAgentService(agentService);
   poller.setRepoManager(repoManager);
+
+  // Set current user for assignee filtering
+  try {
+    const viewerLogin = await graphql.getViewerLogin();
+    agentService.setCurrentUser(viewerLogin);
+    logger.info(`[initServices] setCurrentUser=${viewerLogin}`);
+  } catch (error) {
+    logger.error(`[initServices] Failed to get viewer login: ${(error as Error).message}`);
+  }
 
   setBoardHandlerDeps(getPanel(), graphql, poller, agentService, stateManager, context.globalStorageUri.fsPath, boardTreeProvider, repoManager, columnPromptService);
   setTreeProviderDeps(repoManager, stateManager);

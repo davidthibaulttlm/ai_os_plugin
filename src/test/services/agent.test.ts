@@ -14,14 +14,14 @@ describe('AgentService.isBusy', () => {
   });
 
   it('returns true after startAgent sets WIP', async () => {
-    agent.setBoardState([{ id: 1, projectItemId: 'PVTI_test1', title: 'Test', status: 'AI_SPEC', labels: [] }]);
+    agent.setBoardState([{ id: 1, projectItemId: 'PVTI_test1', title: 'Test', status: 'AI_SPEC', labels: [], assignees: [] }]);
     agent.setCallback(vi.fn().mockResolvedValue(undefined));
     await agent.startAgent();
     expect(agent.isBusy()).toBe(true);
   });
 
   it('returns false after WIP cleared', async () => {
-    agent.setBoardState([{ id: 1, projectItemId: 'PVTI_test1', title: 'Test', status: 'AI_SPEC', labels: [] }]);
+    agent.setBoardState([{ id: 1, projectItemId: 'PVTI_test1', title: 'Test', status: 'AI_SPEC', labels: [], assignees: [] }]);
     agent.setCallback(vi.fn().mockResolvedValue(undefined));
     await agent.startAgent();
     expect(agent.isBusy()).toBe(true);
@@ -39,8 +39,8 @@ describe('AgentService.setBoardState', () => {
 
   it('stores board items', () => {
     const items = [
-      { id: 1, projectItemId: 'PVTI_test1', title: 'Issue 1', status: 'AI_SPEC', labels: [] },
-      { id: 2, projectItemId: 'PVTI_test2', title: 'Issue 2', status: 'AI_CODE', labels: ['bug'] },
+      { id: 1, projectItemId: 'PVTI_test1', title: 'Issue 1', status: 'AI_SPEC', labels: [], assignees: [] },
+      { id: 2, projectItemId: 'PVTI_test2', title: 'Issue 2', status: 'AI_CODE', labels: ['bug'], assignees: [] },
     ];
     agent.setBoardState(items);
     expect(agent.selectNextIssue()).not.toBeNull();
@@ -63,7 +63,7 @@ describe('AgentService.finishAgent', () => {
 
   it('auto-triggers next issue after finishing', async () => {
     agent['currentWip'] = '1';
-    agent.setBoardState([{ id: 2, projectItemId: 'PVTI_test2', title: 'Next', status: 'AI_SPEC', labels: [] }]);
+    agent.setBoardState([{ id: 2, projectItemId: 'PVTI_test2', title: 'Next', status: 'AI_SPEC', labels: [], assignees: [] }]);
     const callback = vi.fn().mockResolvedValue(undefined);
     agent.setCallback(callback);
 
@@ -73,7 +73,7 @@ describe('AgentService.finishAgent', () => {
 
   it('does NOT auto-trigger when next is same issue', async () => {
     agent['currentWip'] = '1';
-    agent.setBoardState([{ id: 1, projectItemId: 'PVTI_test1', title: 'Same', status: 'AI_SPEC', labels: [] }]);
+    agent.setBoardState([{ id: 1, projectItemId: 'PVTI_test1', title: 'Same', status: 'AI_SPEC', labels: [], assignees: [] }]);
     const callback = vi.fn().mockResolvedValue(undefined);
     agent.setCallback(callback);
 
@@ -83,7 +83,7 @@ describe('AgentService.finishAgent', () => {
 
   it('auto-triggers when next is different issue', async () => {
     agent['currentWip'] = '1';
-    agent.setBoardState([{ id: 2, projectItemId: 'PVTI_test2', title: 'Different', status: 'AI_SPEC', labels: [] }]);
+    agent.setBoardState([{ id: 2, projectItemId: 'PVTI_test2', title: 'Different', status: 'AI_SPEC', labels: [], assignees: [] }]);
     const callback = vi.fn().mockResolvedValue(undefined);
     agent.setCallback(callback);
 
@@ -104,7 +104,8 @@ describe('AgentService.finishAgent', () => {
   it('catches errors from startAgent during auto-trigger', async () => {
     agent['currentWip'] = '1';
     vi.spyOn(agent, 'startAgent').mockRejectedValue(new Error('test error'));
-    await expect(agent.finishAgent('1')).resolves.toBeUndefined();
+    const result = await agent.finishAgent('1');
+    expect(result).toBeDefined();
   });
 });
 
@@ -161,20 +162,20 @@ describe('AgentService.onAgentTrigger', () => {
 describe('AgentService.autoMoveFromBrainDump', () => {
   it('returns false when no GraphQL client', async () => {
     const agent = new AgentService();
-    agent.setBoardState([{ id: 1, projectItemId: 'PVTI_test1', title: 'Test', status: 'BRAIN_DUMP', labels: [] }]);
+    agent.setBoardState([{ id: 1, projectItemId: 'PVTI_test1', title: 'Test', status: 'BRAIN_DUMP', labels: [], assignees: [] }]);
     expect(await agent.autoMoveFromBrainDump(1)).toBe(false);
   });
 
   it('returns false when no projectId', async () => {
     const agent = new AgentService();
-    agent.setBoardState([{ id: 1, projectItemId: 'PVTI_test1', title: 'Test', status: 'BRAIN_DUMP', labels: [] }]);
+    agent.setBoardState([{ id: 1, projectItemId: 'PVTI_test1', title: 'Test', status: 'BRAIN_DUMP', labels: [], assignees: [] }]);
     agent.setGraphql({ moveToColumn: vi.fn() } as any);
     expect(await agent.autoMoveFromBrainDump(1)).toBe(false);
   });
 
   it('returns false when issue not in BRAIN_DUMP', async () => {
     const agent = new AgentService();
-    agent.setBoardState([{ id: 1, projectItemId: 'PVTI_test1', title: 'Test', status: 'AI_SPEC', labels: [] }]);
+    agent.setBoardState([{ id: 1, projectItemId: 'PVTI_test1', title: 'Test', status: 'AI_SPEC', labels: [], assignees: [] }]);
     agent.setGraphql({ moveToColumn: vi.fn() } as any);
     agent.setProjectId('project-1');
     expect(await agent.autoMoveFromBrainDump(1)).toBe(false);
@@ -200,7 +201,7 @@ describe('AgentService.getCurrentWip', () => {
   });
 
   it('returns issue ID after startAgent', async () => {
-    agent.setBoardState([{ id: 42, projectItemId: 'PVTI_test42', title: 'Test', status: 'AI_SPEC', labels: [] }]);
+    agent.setBoardState([{ id: 42, projectItemId: 'PVTI_test42', title: 'Test', status: 'AI_SPEC', labels: [], assignees: [] }]);
     agent.setCallback(vi.fn().mockResolvedValue(undefined));
     await agent.startAgent();
     expect(agent.getCurrentWip()).toBe('42');

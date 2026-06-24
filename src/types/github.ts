@@ -41,6 +41,7 @@ export interface IssueContent {
   state: string;
   repository: RepositoryRef;
   labels: { nodes: { name: string; color: string }[] };
+  assignees: { nodes: { login: string; avatarUrl: string }[] };
 }
 
 /** Pull Request content from project item */
@@ -52,6 +53,7 @@ export interface PullRequestContent {
   state: string;
   repository: RepositoryRef;
   labels: { nodes: { name: string; color: string }[] };
+  assignees: { nodes: { login: string; avatarUrl: string }[] };
 }
 
 /** Repository reference */

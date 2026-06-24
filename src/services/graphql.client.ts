@@ -89,6 +89,15 @@ export class GraphQLClient {
     }
   }
 
+  /** Get the current viewer's GitHub login */
+  public async getViewerLogin(): Promise<string> {
+    logger.info('[GraphQLClient.getViewerLogin] Fetching viewer login');
+    const result = await this.execute<ListProjectsResponse>(LIST_PROJECTS_QUERY);
+    const login = result.viewer.login;
+    logger.info(`[GraphQLClient.getViewerLogin] Result: ${login}`);
+    return login;
+  }
+
   /** List all projects for the authenticated user */
   public async listProjects(): Promise<ProjectNode[]> {
     const result = await this.execute<ListProjectsResponse>(LIST_PROJECTS_QUERY);
