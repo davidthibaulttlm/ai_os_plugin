@@ -31,8 +31,8 @@ describe('ColumnPromptService column validation', () => {
     expect(KNOWN_COLUMNS).toHaveLength(6);
   });
 
-  it('AI_COLUMNS has 2 entries', () => {
-    expect(AI_COLUMNS).toEqual(['AI_SPEC', 'AI_CODE']);
+  it('AI_COLUMNS has 3 entries including BRAIN_DUMP', () => {
+    expect(AI_COLUMNS).toEqual(['BRAIN_DUMP', 'AI_SPEC', 'AI_CODE']);
   });
 
   it('AI_COLUMNS are subset of KNOWN_COLUMNS', () => {

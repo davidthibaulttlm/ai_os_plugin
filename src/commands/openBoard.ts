@@ -3,6 +3,8 @@ import { KanbanPanel } from '../providers/KanbanPanel';
 import type { GraphQLClient } from '../services/graphql';
 import type { StateManager } from '../services/state';
 import type { ColumnPromptService } from '../services/columnPrompt';
+import type { RepoManager } from '../services/repoManager';
+import type { RepoPromptService } from '../services/repoPrompt';
 
 /** Panel creation callback */
 export type PanelCallback = (panel: KanbanPanel) => void;
@@ -16,7 +18,9 @@ export async function openBoard(
   graphql: GraphQLClient,
   stateManager: StateManager,
   promptService: ColumnPromptService,
-  onPanelCreated?: PanelCallback
+  onPanelCreated?: PanelCallback,
+  repoManager?: RepoManager,
+  repoPromptService?: RepoPromptService
 ): Promise<void> {
   try {
     const projects = await graphql.listProjects();
@@ -52,7 +56,7 @@ export async function openBoard(
 
     await stateManager.setLastBoardId(project.id);
 
-    const panel = KanbanPanel.createOrShow(extensionUri, graphql, promptService, project.id);
+    const panel = KanbanPanel.createOrShow(extensionUri, graphql, promptService, repoManager, repoPromptService, project.id);
     onPanelCreated?.(panel);
   } catch (error) {
     vscode.window.showErrorMessage(

@@ -56,7 +56,7 @@ export class ClaudeHarness {
   }
 
   public buildPrompt(ctx: IssueContext): string {
-    logger.info(`[ClaudeHarness.buildPrompt] issueNumber=${ctx.issueNumber} column=${ctx.column}`);
+    logger.info(`[ClaudeHarness.buildPrompt] issueNumber=${ctx.issueNumber} column=${ctx.column} owner=${ctx.owner} repo=${ctx.repo}`);
 
     let bodySection = '';
     if (ctx.body && ctx.body.length > 0) {
@@ -83,7 +83,7 @@ ${ctx.owner}/${ctx.repo}
 - Focus on the task at hand
 - Keep changes minimal and scoped`;
 
-    const prompt = this.promptService.assemblePromptChain(ctx.column, userContent);
+    const prompt = this.promptService.assemblePromptChain(ctx.column, userContent, ctx.owner, ctx.repo);
 
     logger.info(`[ClaudeHarness.buildPrompt] Result: prompt length=${prompt.length}`);
     return prompt;

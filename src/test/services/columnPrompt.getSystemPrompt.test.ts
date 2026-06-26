@@ -29,8 +29,12 @@ describe('ColumnPromptService.getSystemPrompt()', () => {
   it('returns empty string for human columns', () => {
     expect(service.getSystemPrompt('HUMAN_SPEC_REVIEW')).toBe('');
     expect(service.getSystemPrompt('HUMAN_CODE_REVIEW')).toBe('');
-    expect(service.getSystemPrompt('BRAIN_DUMP')).toBe('');
     expect(service.getSystemPrompt('PR_DONE')).toBe('');
+  });
+
+  it('returns default system prompt for BRAIN_DUMP', () => {
+    const result = service.getSystemPrompt('BRAIN_DUMP');
+    expect(result).toBe('You are an ideation assistant. Expand rough ideas into structured analysis with options, tradeoffs, and recommendations.');
   });
 
   it('returns Memento override when set', () => {

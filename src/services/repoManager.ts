@@ -1,11 +1,10 @@
-import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import type { ProjectItemNode } from './graphql';
 import { logger } from './logger';
 import type { GitResult, WorktreeResult, RepoRef } from './repoManager.types';
-import { runGit, handleGitResult } from './repoManager.git';
+import { runGit, handleGitResult, checkGitAvailableAsync } from './repoManager.git';
 
 export type { GitResult, WorktreeResult, RepoRef } from './repoManager.types';
 
@@ -31,38 +30,8 @@ export class RepoManager {
     return this.reposDir;
   }
 
-  public checkGitAvailable(): boolean {
-    logger.info('[RepoManager.checkGitAvailable] Checking git availability');
-    try {
-      const { execSync } = require('child_process');
-      execSync('git --version', { stdio: 'ignore' });
-      logger.info('[RepoManager.checkGitAvailable] Result: true');
-      return true;
-    } catch (error) {
-      logger.error(`[RepoManager.checkGitAvailable] Error: ${(error as Error).message}`);
-      return false;
-    }
-  }
-
-  public async checkGitAvailableAsync(): Promise<boolean> {
-    logger.info('[RepoManager.checkGitAvailableAsync] Checking git availability');
-    return new Promise((resolve) => {
-      try {
-        const child = spawn('git', ['--version']);
-        child.on('exit', (code) => {
-          const available = code === 0;
-          logger.info(`[RepoManager.checkGitAvailableAsync] Result: ${available}`);
-          resolve(available);
-        });
-        child.on('error', () => {
-          logger.error('[RepoManager.checkGitAvailableAsync] Error spawning git');
-          resolve(false);
-        });
-      } catch (error) {
-        logger.error(`[RepoManager.checkGitAvailableAsync] Error: ${(error as Error).message}`);
-        resolve(false);
-      }
-    });
+  public checkGitAvailableAsync(): Promise<boolean> {
+    return checkGitAvailableAsync();
   }
 
   public getRepoPath(owner: string, repo: string): string {
@@ -421,4 +390,5 @@ export class RepoManager {
     logger.warn('[RepoManager.createPullRequest] Not implemented — use GraphQLClient directly');
     return { success: false, error: 'createPullRequest must be called via GraphQLClient' };
   }
+
 }

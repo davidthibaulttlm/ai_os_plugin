@@ -12,6 +12,7 @@ import { ClaudeTrigger } from './services/claudeTrigger';
 import { killAllClaudeProcesses, setWorkingStatusCallback, setOnFinishCallback } from './services/claudeSpawner';
 import { ClaudeHarness } from './services/claudeHarness';
 import { ColumnPromptService } from './services/columnPrompt';
+import { RepoPromptService } from './services/repoPrompt';
 import {
   handleConfigureClaude,
   handleDisconnectClaude,
@@ -170,12 +171,17 @@ async function initServices(context: vscode.ExtensionContext): Promise<void> {
   graphql = new GraphQLClient(token);
   poller = new PollerService();
   agentService = new AgentService();
-  columnPromptService = new ColumnPromptService(context.globalState);
-  logger.info('[initServices] ColumnPromptService initialized');
 
   const reposDir = vscode.workspace.getConfiguration('aiOs').get<string>('reposDir', '~/ai-os-repos');
   repoManager = new RepoManager(reposDir, token);
   logger.info(`[initServices] RepoManager initialized with reposDir=${repoManager.getReposDir()}`);
+
+  const repoPromptService = new RepoPromptService(repoManager);
+  logger.info('[initServices] RepoPromptService initialized');
+
+  // Pass RepoPromptService to ColumnPromptService
+  columnPromptService = new ColumnPromptService(context.globalState, repoPromptService);
+  logger.info('[initServices] ColumnPromptService initialized with RepoPromptService');
 
   setAuthService(authServiceInstance!);
 
@@ -192,7 +198,7 @@ async function initServices(context: vscode.ExtensionContext): Promise<void> {
     logger.error(`[initServices] Failed to get viewer login: ${(error as Error).message}`);
   }
 
-  setBoardHandlerDeps(getPanel(), graphql, poller, agentService, stateManager, context.globalStorageUri.fsPath, boardTreeProvider, repoManager, columnPromptService);
+  setBoardHandlerDeps(getPanel(), graphql, poller, agentService, stateManager, context.globalStorageUri.fsPath, boardTreeProvider, repoManager, columnPromptService, repoPromptService);
   setTreeProviderDeps(repoManager, stateManager);
 
   // Set GITHUB_TOKEN in environment so ClaudeHarness can pass it to spawned processes

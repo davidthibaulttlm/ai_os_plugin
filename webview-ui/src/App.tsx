@@ -19,6 +19,7 @@ export default function App() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusType, setStatusType] = useState<'info' | 'error' | 'success' | null>(null);
   const [columnPromptData, setColumnPromptData] = useState<{ column: string; system: string; developer: string; systemDefault: string; developerDefault: string } | null>(null);
+  const [claudeMdRepo, setClaudеMdRepo] = useState<{ owner: string; repo: string } | null>(null);
 
   // Persist board state to VS Code's acquireVsCodeApi().setState()
   useEffect(() => {
@@ -85,6 +86,25 @@ export default function App() {
       setColumnPromptData(data);
     });
 
+    onMessage<{ owner: string; repo: string }>('claudeMdNotification', (data) => {
+      logger.info(`[App.useEffect] claudeMdNotification received for ${data.owner}/${data.repo}`);
+      setClaudеMdRepo(data);
+      setStatusMessage(`CLAUDE.md not found for ${data.owner}/${data.repo}. Creating it will improve AI agent context.`);
+      setStatusType('info');
+    });
+
+    onMessage<{ success: boolean; error?: string }>('claudeMdCreated', (data) => {
+      logger.info(`[App.useEffect] claudeMdCreated: success=${data.success}`);
+      if (data.success) {
+        setStatusMessage('CLAUDE.md created successfully!');
+        setStatusType('success');
+        setClaudеMdRepo(null);
+      } else {
+        setStatusMessage(`Failed to create CLAUDE.md: ${data.error ?? 'Unknown error'}`);
+        setStatusType('error');
+      }
+    });
+
     // Set loading — the extension will send boardData when ready
     setLoading(true);
 
@@ -98,6 +118,8 @@ export default function App() {
       offMessage('agentOutput');
       offMessage('agentStatus');
       offMessage('columnPrompts');
+      offMessage('claudeMdNotification');
+      offMessage('claudeMdCreated');
     };
   }, []);
 
@@ -248,6 +270,13 @@ export default function App() {
     postMessage('requestColumnPrompts', { column });
   }, [postMessage]);
 
+  const handleCreateCLAUDEmd = useCallback(() => {
+    if (claudeMdRepo) {
+      logger.info(`[App.handleCreateCLAUDEmd] Creating CLAUDE.md for ${claudeMdRepo.owner}/${claudeMdRepo.repo}`);
+      postMessage('createCLAUDEmd', { owner: claudeMdRepo.owner, repo: claudeMdRepo.repo });
+    }
+  }, [postMessage, claudeMdRepo]);
+
   return (
     <div className="h-screen flex flex-col bg-vscode-panel-background">
       {statusMessage && (
@@ -257,6 +286,14 @@ export default function App() {
           'bg-vscode-list-hoverBackground text-vscode-list-foreground'
         }`}>
           {statusMessage}
+          {claudeMdRepo && statusType === 'info' && (
+            <button
+              className="ml-4 px-2 py-0.5 text-xs bg-vscode-button-background text-vscode-button-foreground hover:bg-vscode-button-hoverBackground rounded"
+              onClick={handleCreateCLAUDEmd}
+            >
+              Create CLAUDE.md
+            </button>
+          )}
         </div>
       )}
       <KanbanBoard

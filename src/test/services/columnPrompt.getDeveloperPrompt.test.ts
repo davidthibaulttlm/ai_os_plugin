@@ -32,8 +32,12 @@ describe('ColumnPromptService.getDeveloperPrompt()', () => {
   it('returns empty string for human columns', () => {
     expect(service.getDeveloperPrompt('HUMAN_SPEC_REVIEW')).toBe('');
     expect(service.getDeveloperPrompt('HUMAN_CODE_REVIEW')).toBe('');
-    expect(service.getDeveloperPrompt('BRAIN_DUMP')).toBe('');
     expect(service.getDeveloperPrompt('PR_DONE')).toBe('');
+  });
+
+  it('returns default developer prompt for BRAIN_DUMP', () => {
+    const result = service.getDeveloperPrompt('BRAIN_DUMP');
+    expect(result).toContain('Take the issue idea and produce:');
   });
 
   it('returns Memento override when set', () => {

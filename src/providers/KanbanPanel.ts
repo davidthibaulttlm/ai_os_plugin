@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import type { GraphQLClient } from '../services/graphql';
+import type { RepoManager } from '../services/repoManager';
+import type { RepoPromptService } from '../services/repoPrompt';
 import type { BoardData, ExtensionToWebview, IPCMessage, WebviewToExtension } from '../types/ipc';
 import { logger } from '../services/logger';
 import { ColumnPromptService } from '../services/columnPrompt';
@@ -24,6 +26,8 @@ export class KanbanPanel {
   private _disposables: vscode.Disposable[] = [];
   private readonly _graphql: GraphQLClient;
   private readonly _promptService: ColumnPromptService;
+  private readonly _repoManager?: RepoManager;
+  private readonly _repoPromptService?: RepoPromptService;
   private _projectId: string | undefined;
   private _onDisposeCallbacks: Array<() => void> = [];
 
@@ -46,6 +50,8 @@ export class KanbanPanel {
     extensionUri: vscode.Uri,
     graphql: GraphQLClient,
     promptService: ColumnPromptService,
+    repoManager?: RepoManager,
+    repoPromptService?: RepoPromptService,
     projectId?: string
   ) {
     logger.info('[KanbanPanel.constructor] Initializing KanbanPanel');
@@ -53,6 +59,8 @@ export class KanbanPanel {
     this._extensionUri = extensionUri;
     this._graphql = graphql;
     this._promptService = promptService;
+    this._repoManager = repoManager;
+    this._repoPromptService = repoPromptService;
     this._projectId = projectId;
     logger.info('[KanbanPanel.constructor] Result: initialized');
 
@@ -81,6 +89,8 @@ export class KanbanPanel {
             setProjectId: (id: string) => { this._projectId = id; },
             graphql: this._graphql,
             promptService: this._promptService,
+            repoManager: this._repoManager,
+            repoPromptService: this._repoPromptService,
             safePostMessage: (msg: ExtensionToWebview) => this._safePostMessage(msg),
             refresh: () => this.refresh(),
             loadBoardData: (projectId: string) => this._loadBoardData(projectId),
@@ -118,6 +128,8 @@ export class KanbanPanel {
     extensionUri: vscode.Uri,
     graphql: GraphQLClient,
     promptService: ColumnPromptService,
+    repoManager?: RepoManager,
+    repoPromptService?: RepoPromptService,
     projectId?: string
   ): KanbanPanel {
     const column = vscode.window.activeTextEditor
@@ -151,7 +163,7 @@ export class KanbanPanel {
       }
     );
 
-    KanbanPanel.currentPanel = new KanbanPanel(panel, extensionUri, graphql, promptService, projectId);
+    KanbanPanel.currentPanel = new KanbanPanel(panel, extensionUri, graphql, promptService, repoManager, repoPromptService, projectId);
     return KanbanPanel.currentPanel;
   }
 

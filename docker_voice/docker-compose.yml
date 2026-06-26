@@ -1,0 +1,21 @@
+services:
+  voice:
+    build: .
+    ports:
+      - "7860:7860"
+    environment:
+      # Your existing llama.cpp server. host.docker.internal = the Docker host;
+      # for a different box use its LAN IP, e.g. http://192.168.1.50:8080/v1/chat/completions
+      - LLAMA_URL=${LLAMA_URL:-http://host.docker.internal:8080/v1/chat/completions}
+      - WHISPER_MODEL=${WHISPER_MODEL:-small}      # tiny|base|small|medium|large-v3
+      - WHISPER_COMPUTE=${WHISPER_COMPUTE:-float16}
+      - SYSTEM_PROMPT=${SYSTEM_PROMPT:-You are a helpful voice assistant. Keep replies short and natural for speech.}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - whisper-cache:/root/.cache/huggingface   # persist downloaded models
+    gpus: all
+    restart: unless-stopped
+
+volumes:
+  whisper-cache:

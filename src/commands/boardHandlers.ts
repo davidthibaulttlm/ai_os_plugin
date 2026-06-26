@@ -10,6 +10,7 @@ import type { GraphQLClient } from '../services/graphql';
 import type { PollerService } from '../services/poller';
 import type { AgentService } from '../services/agent';
 import type { RepoManager } from '../services/repoManager';
+import type { RepoPromptService } from '../services/repoPrompt';
 import type { StateManager } from '../services/state';
 import type { ColumnPromptService } from '../services/columnPrompt';
 import { checkMissingRepos } from './cloneRepos';
@@ -19,6 +20,7 @@ let graphql: GraphQLClient | undefined;
 let poller: PollerService | undefined;
 let agentService: AgentService | undefined;
 let repoManager: RepoManager | undefined;
+let repoPromptService: RepoPromptService | undefined;
 let stateManager: StateManager | undefined;
 let _globalStorageUri: string | undefined;
 let boardTreeProvider: any | undefined;
@@ -33,7 +35,8 @@ export function setBoardHandlerDeps(
   uri: string | undefined,
   tree: any | undefined,
   rm: RepoManager | undefined,
-  cps: ColumnPromptService | undefined
+  cps: ColumnPromptService | undefined,
+  rps: RepoPromptService | undefined
 ): void {
   panel = p;
   graphql = g;
@@ -44,6 +47,7 @@ export function setBoardHandlerDeps(
   boardTreeProvider = tree;
   repoManager = rm;
   columnPromptService = cps;
+  repoPromptService = rps;
 }
 
 export function getPanel(): KanbanPanel | undefined { return panel; }
@@ -77,7 +81,7 @@ export async function handleOpenBoard(context: vscode.ExtensionContext): Promise
       agentService?.setProjectId(boardId);
       poller.start(graphql, boardId, createPollerCallback(), getStateFilePath(context.globalStorageUri.fsPath));
     }
-  });
+  }, repoManager, repoPromptService);
 }
 
 export async function handleAssignAgent(): Promise<void> {
@@ -222,7 +226,7 @@ export async function handleOpenBoardFromTree(
     panel.dispose();
     panel = undefined;
   }
-  const p = KanbanPanel.createOrShow(context.extensionUri, graphql, columnPromptService!, boardId);
+  const p = KanbanPanel.createOrShow(context.extensionUri, graphql, columnPromptService!, repoManager, repoPromptService, boardId);
   panel = p;
   p.onDispose(() => {
     poller?.stop();

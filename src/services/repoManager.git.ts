@@ -59,3 +59,25 @@ export function handleGitResult(result: { code: number | null; stderr: string },
     return { success: false, error: error.substring(0, 100) };
   }
 }
+
+/** Check if git is available on the system (async). */
+export function checkGitAvailableAsync(): Promise<boolean> {
+  logger.info('[Git.checkGitAvailableAsync] Checking git availability');
+  return new Promise((resolve) => {
+    try {
+      const child = spawn('git', ['--version']);
+      child.on('exit', (code) => {
+        const available = code === 0;
+        logger.info(`[Git.checkGitAvailableAsync] Result: ${available}`);
+        resolve(available);
+      });
+      child.on('error', () => {
+        logger.error('[Git.checkGitAvailableAsync] Error spawning git');
+        resolve(false);
+      });
+    } catch (error) {
+      logger.error(`[Git.checkGitAvailableAsync] Error: ${(error as Error).message}`);
+      resolve(false);
+    }
+  });
+}

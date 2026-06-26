@@ -1,10 +1,12 @@
 /**
  * ColumnPromptService — manages per-column system and developer prompts.
- * Stores default prompts for AI-eligible columns (AI_SPEC, AI_CODE) and
+ * Stores default prompts for AI-eligible columns (AI_SPEC, AI_CODE, BRAIN_DUMP) and
  * allows user overrides persisted via VS Code Memento.
+ * Supports repo-aware prompt resolution via CLAUDE.md and AGENTS.md.
  */
 
 import * as vscode from 'vscode';
+import type { RepoPromptService } from './repoPrompt';
 import { logger } from './logger';
 
 /** Known kanban column names */
@@ -20,20 +22,29 @@ export const KNOWN_COLUMNS = [
 export type KnownColumn = (typeof KNOWN_COLUMNS)[number];
 
 /** AI-eligible columns that trigger agent work */
-export const AI_COLUMNS = ['AI_SPEC', 'AI_CODE'] as const;
+export const AI_COLUMNS = ['BRAIN_DUMP', 'AI_SPEC', 'AI_CODE'] as const;
 
 export type AIColumn = (typeof AI_COLUMNS)[number];
 
 /** Default system prompts for each AI column */
 const DEFAULT_SYSTEM_PROMPTS: Record<AIColumn, string> = {
+  BRAIN_DUMP:
+    'You are an ideation assistant. Expand rough ideas into structured analysis with options, tradeoffs, and recommendations.',
   AI_SPEC:
     'You are an expert software architect and technical writer. Your task is to write detailed technical specifications for software issues. You produce clear, actionable specs that a developer can implement from.',
   AI_CODE:
-    'You are a senior software engineer implementing code changes. You write clean, tested, production-ready code that follows the project\'s existing patterns and conventions.',
+    "You are a senior software engineer implementing code changes. You write clean, tested, production-ready code that follows the project's existing patterns and conventions.",
 };
 
 /** Default developer prompts for each AI column */
 const DEFAULT_DEVELOPER_PROMPTS: Record<AIColumn, string> = {
+  BRAIN_DUMP: [
+    'Take the issue idea and produce:',
+    '1. Problem Statement — clear definition of what needs solving',
+    '2. Options Analysis — 2-3 approaches with pros/cons',
+    '3. Recommendation — suggested path forward with reasoning',
+    '4. Next Steps — actionable items for the AI_SPEC column',
+  ].join('\n'),
   AI_SPEC: [
     'Write a technical specification with these sections:',
     '1. Overview — brief summary of the feature/fix',
@@ -57,6 +68,13 @@ const DEFAULT_DEVELOPER_PROMPTS: Record<AIColumn, string> = {
   ].join('\n'),
 };
 
+/** Minimal column role prompts used when CLAUDE.md or AGENTS.md provides system context */
+const MINIMAL_COLUMN_PROMPTS: Record<AIColumn, string> = {
+  BRAIN_DUMP: 'You are an ideation assistant. Expand the following issue idea into structured analysis.',
+  AI_SPEC: 'You are an expert software architect. Write a technical specification for the following issue.',
+  AI_CODE: 'You are a senior software engineer. Implement the code for the following issue.',
+};
+
 /** Memento key prefix for prompt overrides */
 const MEMENTO_PREFIX = 'columnPrompts';
 
@@ -69,15 +87,27 @@ function mementoKey(column: string, type: 'system' | 'developer'): string {
  */
 export class ColumnPromptService {
   private memento: vscode.Memento;
+  private repoPromptService?: RepoPromptService;
 
   /**
    * Create a ColumnPromptService instance.
    * @param memento - VS Code Memento (context.globalState) for persistence
+   * @param repoPromptService - Optional RepoPromptService for repo-aware prompt resolution
    */
-  public constructor(memento: vscode.Memento) {
+  public constructor(memento: vscode.Memento, repoPromptService?: RepoPromptService) {
     logger.info('[ColumnPromptService.constructor] Initializing ColumnPromptService');
     this.memento = memento;
+    this.repoPromptService = repoPromptService;
     logger.info('[ColumnPromptService.constructor] Result: initialized');
+  }
+
+  /**
+   * Set or update the RepoPromptService dependency.
+   */
+  public setRepoPromptService(service: RepoPromptService): void {
+    logger.info('[ColumnPromptService.setRepoPromptService] Setting RepoPromptService');
+    this.repoPromptService = service;
+    logger.info('[ColumnPromptService.setRepoPromptService] Result: set');
   }
 
   /**
@@ -124,6 +154,21 @@ export class ColumnPromptService {
   }
 
   /**
+   * Get the minimal column prompt for a column.
+   * Used when CLAUDE.md or AGENTS.md provides system context.
+   */
+  public getMinimalColumnPrompt(column: string): string {
+    logger.info(`[ColumnPromptService.getMinimalColumnPrompt] column=${column}`);
+    if (!this.validateColumn(column)) {
+      return '';
+    }
+    const prompt = MINIMAL_COLUMN_PROMPTS[column as AIColumn];
+    const result = prompt ?? '';
+    logger.info(`[ColumnPromptService.getMinimalColumnPrompt] Result: length=${result.length}`);
+    return result;
+  }
+
+  /**
    * Get the system prompt for a column.
    * Returns Memento override if set, otherwise default.
    * Returns empty string for human columns or unknown columns.
@@ -166,13 +211,95 @@ export class ColumnPromptService {
   /**
    * Assemble the full prompt chain: system → developer → user content.
    * For human columns, returns just the user content.
+   * When repo context is provided, uses three-tier resolution:
+   *   1. CLAUDE.md → minimal prompt (Claude reads it automatically)
+   *   2. AGENTS.md → AGENTS.md as system context + minimal prompt
+   *   3. Neither → full column defaults
    */
-  public assemblePromptChain(column: string, userContent: string): string {
-    logger.info(`[ColumnPromptService.assemblePromptChain] column=${column} userContentLength=${userContent.length}`);
+  public assemblePromptChain(
+    column: string,
+    userContent: string,
+    owner?: string,
+    repo?: string
+  ): string {
+    logger.info(`[ColumnPromptService.assemblePromptChain] column=${column} userContentLength=${userContent.length} owner=${owner} repo=${repo}`);
     if (!this.validateColumn(column)) {
       logger.info(`[ColumnPromptService.assemblePromptChain] Result: unknown column, returning user content only`);
       return userContent;
     }
+
+    // Three-tier resolution when repo context is provided
+    if (owner && repo && this.repoPromptService) {
+      // Tier 1: CLAUDE.md exists — minimal prompt (Claude reads it automatically)
+      if (this.repoPromptService.hasCLAUDEmd(owner, repo)) {
+        logger.info(`[ColumnPromptService.assemblePromptChain] Using CLAUDE.md path for ${owner}/${repo}`);
+        return this.buildMinimalPrompt(column, userContent);
+      }
+
+      // Tier 2: AGENTS.md exists — AGENTS.md as system context + minimal prompt
+      if (this.repoPromptService.hasAGENTSmd(owner, repo)) {
+        logger.info(`[ColumnPromptService.assemblePromptChain] Using AGENTS.md path for ${owner}/${repo}`);
+        return this.buildAGENTSmdPrompt(column, userContent, owner, repo);
+      }
+    }
+
+    // Tier 3: No context file — full column defaults
+    logger.info(`[ColumnPromptService.assemblePromptChain] Using full column defaults`);
+    return this.buildFullPrompt(column, userContent);
+  }
+
+  /**
+   * Build minimal prompt: column role + user content.
+   * Used when CLAUDE.md exists (Claude reads it automatically).
+   */
+  private buildMinimalPrompt(column: string, userContent: string): string {
+    logger.info(`[ColumnPromptService.buildMinimalPrompt] column=${column}`);
+    const minimal = this.getMinimalColumnPrompt(column);
+    const parts: string[] = [];
+    if (minimal) {
+      parts.push(minimal);
+    }
+    if (userContent) {
+      parts.push(userContent);
+    }
+    const result = parts.join('\n\n');
+    logger.info(`[ColumnPromptService.buildMinimalPrompt] Result: length=${result.length}`);
+    return result;
+  }
+
+  /**
+   * Build AGENTS.md prompt: AGENTS.md content + minimal column prompt + user content.
+   * AGENTS.md REPLACES column defaults — it IS the system prompt.
+   */
+  private buildAGENTSmdPrompt(column: string, userContent: string, owner: string, repo: string): string {
+    logger.info(`[ColumnPromptService.buildAGENTSmdPrompt] column=${column} owner=${owner} repo=${repo}`);
+    const agentsMd = this.repoPromptService!.getAGENTSmd(owner, repo);
+    if (!agentsMd) {
+      logger.warn('[ColumnPromptService.buildAGENTSmdPrompt] AGENTS.md read failed, falling back to full prompt');
+      return this.buildFullPrompt(column, userContent);
+    }
+    const truncated = this.repoPromptService!.truncateForPrompt(agentsMd);
+    const minimal = this.getMinimalColumnPrompt(column);
+    const parts: string[] = [];
+    parts.push(truncated);
+    parts.push('---');
+    if (minimal) {
+      parts.push(minimal);
+    }
+    if (userContent) {
+      parts.push(userContent);
+    }
+    const result = parts.join('\n\n');
+    logger.info(`[ColumnPromptService.buildAGENTSmdPrompt] Result: length=${result.length}`);
+    return result;
+  }
+
+  /**
+   * Build full prompt: system + developer + user content.
+   * Used when no context file exists.
+   */
+  private buildFullPrompt(column: string, userContent: string): string {
+    logger.info(`[ColumnPromptService.buildFullPrompt] column=${column}`);
     const system = this.getSystemPrompt(column);
     const developer = this.getDeveloperPrompt(column);
     const parts: string[] = [];
@@ -186,7 +313,7 @@ export class ColumnPromptService {
       parts.push(userContent);
     }
     const result = parts.join('\n\n');
-    logger.info(`[ColumnPromptService.assemblePromptChain] Result: totalLength=${result.length}`);
+    logger.info(`[ColumnPromptService.buildFullPrompt] Result: length=${result.length}`);
     return result;
   }
 

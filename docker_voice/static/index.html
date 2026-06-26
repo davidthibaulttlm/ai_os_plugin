@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Local Voice Chat</title>
+<style>
+  body{font-family:system-ui,sans-serif;max-width:640px;margin:2rem auto;padding:0 1rem;background:#111;color:#eee}
+  button{font-size:1rem;padding:.5rem 1.2rem;border-radius:6px;border:0;cursor:pointer}
+  #status{margin-left:1rem;font-weight:bold;color:#fc6}
+  #log{margin-top:1.5rem;display:flex;flex-direction:column;gap:.5rem}
+  .u{color:#6cf}.a{color:#9f9}
+</style>
+</head>
+<body>
+<h2>🎙️ Local Voice Chat</h2>
+<button id="toggle">Start listening</button><span id="status">idle</span>
+<div id="log"></div>
+<script>
+const logEl = document.getElementById('log');
+const statusEl = document.getElementById('status');
+const toggleBtn = document.getElementById('toggle');
+const history = [];
+
+// ---- VAD tuning ----
+const SILENCE_RMS = 0.012;  // mic level below this = silence (raise if it triggers on noise)
+const SILENCE_MS  = 800;    // trailing silence that ends an utterance
+const MIN_SPEECH_MS = 300;  // ignore blips shorter than this
+
+let audioCtx, stream, source, processor, mute;
+let running = false, speaking = false;
+let buffer = [], sampleRate = 16000;
+let speechActive = false, lastVoice = 0, speechStart = 0;
+
+function log(cls, text){
+  const d = document.createElement('div');
+  d.className = cls; d.textContent = (cls === 'u' ? '🧑 ' : '🤖 ') + text;
+  logEl.prepend(d);
+}
+
+function rms(b){ let s=0; for(let i=0;i<b.length;i++) s+=b[i]*b[i]; return Math.sqrt(s/b.length); }
+
+function encodeWAV(chunks, rate){
+  const len = chunks.reduce((a,c)=>a+c.length,0);
+  const pcm = new Float32Array(len);
+  let off=0; for(const c of chunks){ pcm.set(c,off); off+=c.length; }
+  const view = new DataView(new ArrayBuffer(44 + pcm.length*2));
+  const w=(o,s)=>{ for(let i=0;i<s.length;i++) view.setUint8(o+i,s.charCodeAt(i)); };
+  w(0,'RIFF'); view.setUint32(4,36+pcm.length*2,true); w(8,'WAVE');
+  w(12,'fmt '); view.setUint32(16,16,true); view.setUint16(20,1,true); view.setUint16(22,1,true);
+  view.setUint32(24,rate,true); view.setUint32(28,rate*2,true); view.setUint16(32,2,true); view.setUint16(34,16,true);
+  w(36,'data'); view.setUint32(40,pcm.length*2,true);
+  let o=44; for(let i=0;i<pcm.length;i++){ const v=Math.max(-1,Math.min(1,pcm[i])); view.setInt16(o,v<0?v*0x8000:v*0x7FFF,true); o+=2; }
+  return new Blob([view],{type:'audio/wav'});
+}
+
+function speak(text){
+  speaking = true; statusEl.textContent = 'speaking…';
+  const u = new SpeechSynthesisUtterance(text);
+  u.onend = () => { speaking = false; statusEl.textContent = 'listening'; };
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
+}
+
+async function handleUtterance(){
+  const chunks = buffer; buffer = [];
+  statusEl.textContent = 'transcribing…';
+  const fd = new FormData();
+  fd.append('audio', encodeWAV(chunks, sampleRate), 'a.wav');
+  const { text } = await fetch('/transcribe', {method:'POST', body:fd}).then(r=>r.json());
+  if(!text){ statusEl.textContent = 'listening'; return; }
+  log('u', text);
+  history.push({role:'user', content:text});
+  statusEl.textContent = 'thinking…';
+  const { reply } = await fetch('/chat', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({messages: history})
+  }).then(r=>r.json());
+  const out = (reply || '(no reply)').trim();
+  history.push({role:'assistant', content:out});
+  log('a', out);
+  speak(out);
+}
+
+function onAudio(e){
+  if(!running || speaking) return;            // ignore mic while TTS plays (anti-feedback)
+  const input = e.inputBuffer.getChannelData(0);
+  const now = performance.now();
+  if(rms(input) > SILENCE_RMS){
+    if(!speechActive){ speechActive = true; speechStart = now; buffer = []; }
+    lastVoice = now;
+    buffer.push(new Float32Array(input));
+  } else if(speechActive){
+    buffer.push(new Float32Array(input));     // keep trailing silence in the clip
+    if(now - lastVoice > SILENCE_MS){
+      speechActive = false;
+      if(now - speechStart > MIN_SPEECH_MS) handleUtterance();
+      else buffer = [];
+    }
+  }
+}
+
+async function start(){
+  stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true, noiseSuppression:true}});
+  audioCtx = new AudioContext();
+  sampleRate = audioCtx.sampleRate;
+  source = audioCtx.createMediaStreamSource(stream);
+  // ponytail: ScriptProcessorNode is deprecated but dead-simple and universal; AudioWorklet if it ever matters.
+  processor = audioCtx.createScriptProcessor(4096, 1, 1);
+  mute = audioCtx.createGain(); mute.gain.value = 0;   // keep node alive without echoing mic to speakers
+  source.connect(processor); processor.connect(mute); mute.connect(audioCtx.destination);
+  processor.onaudioprocess = onAudio;
+  running = true; statusEl.textContent = 'listening';
+}
+
+function stop(){
+  running = false; speechActive = false; buffer = [];
+  if(processor) processor.disconnect();
+  if(source) source.disconnect();
+  if(stream) stream.getTracks().forEach(t=>t.stop());
+  if(audioCtx) audioCtx.close();
+  statusEl.textContent = 'idle';
+}
+
+toggleBtn.onclick = async () => {
+  if(running){ stop(); toggleBtn.textContent = 'Start listening'; }
+  else { await start(); toggleBtn.textContent = 'Stop'; }
+};
+</script>
+</body>
+</html>

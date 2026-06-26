@@ -14,6 +14,8 @@ export interface TriggerEvent {
   labels?: string[];
   column: string;
   reason: 'assigned' | 'column_move';
+  owner?: string;
+  repo?: string;
 }
 
 /** Callback for trigger events */
@@ -108,7 +110,7 @@ ${event.column}
 
     let prompt: string;
     if (this.promptService) {
-      prompt = this.promptService.assemblePromptChain(event.column, userContent);
+      prompt = this.promptService.assemblePromptChain(event.column, userContent, event.owner, event.repo);
     } else {
       // Fallback: inline system instruction if no prompt service available
       const fallbackSystem = event.column === 'AI_SPEC'
