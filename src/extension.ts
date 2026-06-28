@@ -9,7 +9,8 @@ import { RepoManager } from './services/repoManager';
 import { logger } from './services/logger';
 import { getStateFilePath } from './services/stateBridge';
 import { ClaudeTrigger } from './services/claudeTrigger';
-import { killAllClaudeProcesses, setWorkingStatusCallback, setOnFinishCallback } from './services/claudeSpawner';
+// claudeSpawner is deprecated — claudeHarness handles all agent spawning now.
+// Import removed; stopAll() on claudeHarness replaces killAllClaudeProcesses().
 import { ClaudeHarness } from './services/claudeHarness';
 import { ColumnPromptService } from './services/columnPrompt';
 import { RepoPromptService } from './services/repoPrompt';
@@ -100,32 +101,6 @@ function registerCommands(context: vscode.ExtensionContext): void {
   registerStartAgentCommand();
 }
 
-vscode.commands.registerCommand('aiOs.setReposDir', async () => {
-    logger.info('[aiOs.setReposDir] Opening repos directory input');
-    const config = vscode.workspace.getConfiguration('aiOs');
-    const current = config.get<string>('reposDir', '~/ai-os-repos');
-    logger.info(`[aiOs.setReposDir] Current reposDir=${current}`);
-    const value = await vscode.window.showInputBox({
-      prompt: 'Set directory for cloned repositories (supports ~ for home)',
-      value: current,
-      placeHolder: '~/ai-os-repos',
-    });
-    if (value !== undefined && value.trim() !== '') {
-      logger.info(`[aiOs.setReposDir] Updating reposDir to ${value}`);
-      await config.update('reposDir', value.trim(), vscode.ConfigurationTarget.Global);
-      const verified = config.get<string>('reposDir');
-      logger.info(`[aiOs.setReposDir] Verified reposDir=${verified}`);
-      boardTreeProvider?.refresh();
-      vscode.window.showInformationMessage(`Repos directory set to: ${value.trim()}`);
-    } else {
-      logger.info('[aiOs.setReposDir] Cancelled or empty value');
-    }
-  });
-  vscode.commands.registerCommand('aiOs.resetOnboarding', () => {
-    vscode.workspace.getConfiguration('aiOs').update('onboardingDismissed', false, vscode.ConfigurationTarget.Global);
-    vscode.window.showInformationMessage('Onboarding reset. Reload the extension to see the connect dialog.');
-    logger.info('[aiOs.resetOnboarding] Onboarding reset by user');
-  });
 
 function registerStartAgentCommand(): void {
   vscode.commands.registerCommand('aiOs.startAgent', async () => {
@@ -220,14 +195,7 @@ async function initServices(context: vscode.ExtensionContext): Promise<void> {
     await claudeTrigger!.handleTrigger(event, token, workspaceRoot);
   });
 
-  setWorkingStatusCallback((issueNumber, active) => {
-    getPanel()?.notifyWorkingStatus(issueNumber, active);
-  });
-
-  setOnFinishCallback(async (issueNumber: number) => {
-    logger.info(`[initServices] Claude finished for #${issueNumber} — calling finishAgent`);
-    await agentService!.finishAgent(String(issueNumber));
-  });
+  // claudeSpawner callbacks removed — claudeHarness handles status/finish internally.
 
   setupAgentCallback(token);
 
@@ -358,11 +326,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 export function deactivate(): void {
   poller?.stop();
   claudeHarness?.stopAll();
-  killAllClaudeProcesses();
+  // killAllClaudeProcesses() removed — claudeHarness.stopAll() handles cleanup
   getPanel()?.dispose();
   authServiceInstance?.clearToken();
   mcpProviderDisposable?.dispose();
-  logger.info('Extension deactivated — poller stopped, harness stopped, token cleared, Claude processes killed');
+  logger.info('Extension deactivated — poller stopped, harness stopped, token cleared');
   logger.dispose();
 }
 

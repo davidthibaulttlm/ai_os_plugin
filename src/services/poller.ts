@@ -1,7 +1,7 @@
 /** Background polling service — polls GitHub every 30s for board changes */
 
 import type { GraphQLClient, ProjectItemNode } from './graphql';
-import { detectDeltas, extractStatus, extractLabels, extractAssignees, hashToNumber, type BoardItemState, type DeltaEvent } from './delta';
+import { detectDeltas, extractStatus, extractLabels, extractAssignees, type BoardItemState, type DeltaEvent } from './delta';
 import type { AgentService, PrioritizerItem } from './agent';
 import type { RepoManager } from './repoManager';
 import { logger } from './logger';
@@ -19,7 +19,7 @@ export type DeltaCallback = (events: DeltaEvent[]) => void;
  */
 export class PollerService {
   private intervalId: ReturnType<typeof setInterval> | undefined;
-  private lastState = new Map<number, BoardItemState>();
+  private lastState = new Map<string, BoardItemState>();
   private projectId: string | undefined;
   private graphql: GraphQLClient | undefined;
   private callback: DeltaCallback | undefined;
@@ -29,6 +29,8 @@ export class PollerService {
   private agentService: AgentService | undefined;
   private repoManager: RepoManager | undefined;
   private lastItems: ProjectItemNode[] = [];
+  /** Cache of already-processed merged PRs (key = "owner/repo/number") to avoid redundant git ops */
+  private processedMergedPrs = new Set<string>();
 
   /**
    * Start polling for a specific project.
@@ -143,9 +145,17 @@ export class PollerService {
         const owner = content.repository.owner?.login;
         const repo = content.repository.name;
         if (!owner || !repo) continue;
+
+        const prKey = `${owner}/${repo}/${content.number}`;
+        // Skip if already processed — avoids redundant git cleanup on every poll
+        if (this.processedMergedPrs.has(prKey)) {
+          continue;
+        }
+
         logger.info(`[poller.checkMergedPrs] Detected merged PR #${content.number} in ${owner}/${repo}`);
         try {
           await this.repoManager!.cleanupWorktree(owner, repo, content.number, content.title);
+          this.processedMergedPrs.add(prKey);
           logger.info(`[poller.checkMergedPrs] Cleaned up worktree for merged PR #${content.number}`);
         } catch (error) {
           logger.warn(`[poller.checkMergedPrs] Failed to cleanup #${content.number}: ${(error as Error).message} (will retry next poll)`);
@@ -158,10 +168,10 @@ export class PollerService {
    * Store the last poll items for repo availability checks.
    */
   private updateState(items: ProjectItemNode[]): void {
-    const newState = new Map<number, BoardItemState>();
+    const newState = new Map<string, BoardItemState>();
 
     for (const item of items) {
-      const githubId = item.databaseId ?? hashToNumber(item.id);
+      const githubId = item.databaseId != null ? String(item.databaseId) : item.id;
       const status = extractStatus(item);
       const title = item.content?.title ?? 'Unknown';
       const labels = extractLabels(item);
@@ -185,7 +195,7 @@ export class PollerService {
       const repo = item.content?.repository?.name;
       const assignees = item.content?.assignees?.nodes?.map((a) => ({ login: a.login, avatarUrl: a.avatarUrl })) ?? [];
       return {
-        id: item.databaseId ?? hashToNumber(item.id),
+        id: item.databaseId ?? Number.parseInt(item.id.split('/').pop() ?? '0', 36),
         projectItemId: item.id,
         title: item.content?.title ?? 'Unknown',
         status: extractStatus(item),
@@ -228,7 +238,7 @@ export class PollerService {
   /**
    * Get the current in-memory state.
    */
-  public getState(): Map<number, BoardItemState> {
+  public getState(): Map<string, BoardItemState> {
     return this.lastState;
   }
 
@@ -242,7 +252,7 @@ export class PollerService {
     const issues: BoardState['issues'] = [];
 
     for (const item of items) {
-      const githubId = item.databaseId ?? hashToNumber(item.id);
+      const githubId = item.databaseId ?? Number.parseInt(item.id.split('/').pop() ?? '0', 36);
       const status = extractStatus(item);
       const title = item.content?.title ?? 'Unknown';
       const labels = extractLabels(item);

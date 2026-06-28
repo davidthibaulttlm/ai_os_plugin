@@ -18,9 +18,16 @@ class Logger {
     if (!Logger._instance) {
       Logger._instance = new Logger();
       Logger._instance._channel = vscode.window.createOutputChannel('AI OS', { log: true });
-      Logger._instance._channel.show();
+      // Do NOT auto-show — let callers decide when to display the channel
     }
     return Logger._instance;
+  }
+
+  /**
+   * Show the output channel in the VS Code UI.
+   */
+  public show(): void {
+    this._channel?.show();
   }
 
   /**

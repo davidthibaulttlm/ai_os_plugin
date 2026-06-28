@@ -218,8 +218,12 @@ ${ctx.owner}/${ctx.repo}
     const args: string[] = ['-p', prompt];
     logger.info(`[ClaudeHarness.run] CLI args: ${args.join(' ')}`);
 
+    // SECURITY: Do NOT spread process.env — only include minimum required vars.
+    // This prevents leaking parent-process secrets (AWS keys, other tokens) to the child.
     const env: NodeJS.ProcessEnv = {
-      ...process.env,
+      PATH: process.env.PATH ?? '',
+      HOME: process.env.HOME ?? '',
+      LANG: process.env.LANG ?? 'en_US.UTF-8',
       GITHUB_TOKEN: token ?? '',
     };
 

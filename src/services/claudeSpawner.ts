@@ -56,8 +56,13 @@ export function spawnClaude(
   ];
   logger.info(`[claudeSpawner.spawnClaude] CLI args: ${args.join(' ')}`);
 
-  const env = {
-    ...process.env,
+  // SECURITY: Do NOT spread process.env — only include minimum required vars.
+  // This prevents leaking parent-process secrets (AWS keys, other tokens) to the child.
+  // GITHUB_TOKEN is still visible in /proc/{pid}/environ; use fine-grained PATs with minimal scopes.
+  const env: NodeJS.ProcessEnv = {
+    PATH: process.env.PATH ?? '',
+    HOME: process.env.HOME ?? '',
+    LANG: process.env.LANG ?? 'en_US.UTF-8',
     GITHUB_TOKEN: options.githubToken,
   };
 

@@ -43,8 +43,6 @@ describe('ClaudeHarness.buildPrompt() with repo context', () => {
       title: 'Fix bug',
       body: 'Description',
       column: 'AI_SPEC',
-      branch: 'feature/1-fix-bug',
-      worktreePath: '/tmp/worktree',
     });
     expect(assembleSpy).toHaveBeenCalledWith('AI_SPEC', expect.any(String), 'test', 'repo');
   });

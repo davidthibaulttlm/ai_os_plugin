@@ -8,6 +8,19 @@ import { runGit, handleGitResult, checkGitAvailableAsync } from './repoManager.g
 
 export type { GitResult, WorktreeResult, RepoRef } from './repoManager.types';
 
+/** GitHub owner/repo name pattern — alphanumeric and hyphens, 1-39 chars, no leading/trailing hyphen */
+const GITHUB_NAME_PATTERN = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?$/;
+
+/**
+ * Validate a GitHub owner or repo name against the strict whitelist pattern.
+ * Prevents command injection via shell metacharacters or path traversal.
+ */
+function validateGitHubName(name: string, label: string): void {
+  if (!GITHUB_NAME_PATTERN.test(name)) {
+    throw new Error(`Invalid ${label}: "${name}" — must match ${GITHUB_NAME_PATTERN}`);
+  }
+}
+
 export class RepoManager {
   private reposDir: string;
   private token: string;
@@ -36,6 +49,8 @@ export class RepoManager {
 
   public getRepoPath(owner: string, repo: string): string {
     logger.info(`[RepoManager.getRepoPath] owner=${owner} repo=${repo}`);
+    validateGitHubName(owner, 'owner');
+    validateGitHubName(repo, 'repo');
     const repoPath = path.join(this.reposDir, owner, repo);
     logger.info(`[RepoManager.getRepoPath] Result: ${repoPath}`);
     return repoPath;

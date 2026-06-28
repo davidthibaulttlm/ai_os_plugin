@@ -47,9 +47,9 @@ function createItem(options: {
 
 describe('detectDeltas - item_assigned', () => {
   it('detects when assignee is added', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
-    lastState.set(1, {
-      githubId: 1,
+    const lastState = new Map<string, { githubId: string; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
+    lastState.set('1', {
+      githubId: "1",
       status: 'AI_SPEC',
       title: 'Test Issue',
       labels: [],
@@ -74,9 +74,9 @@ describe('detectDeltas - item_assigned', () => {
   });
 
   it('detects when assignee is removed', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
-    lastState.set(1, {
-      githubId: 1,
+    const lastState = new Map<string, { githubId: string; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
+    lastState.set('1', {
+      githubId: "1",
       status: 'AI_SPEC',
       title: 'Test Issue',
       labels: [],
@@ -97,9 +97,9 @@ describe('detectDeltas - item_assigned', () => {
   });
 
   it('does not emit event when assignees unchanged', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
-    lastState.set(1, {
-      githubId: 1,
+    const lastState = new Map<string, { githubId: string; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
+    lastState.set('1', {
+      githubId: "1",
       status: 'AI_SPEC',
       title: 'Test Issue',
       labels: [],
@@ -118,9 +118,9 @@ describe('detectDeltas - item_assigned', () => {
   });
 
   it('emits both item_assigned and item_updated when assignees and labels change', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
-    lastState.set(1, {
-      githubId: 1,
+    const lastState = new Map<string, { githubId: string; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
+    lastState.set('1', {
+      githubId: "1",
       status: 'AI_SPEC',
       title: 'Test Issue',
       labels: ['bug'],
@@ -145,9 +145,9 @@ describe('detectDeltas - item_assigned', () => {
   });
 
   it('emits both item_moved and item_assigned when status and assignees change', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
-    lastState.set(1, {
-      githubId: 1,
+    const lastState = new Map<string, { githubId: string; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
+    lastState.set('1', {
+      githubId: "1",
       status: 'AI_SPEC',
       title: 'Test Issue',
       labels: [],

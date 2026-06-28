@@ -34,7 +34,7 @@ describe('ClaudeTrigger.buildPrompt() with repo context', () => {
       owner: 'test',
       repo: 'repo',
     };
-    trigger.buildPrompt(event);
+    (trigger as any).buildPrompt(event);
     expect(assembleSpy).toHaveBeenCalledWith('AI_SPEC', expect.any(String), 'test', 'repo');
   });
 
@@ -47,7 +47,7 @@ describe('ClaudeTrigger.buildPrompt() with repo context', () => {
       column: 'AI_SPEC',
       reason: 'assigned',
     };
-    trigger.buildPrompt(event);
+    (trigger as any).buildPrompt(event);
     expect(assembleSpy).toHaveBeenCalledWith('AI_SPEC', expect.any(String), undefined, undefined);
   });
 });

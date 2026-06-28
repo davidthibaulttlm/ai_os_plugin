@@ -45,8 +45,8 @@ function createItem(options: {
 
 describe('detectDeltas - item_updated', () => {
   it('detects title changes', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
-    lastState.set(1, { githubId: 1, status: 'AI_SPEC', title: 'Old Title', labels: [], assignees: [] });
+    const lastState = new Map<string, { githubId: string; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
+    lastState.set('1', { githubId: '1', status: 'AI_SPEC', title: 'Old Title', labels: [], assignees: [] });
 
     const item = createItem({ databaseId: 1, status: 'AI_SPEC', title: 'New Title' });
     const events = detectDeltas(lastState, [item]);
@@ -59,8 +59,8 @@ describe('detectDeltas - item_updated', () => {
   });
 
   it('detects label changes', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
-    lastState.set(1, { githubId: 1, status: 'AI_SPEC', title: 'Same Title', labels: ['bug'], assignees: [] });
+    const lastState = new Map<string, { githubId: string; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
+    lastState.set('1', { githubId: '1', status: 'AI_SPEC', title: 'Same Title', labels: ['bug'], assignees: [] });
 
     const item = createItem({ databaseId: 1, status: 'AI_SPEC', title: 'Same Title', labels: ['bug', 'priority/high'] });
     const events = detectDeltas(lastState, [item]);
@@ -71,8 +71,8 @@ describe('detectDeltas - item_updated', () => {
   });
 
   it('does NOT fire when only label order changes (same labels)', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
-    lastState.set(1, { githubId: 1, status: 'AI_SPEC', title: 'Same', labels: ['bug', 'priority/high'], assignees: [] });
+    const lastState = new Map<string, { githubId: string; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
+    lastState.set('1', { githubId: '1', status: 'AI_SPEC', title: 'Same', labels: ['bug', 'priority/high'], assignees: [] });
 
     const item = createItem({ databaseId: 1, status: 'AI_SPEC', title: 'Same', labels: ['priority/high', 'bug'] });
     const events = detectDeltas(lastState, [item]);
@@ -81,8 +81,8 @@ describe('detectDeltas - item_updated', () => {
   });
 
   it('emits both item_moved and item_updated when status and title change', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
-    lastState.set(1, { githubId: 1, status: 'BRAIN_DUMP', title: 'Old Title', labels: [], assignees: [] });
+    const lastState = new Map<string, { githubId: string; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
+    lastState.set('1', { githubId: '1', status: 'BRAIN_DUMP', title: 'Old Title', labels: [], assignees: [] });
 
     const item = createItem({ databaseId: 1, status: 'AI_CODE', title: 'New Title' });
     const events = detectDeltas(lastState, [item]);
@@ -93,8 +93,8 @@ describe('detectDeltas - item_updated', () => {
   });
 
   it('no event when nothing changes', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
-    lastState.set(1, { githubId: 1, status: 'AI_SPEC', title: 'Same', labels: ['bug'], assignees: [] });
+    const lastState = new Map<string, { githubId: string; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
+    lastState.set('1', { githubId: '1', status: 'AI_SPEC', title: 'Same', labels: ['bug'], assignees: [] });
 
     const item = createItem({ databaseId: 1, status: 'AI_SPEC', title: 'Same', labels: ['bug'] });
     const events = detectDeltas(lastState, [item]);

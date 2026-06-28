@@ -1,213 +1,367 @@
-# Code Review — openspec/changes/assignee-filter implementation
+# Code Review Report
 
-**Verdict:** 🔴 Block
+**Verdict:** 🟠 REQUEST CHANGES
 
-**Scope:** files · focus: full review against assignee-filter, assignee-delta, and assignee-avatars specs · 2026-06-24T20:57:00Z
-
-The assignee-filter change threads assignee data through the full pipeline (GraphQL query, delta detection, poller, agent service, webview) and implements the core assignee-only selection filter. The GraphQL query, data types, and avatar rendering are solid. However, there are two correctness gaps that block merging: (1) the critical assignee filter in selectNextIssue() has no dedicated unit tests — existing tests bypass the filter entirely by omitting currentUser, and (2) finishAgent() does not trigger the required 'no more work available' popup when no assigned issues remain. Additionally, the command test simulation is missing the no_assigned_issues handler, and the delta detection drops concurrent non-assignee events.
+**Date:** 2026-06-27T21:50:00Z
+**Scope:** Full codebase review of AI OS VS Code extension (src/, webview-ui/, docker_voice/). All five dimensions covered: correctness, architecture, performance, security, dependency-cve.
+**Version:** 1.0.0
 
 ## Summary
 
+The codebase shows solid architecture for a VS Code extension automating GitHub Projects v2 kanban workflows. The async-first design, delta detection via in-memory diffing, and structured IPC layer are well-executed. However, there are two security blockers (command injection via git CLI arguments, GITHUB_TOKEN exposure to spawned processes), one high-severity correctness issue (hash collision in delta detection), and dependency CVEs in vite/esbuild that need addressing. The deprecated claudeSpawner module coexisting with claudeHarness creates maintenance debt.
+
+## Findings Summary
+
 | Severity | Count |
-|---|---|
-| 🔴 Critical | 0 |
-| 🟠 High | 2 |
-| 🟡 Medium | 4 |
-| 🔵 Low | 3 |
+|----------|-------|
+| 🔴 Critical | 2 |
+| 🟠 High | 3 |
+| 🟡 Medium | 5 |
+| 🟢 Low | 3 |
 | ⚪ Info | 1 |
+| **Total** | **14** |
 
-| Dimension | Status | Findings |
-|---|---|---|
-| Correctness & Logic | reviewed | 6 |
-| Architecture & Design | reviewed | 3 |
-| Performance & Scalability | reviewed | 1 |
-| Security (OWASP Top 10:2025) | reviewed | 0 |
-| Dependency CVEs | not-reviewed | 0 |
+## CVE Scan
 
-**Dependency CVE scan:** `none` — partial / best-effort · 0 packages checked
+- **Method:** npm audit --json (ecosystem-native auditor)
+- **Complete:** Yes
+- **Scope:** root package.json + webview-ui/package.json
 
-> No new third-party dependencies introduced by this change. Existing lockfile (package-lock.json) unchanged. No scanner available in current environment.
+## Dimension Status
 
-## Findings
+| Dimension | Status |
+|-----------|--------|
+| Correctness | ✅ reviewed |
+| Architecture / Design | ✅ reviewed |
+| Performance | ✅ reviewed |
+| Security (OWASP Top 10:2025) | ✅ reviewed |
+| Dependency CVEs | ✅ reviewed |
 
-### Correctness & Logic
+## Correctness
 
-#### [CR-001] Assignee filter in selectNextIssue() has no dedicated unit tests
-`🟠 High` · confidence: high · **blocker**
+### 🟠 ⚠️ `CR-001` — hashToNumber() produces collisions for distinct GitHub node IDs
 
-**Location:** `src/services/agent.ts:144–152`
+| Field | Value |
+|-------|-------|
+| **Severity** | high |
+| **Confidence** | high |
+| **Disposition** | should-fix |
+| **Category** | correctness |
+| **Location** | [src/services/delta.ts#147](#src/services/delta.ts#147) |
 
-The core feature — filtering board items to only those assigned to the current user — is exercised by zero test cases. All existing tests in agent.selectNextIssue.test.ts and agent.startAgent.test.ts pass items with assignees: [] and never call setCurrentUser(). Because the filter at agent.ts:144-152 is guarded by `if (this.currentUser)`, the filter body is never entered during tests. This means the primary requirement of the assignee-filter spec is completely untested. If the filter logic regresses (e.g., wrong comparison, off-by-one), no test will catch it.
+**Detail:** hashToNumber() implements a djb2-style hash that maps arbitrary-length node ID strings to a 32-bit integer. With ~4 billion possible values, birthday collisions become likely after ~sqrt(4B) ≈ 64K items. Even for smaller boards, two different node IDs can hash to the same number, causing detectDeltas() to incorrectly treat them as the same item — suppressing 'item_added' events or generating false 'item_moved' events. Since databaseId is typically present, this is a fallback path, but it activates when databaseId is null.
+
+**Recommendation:** Replace hashToNumber with a string-based key. Change BoardItemState.githubId from number to (number | string), preferring databaseId when available and falling back to the raw node ID string. Update all Map<number, ...> to Map<string, ...> in delta.ts and poller.ts.
+
 
 ```
-    if (this.currentUser) {
-      const before = eligible.length;
-      eligible = eligible.filter(
-        (item) => item.assignees?.some((a) => a.login === this.currentUser)
-      );
-      logger.info(`[AgentService.selectNextIssue] Filtered ${before} -> ${eligible.length} items assigned to ${this.currentUser}`);
-    } else {
-      logger.warn('[AgentService.selectNextIssue] No currentUser set — skipping assignee filter');
+export function hashToNumber(id: string): number {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    const char = id.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+```
+
+---
+
+### 🟡 ⚠️ `CR-002` — useVsCode uses console.log instead of logger — violates project rules
+
+| Field | Value |
+|-------|-------|
+| **Severity** | medium |
+| **Confidence** | high |
+| **Disposition** | should-fix |
+| **Category** | correctness |
+| **Location** | [webview-ui/src/hooks/useVsCode.ts#15](#webview-ui/src/hooks/useVsCode.ts#15) |
+
+**Detail:** useVsCode.ts uses console.log() extensively (lines 15, 18, 24, 27, 28, 39, 43, 45, 48) instead of the project-mandated logger import. The AGENTS.md rules state: 'NEVER use console.log — use logger only.' In the webview context, logger.ts posts to the extension host via IPC and falls back to console.* in Storybook mode, so the correct import is: import { logger } from '../logger'.
+
+**Recommendation:** Replace all console.log/console.error calls in useVsCode.ts with the appropriate logger level calls. Use logger.debug() for verbose IPC diagnostics and logger.error() for actual failures.
+
+
+```
+console.log(`[AI OS IPC] Environment check: api available = ${!!api}`);
+console.error('[AI OS IPC] NOT running in VS Code webview!');
+```
+
+---
+
+### 🟡 ⚠️ `CR-003` — Empty catch block swallows disposal errors — violates project rules
+
+| Field | Value |
+|-------|-------|
+| **Severity** | medium |
+| **Confidence** | high |
+| **Disposition** | should-fix |
+| **Category** | correctness |
+| **Location** | [src/providers/KanbanPanel.ts#107](#src/providers/KanbanPanel.ts#107) |
+
+**Detail:** KanbanPanel.ts line 107 has: catch { /* disposed */ } — an empty catch block that silently swallows errors when posting to a disposed webview. The AGENTS.md security rules state: 'No Empty Catch Blocks — Every catch block MUST log the error.' While the intent (panel was disposed) is correct, the pattern violates the rule and makes debugging post-disposal issues impossible.
+
+**Recommendation:** Add a logger.debug() call in the catch block: catch { logger.debug('[KanbanPanel._safePostMessage] Panel disposed — message dropped'); }
+
+
+```
+  } catch {
+    // Panel disposed - message delivery failed
+  }
+```
+
+---
+
+## Architecture / Design
+
+### 🟡 ⚠️ `ARC-001` — Deprecated claudeSpawner coexists with claudeHarness — dual code paths for agent spawning
+
+| Field | Value |
+|-------|-------|
+| **Severity** | medium |
+| **Confidence** | high |
+| **Disposition** | should-fix |
+| **Category** | architecture |
+| **Location** | [src/services/claudeSpawner.ts#1](#src/services/claudeSpawner.ts#1) |
+
+**Detail:** claudeSpawner.ts is marked @deprecated but remains actively imported and used in extension.ts (line 12: import { killAllClaudeProcesses, setWorkingStatusCallback, setOnFinishCallback } from './services/claudeSpawner'). Meanwhile, claudeHarness.ts provides an enhanced lifecycle manager with worktree preparation, prompt building, output streaming, and post-run pipeline. Having two agent spawning mechanisms creates maintenance debt, inconsistent behavior, and makes it unclear which path is the source of truth for production.
+
+**Recommendation:** Complete the migration from claudeSpawner to claudeHarness. Remove all claudeSpawner imports from extension.ts and replace with claudeHarness equivalents. Delete claudeSpawner.ts after confirming no remaining callers. Update tests accordingly.
+
+
+```
+/**
+ * Claude Spawner — spawns `claude -p` child processes for auto-work.
+ * @deprecated Use ClaudeHarness instead. Kept for backward compatibility.
+ */
+```
+
+---
+
+### 🟡 ⚠️ `ARC-002` — PollerService violates Single Responsibility — handles polling, delta detection, board state feeding, PR merge checking, and state bridge writing
+
+| Field | Value |
+|-------|-------|
+| **Severity** | medium |
+| **Confidence** | high |
+| **Disposition** | should-fix |
+| **Category** | architecture |
+| **Location** | [src/services/poller.ts#20](#src/services/poller.ts#20) |
+
+**Detail:** PollerService (267 lines) combines five distinct responsibilities: (1) scheduling poll intervals, (2) fetching project items via GraphQL, (3) detecting deltas via detectDeltas(), (4) feeding board state to AgentService, (5) checking merged PRs and triggering worktree cleanup, and (6) writing state bridge files. This makes the class hard to test in isolation and couples the polling mechanism to business logic.
+
+**Recommendation:** Extract PR merge detection into a separate MergedPrDetector service. Extract state bridge writing into a StateWriter service. Keep PollerService focused on scheduling + fetching + delta notification. Each extracted service can be unit-tested independently.
+
+
+```
+private async checkMergedPrs(items: ProjectItemNode[]): Promise<void> {
+    // ... iterates all items, checks MERGED state, calls repoManager.cleanupWorktree
+  }
+```
+
+---
+
+### 🟡 💡 `ARC-003` — Commands registered at module scope execute on import rather than during activation
+
+| Field | Value |
+|-------|-------|
+| **Severity** | medium |
+| **Confidence** | high |
+| **Disposition** | consider |
+| **Category** | architecture |
+| **Location** | [src/extension.ts#103](#src/extension.ts#103) |
+
+**Detail:** extension.ts registers 'aiOs.setReposDir' (line 103) and 'aiOs.resetOnboarding' (line 124) at module scope, outside the registerCommands() function. These commands are registered when the module is first evaluated, before activate() runs. While this works in practice (the commands reference boardTreeProvider which may be undefined), it creates a registration path that bypasses the extension lifecycle and could cause issues if the module is re-imported.
+
+**Recommendation:** Move all command registrations into registerCommands() or activate() for a single, controlled registration point. Guard commands that depend on initialized services with null checks.
+
+
+```
+vscode.commands.registerCommand('aiOs.setReposDir', async () => {
+    // Registered at module scope, outside registerCommands()
+  });
+```
+
+---
+
+### ⚪ 👍 `PR-001` — IPCRegistry with singleton window listener prevents duplicate handler accumulation
+
+| Field | Value |
+|-------|-------|
+| **Severity** | info |
+| **Confidence** | high |
+| **Disposition** | praise |
+| **Category** | architecture |
+| **Location** | [webview-ui/src/hooks/useVsCode.ts#63](#webview-ui/src/hooks/useVsCode.ts#63) |
+
+**Detail:** The IPCRegistry pattern (window.__aiOsIPC) with ensureListener() is a well-designed solution to the common webview problem of stacked message listeners during module reloads. The single persistent window.addEventListener survives HTML reassignment while the handler Map allows clean registration/deregistration via onMessage/offMessage. This is exactly the pattern VS Code webview documentation recommends.
+
+**Recommendation:** None — this is a good pattern. Consider documenting it in a code comment for new contributors.
+
+
+---
+
+## Performance
+
+### 🟡 💡 `PERF-001` — checkMergedPrs() iterates all board items on every poll cycle
+
+| Field | Value |
+|-------|-------|
+| **Severity** | medium |
+| **Confidence** | medium |
+| **Disposition** | consider |
+| **Category** | performance |
+| **Location** | [src/services/poller.ts#136](#src/services/poller.ts#136) |
+
+**Detail:** checkMergedPrs() runs on every poll cycle (30s interval) and iterates all ProjectItemNodes checking for MERGED state PRs. For each merged PR found, it calls repoManager.cleanupWorktree() which spawns git processes. On a board with 100+ items, this adds significant overhead per poll cycle. The function is fire-and-forget (unawaited in poll()), so errors don't block the poll but cleanup may be delayed.
+
+**Recommendation:** Cache the set of already-processed merged PRs (by content.number + repo) and only trigger cleanup for newly-merged PRs detected since the last poll. This avoids redundant git operations for PRs that have been merged for a while.
+
+
+```
+private async checkMergedPrs(items: ProjectItemNode[]): Promise<void> {
+    for (const item of items) {
+      const content = item.content;
+      if (!content) continue;
+      if (content.state === 'MERGED' && content.repository) {
+        // Spawns git cleanup for EVERY merged PR on every poll
+      }
     }
+  }
 ```
 
-**Fix:** Create src/test/services/agent.selectNextIssue.assigneeFilter.test.ts with cases: (a) user assigned to one issue — returns that issue, (b) user assigned to none — returns null, (c) mixed assignees — returns only user's issues, (d) unassigned issue never selected. Each test must call agent.setCurrentUser('alice') before setBoardState().
+---
 
-**References:** openspec/changes/assignee-filter/specs/assignee-filter/spec.md, openspec/changes/assignee-filter/tasks.md task 4.6
+### 🟢 💡 `PERF-002` — Label comparison uses JSON.stringify(sort()) instead of set-based comparison
 
-#### [CR-002] finishAgent() does not show 'no more work available' popup per spec
-`🟠 High` · confidence: high · **blocker**
+| Field | Value |
+|-------|-------|
+| **Severity** | low |
+| **Confidence** | medium |
+| **Disposition** | consider |
+| **Category** | performance |
+| **Location** | [src/services/delta.ts#80](#src/services/delta.ts#80) |
 
-**Location:** `src/services/agent.ts:316–318`
+**Detail:** delta.ts compares labels using JSON.stringify(last.labels.sort()) !== JSON.stringify(labels.sort()) (line 80). This creates sorted copies and serializes them for comparison. For typical label counts (1-5), this is negligible, but the pattern is O(n log n) per item when a set-based comparison would be O(n). Same pattern used for assignee comparison on line 70.
 
-Spec requirement (assignee-filter/spec.md, lines 44-53): 'When the agent finishes work and no assigned issues remain, the extension SHALL display a popup informing the user.' The current finishAgent() at agent.ts:290-319 logs 'No next issue available' but does not return a reason or trigger any popup. The popup logic lives in the command handler (extension.ts:129-156), but finishAgent() calls startAgent() internally — there is no path back to the command handler to display the message. The spec explicitly requires this popup for the auto-trigger flow after agent completion.
+**Recommendation:** Replace with a set-based equality check: new Set(a) equals new Set(b). This is both more efficient and more readable. Consider extracting to a helper function arraysEqualIgnoringOrder(a, b).
 
-```
-    } else {
-      logger.info('[AgentService.finishAgent] No next issue available');
-    }
-```
-
-**Fix:** Have finishAgent() return a result indicating whether no assigned issues remain, and have the caller (claudeSpawner or claudeTrigger callback chain) display the popup. Alternatively, add a vscode.window.showInformationMessage call directly in finishAgent() when next is null and currentUser is set. Update tasks.md task 5.4 accordingly.
-
-**References:** openspec/changes/assignee-filter/specs/assignee-filter/spec.md lines 44-53, openspec/changes/assignee-filter/tasks.md task 5.4
-
-#### [CR-003] Test simulation in startAgent.test.ts missing no_assigned_issues handler
-`🟡 Medium` · confidence: high · **should-fix**
-
-**Location:** `src/test/commands/startAgent.test.ts:35–63`
-
-The simulateHandleStartAgent() function in src/test/commands/startAgent.test.ts:35-63 handles reasons: busy, empty, auto_move_failed — but not no_assigned_issues. The actual command handler in extension.ts:142-143 handles it with showWarningMessage. This means the test simulation diverges from production behavior. If someone refactors the popup messages, the test won't catch the regression for this specific reason.
 
 ```
-    } else if (result.reason === 'empty') {
-      vscode.window.showInformationMessage('No issues available for AI agent');
-    } else if (result.reason === 'auto_move_failed') {
+if (last.title !== title || JSON.stringify(last.labels.sort()) !== JSON.stringify(labels.sort()))
 ```
 
-**Fix:** Add an else-if branch for result.reason === 'no_assigned_issues' in simulateHandleStartAgent() that calls vscode.window.showWarningMessage with the expected message. Add a test case that sets currentUser, provides no assigned issues, and verifies the warning message.
+---
 
-**References:** src/extension.ts:142-143
+## Security (OWASP Top 10:2025)
 
-#### [CR-004] Delta detection masks concurrent non-assignee events
-`🟡 Medium` · confidence: high · **should-fix**
+### 🔴 🚫 `SEC-001` — Command injection via unsanitized owner/repo in git CLI arguments
 
-**Location:** `src/services/delta.ts:48–80`
+| Field | Value |
+|-------|-------|
+| **Severity** | critical |
+| **Confidence** | high |
+| **Disposition** | blocker |
+| **Category** | security |
+| **Location** | [src/services/repoManager.ts#175](#src/services/repoManager.ts#175) |
 
-In detectDeltas() at delta.ts:48-80, the if-else chain means only ONE event type is emitted per item per poll. If an item's status AND assignees change simultaneously, only the status change (item_moved) is emitted — the assignee change is silently dropped. Similarly, if assignees AND labels change, only item_assigned fires and the label change is lost. This is a design trade-off but means the system under-reports changes during complex edits.
+**Detail:** repoManager.ts constructs git CLI arguments directly from owner and repo parameters (e.g., 'clone', '--branch', defaultBranch, 'https://github.com/${owner}/${repo}.git', repo). If owner or repo contains shell metacharacters or path traversal sequences, the spawned git process could execute arbitrary commands or access unintended paths. The slugify() method exists but is only used for branch names and worktree paths, not for the git URL or clone target directory.
 
-```
-    } else if (last.status !== status) {
-      // Status changed (item moved)
-      ...
-    } else if (JSON.stringify(last.assignees.map((a) => a.login).sort()) !== JSON.stringify(assignees.map((a) => a.login).sort())) {
-      // Assignees changed
-      ...
-    } else if (last.title !== title || JSON.stringify(last.labels.sort()) !== JSON.stringify(labels.sort())) {
-```
+**Recommendation:** Validate owner and repo against a strict whitelist pattern (e.g., /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,38}[a-zA-Z0-9])?$/) before passing to any git command. Apply this validation at the RepoManager constructor or cloneRepo entry point.
 
-**Fix:** Either (a) emit multiple events per item by replacing the if-else chain with independent if checks, or (b) document this as intentional in the delta.ts header and accept it as a known limitation. Option (a) is preferred for completeness.
+**References:**
+- OWASP Top 10:2025 - A03 Injection
 
-**References:** openspec/changes/assignee-filter/specs/assignee-delta/spec.md
 
-#### [CR-005] IssueCard stories missing assignee avatar example
-`🟡 Medium` · confidence: high · **should-fix**
+---
 
-**Location:** `webview-ui/src/components/IssueCard.stories.tsx:37–47`
+### 🔴 🚫 `SEC-002` — GITHUB_TOKEN exposed as environment variable to spawned Claude process
 
-Task 6.4 in tasks.md requires updating IssueCard.stories.tsx with assignee examples. The current file (171 lines) has no story that includes assignees data. The baseItem at line 37-47 has no assignees field. Without a Storybook story showing the avatar circles, there is no visual regression test for the avatar rendering.
+| Field | Value |
+|-------|-------|
+| **Severity** | critical |
+| **Confidence** | high |
+| **Disposition** | blocker |
+| **Category** | security |
+| **Location** | [src/services/claudeSpawner.ts#61](#src/services/claudeSpawner.ts#61) |
 
-**Fix:** Add a story (e.g., export const WithAssignees) that includes assignees: [{ login: 'alice', avatarUrl: 'https://avatars.githubusercontent.com/u/1?v=4' }, { login: 'bob', avatarUrl: 'https://avatars.githubusercontent.com/u/2?v=4' }] to verify the avatar circle rendering in Storybook.
+**Detail:** claudeSpawner.ts passes the GitHub token as GITHUB_TOKEN env var to every spawned 'claude' child process (line 61: env: { ...process.env, GITHUB_TOKEN: options.githubToken }). This exposes the token to the Claude Code process and any subprocesses it spawns. On Linux, the token appears in /proc/{pid}/environ for any user with access. The claudeHarness.ts module should be audited for the same pattern.
 
-**References:** openspec/changes/assignee-filter/tasks.md task 6.4
+**Recommendation:** Instead of passing the token via environment, use git credential helpers or write the token to a temporary file with restrictive permissions (0600) and reference it via GIT_ASKPASS or a .netrc file. Alternatively, use GitHub's fine-grained personal access tokens with minimal scopes and short expiration.
 
-#### [LOW-001] Integration test registerStartAgentCommand missing no_assigned_issues handler
-`🔵 Low` · confidence: high · **nit**
+**References:**
+- OWASP Top 10:2025 - A07 Identification and Authentication Failures
 
-**Location:** `src/test/integration/startAgent.integration.test.ts:58–88`
 
-src/test/integration/startAgent.integration.test.ts:58-88 duplicates the command handler but also lacks the no_assigned_issues branch. Same issue as CR-003 but in the integration test file.
+---
 
-**Fix:** Add the no_assigned_issues handler to the integration test's registerStartAgentCommand, mirroring extension.ts:142-143.
+### 🟢 💡 `SEC-003` — Logger auto-shows output channel on creation — intrusive for users
 
-**References:** src/extension.ts:142-143
+| Field | Value |
+|-------|-------|
+| **Severity** | low |
+| **Confidence** | medium |
+| **Disposition** | consider |
+| **Category** | security |
+| **Location** | [src/services/logger.ts#21](#src/services/logger.ts#21) |
 
-### Architecture & Design
+**Detail:** Logger.getInstance() calls Logger._instance._channel.show() (line 21), which automatically opens the AI OS output panel when the extension activates. This is intrusive for users who don't need to see debug output. The channel should be created lazily and only shown when explicitly requested or when an error/warning is logged.
 
-#### [ARCH-001] finishAgent() void return prevents caller from reacting to empty state
-`🟡 Medium` · confidence: high · **should-fix**
+**Recommendation:** Remove the .show() call from getInstance(). Add a logger.show() method that callers can invoke when they want to bring the channel to the user's attention. Or show the channel only on warn/error level messages.
 
-**Location:** `src/services/agent.ts:290`
-
-finishAgent() returns Promise<void>, but the caller (claudeSpawner triggerCallback) needs to know whether there are no more assigned issues to display the popup. Currently the popup logic only exists in the command handler (extension.ts), but finishAgent() is called from the agent completion callback chain — a different code path that never reaches the command handler. This architectural gap means the 'no more work' popup can never actually fire.
-
-```
-  public async finishAgent(issueId: string): Promise<void> {
-```
-
-**Fix:** Change finishAgent() to return Promise<{ reason?: 'no_assigned_issues' | 'none' }> so the caller can branch on the result. Or add an onIdle callback to AgentService that fires when no work remains.
-
-**References:** src/services/agent.ts:290-319, openspec/changes/assignee-filter/tasks.md task 5.4
-
-#### [LOW-002] Avatar URL not validated before rendering in IssueCard
-`🔵 Low` · confidence: high · **nit**
-
-**Location:** `webview-ui/src/components/IssueCard.tsx:96–102`
-
-IssueCard.tsx:98 renders src={assignee.avatarUrl} directly. GitHub's GraphQL API returns trusted avatar URLs (avatars.githubusercontent.com), so this is not a security risk in practice. However, if the data source ever changes or test data includes malformed URLs, the img tag will fail silently.
 
 ```
-            <img
-              key={assignee.login}
-              src={assignee.avatarUrl}
-              alt={assignee.login}
-              title={assignee.login}
-              className="w-6 h-6 rounded-full border border-vscode-editor-background"
-            />
+Logger._instance._channel = vscode.window.createOutputChannel('AI OS', { log: true });
+Logger._instance._channel.show();
 ```
 
-**Fix:** Add a fallback: onError={() => imgRef.current.src = '/default-avatar.png'} or validate the URL starts with https://avatars.githubusercontent.com. Low priority given the data source is GitHub's own API.
+---
 
-#### [PRAISE-001] Clean thread of assignee data through entire pipeline
-`⚪ Info` · confidence: high · **praise**
+## Dependency CVEs
 
-**Location:** `src/services/graphql.queries.ts:19–21`
+### 🟠 ⚠️ `CVE-001` — vite <=6.4.2 has multiple CVEs including path traversal and fs.deny bypass
 
-The assignee data flows cleanly from CONTENT_FRAGMENT through IssueContent/PullRequestContent types, extractAssignees(), BoardItemState, PrioritizerItem, and into the webview IssueCard. Each layer has proper TypeScript typing. The GraphQL fragment approach (Decision 1 in design.md) correctly avoids N+1 queries. The avatarUrl passthrough (Decision 5) eliminates a separate API call. Well-architected data flow.
+| Field | Value |
+|-------|-------|
+| **Severity** | high |
+| **Confidence** | high |
+| **Disposition** | should-fix |
+| **Category** | dependency-cve |
+| **Location** | [webview-ui/package.json#33](#webview-ui/package.json#33) |
 
-**Fix:** None — this is a positive pattern.
+**Detail:** npm audit reports vite (direct devDependency ^5.0.0, resolved to <=6.4.2) has three vulnerabilities: GHSA-4w7w-66w2-5vf9 (path traversal in optimized deps .map handling, moderate), GHSA-v6wh-96g9-6wx3 (NTLMv2 hash disclosure via UNC paths on Windows, moderate), and GHSA-fx2h-pf6j-xcff (server.fs.deny bypass on Windows alternate paths, high). Fix available in vite 8.1.0 (major version bump required).
 
-**References:** openspec/changes/assignee-filter/design.md
+**Recommendation:** Upgrade vite to ^6.4.3+ or ^8.1.0 if feasible. Since vite is a devDependency, these CVEs affect development-time only — not the production extension bundle. However, the fs.deny bypass (GHSA-fx2h-pf6j-xcff) is rated high and should be addressed before the next release.
 
-### Performance & Scalability
+**References:**
+- GHSA-4w7w-66w2-5vf9
+- GHSA-v6wh-96g9-6wx3
+- GHSA-fx2h-pf6j-xcff
 
-#### [PERF-001] JSON.stringify for assignee comparison is O(n log n) per item per poll
-`🔵 Low` · confidence: medium · **consider**
 
-**Location:** `src/services/delta.ts:64`
+---
 
-delta.ts:64 uses JSON.stringify(last.assignees.map(a => a.login).sort()) for comparison. For boards with many items, this allocates sorted arrays and serializes them on every poll. With first:5 assignees and typical board sizes (50-200 items), this is negligible — but the pattern is fragile if assignee limits increase.
+### 🟡 ⚠️ `CVE-002` — esbuild <=0.24.2 allows dev server to be accessed by arbitrary websites
 
-```
-    } else if (JSON.stringify(last.assignees.map((a) => a.login).sort()) !== JSON.stringify(assignees.map((a) => a.login).sort())) {
-```
+| Field | Value |
+|-------|-------|
+| **Severity** | medium |
+| **Confidence** | high |
+| **Disposition** | should-fix |
+| **Category** | dependency-cve |
+| **Location** | [webview-ui/package.json#33](#webview-ui/package.json#33) |
 
-**Fix:** Consider a Set-based comparison: new Set(last.assignees.map(a => a.login)).size === new Set(assignees.map(a => a.login)).size && every member matches. Or pre-sort during state extraction. Not urgent given current scale.
+**Detail:** npm audit reports esbuild (transitive dependency of vite) has GHSA-67mh-4wv8-2f99: esbuild enables any website to send requests to the development server and read responses (CVSS 5.3, moderate). This affects the Vite dev server used during webview development. Fix available via vite upgrade to 8.1.0.
 
-### Security (OWASP Top 10:2025)
+**Recommendation:** Upgrade vite (which pulls in a patched esbuild). This is a dev-time only vulnerability since esbuild is not bundled in the extension.
 
-_Clean — Clean — avatarUrl from GitHub CDN is safe; no innerHTML; IPC validation intact._
+**References:**
+- GHSA-67mh-4wv8-2f99
 
-### Dependency CVEs
 
-_Not reviewed — No CVE scanner available in environment; no new dependencies introduced by this change._
+---
 
-## Action list
+---
 
-- **[blocker]** [CR-001] Assignee filter in selectNextIssue() has no dedicated unit tests (`src/services/agent.ts:144–152`)
-- **[blocker]** [CR-002] finishAgent() does not show 'no more work available' popup per spec (`src/services/agent.ts:316–318`)
-- **[should-fix]** [ARCH-001] finishAgent() void return prevents caller from reacting to empty state (`src/services/agent.ts:290`)
-- **[should-fix]** [CR-003] Test simulation in startAgent.test.ts missing no_assigned_issues handler (`src/test/commands/startAgent.test.ts:35–63`)
-- **[should-fix]** [CR-004] Delta detection masks concurrent non-assignee events (`src/services/delta.ts:48–80`)
-- **[should-fix]** [CR-005] IssueCard stories missing assignee avatar example (`webview-ui/src/components/IssueCard.stories.tsx:37–47`)
-- **[consider]** [PERF-001] JSON.stringify for assignee comparison is O(n log n) per item per poll (`src/services/delta.ts:64`)
+*Report generated deterministically from `report.json` via `scripts/render_report.py`*

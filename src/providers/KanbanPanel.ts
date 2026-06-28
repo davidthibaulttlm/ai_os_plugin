@@ -104,7 +104,9 @@ export class KanbanPanel {
               type: 'error',
               data: { message: (error as Error).message },
             } as ExtensionToWebview);
-          } catch { /* disposed */ }
+          } catch {
+            logger.debug('[KanbanPanel.onDidReceiveMessage] Panel disposed — error message dropped');
+          }
         }
       },
       undefined,
@@ -178,7 +180,7 @@ export class KanbanPanel {
     try {
       this._panel.webview.postMessage(msg);
     } catch {
-      // Panel disposed - message delivery failed
+      logger.debug('[KanbanPanel._safePostMessage] Panel disposed — message dropped');
     }
   }
 

@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { getVsCodeApi } from '../vscodeApi';
+import { logger } from '../logger';
 
 /**
  * Hook for VS Code webview IPC communication.
@@ -12,20 +13,20 @@ export function useVsCode() {
 
   useEffect(() => {
     const api = getVsCodeApi();
-    console.log(`[AI OS IPC] Environment check: api available = ${!!api}`);
+    logger.debug(`[useVsCode.useEffect] Environment check: api available = ${!!api}`);
 
     if (!api) {
-      console.error('[AI OS IPC] NOT running in VS Code webview! postMessage will not work.');
+      logger.error('[useVsCode.useEffect] NOT running in VS Code webview! postMessage will not work.');
       return;
     }
 
     try {
       apiRef.current = api;
-      console.log('[AI OS IPC] API ready, posting __ping__ test');
+      logger.debug('[useVsCode.useEffect] API ready, posting __ping__ test');
       api.postMessage({ type: '__ping__', data: { ts: Date.now() } });
-      console.log('[AI OS IPC] __ping__ posted');
+      logger.debug('[useVsCode.useEffect] __ping__ posted');
     } catch (e) {
-      console.error('[AI OS IPC] postMessage threw exception', e);
+      logger.error(`[useVsCode.useEffect] postMessage threw exception: ${(e as Error).message}`);
     }
 
     // Ensure the persistent window listener is attached (singleton on window.__aiOsIPC).
@@ -36,16 +37,16 @@ export function useVsCode() {
   const postMessage = useCallback(
     (type: string, data?: unknown) => {
       const api = apiRef.current;
-      console.log(`[AI OS IPC] postMessage called: type=${type}, api=${api ? 'exists' : 'NULL'}`);
+      logger.debug(`[useVsCode.postMessage] type=${type}, api=${api ? 'exists' : 'NULL'}`);
       if (api) {
         try {
           api.postMessage({ type, data });
-          console.log(`[AI OS IPC] postMessage succeeded: type=${type}`);
-        } catch (e: any) {
-          console.error(`[AI OS IPC] postMessage threw: ${e.message}`, { type });
+          logger.debug(`[useVsCode.postMessage] Succeeded: type=${type}`);
+        } catch (e) {
+          logger.error(`[useVsCode.postMessage] Threw: ${(e as Error).message}, type=${type}`);
         }
       } else {
-        console.error(`[AI OS IPC] api is null — message DROPPED`, { type, data });
+        logger.error(`[useVsCode.postMessage] api is null — message DROPPED, type=${type}`);
       }
     },
     []
@@ -55,10 +56,17 @@ export function useVsCode() {
 }
 
 /**
- * Persistent message handler registry — stored on `window` so it survives
- * module reloads when the webview HTML is reassigned (panel reuse).
- * This prevents the "15 duplicate logs" bug where each reload stacked
- * a new window.addEventListener while old ones remained active.
+ * IPCRegistry — Persistent message handler registry.
+ *
+ * Stored on `window.__aiOsIPC` so it survives module reloads when the webview
+ * HTML is reassigned (panel reuse). This is the recommended pattern for VS Code
+ * webviews: a single persistent `window.addEventListener('message', ...)` that
+ * dispatches to a Map of type→handlers, avoiding the common bug where each
+ * module reload stacks a new listener while old ones remain active.
+ *
+ * - `onMessage(type, handler)` registers a handler for a message type.
+ * - `offMessage(type)` removes all handlers for a message type (use in useEffect cleanup).
+ * - `ensureListener()` guarantees exactly one window listener is attached.
  */
 interface IPCRegistry {
   handlers: Map<string, Array<(message: Record<string, unknown>) => void>>;

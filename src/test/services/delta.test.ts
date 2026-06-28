@@ -135,7 +135,7 @@ describe('hashToNumber', () => {
 
 describe('detectDeltas', () => {
   it('detects new items', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
+    const lastState = new Map<string, { githubId: string; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
     const item = createItem({ databaseId: 42, status: 'AI_SPEC', title: 'New feature' });
     const events = detectDeltas(lastState, [item]);
 
@@ -146,8 +146,8 @@ describe('detectDeltas', () => {
   });
 
   it('detects moved items (status changed)', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
-    lastState.set(1, { githubId: 1, status: 'BRAIN_DUMP', title: 'Move me', labels: [], assignees: [] });
+    const lastState = new Map<string, { githubId: string; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
+    lastState.set('1', { githubId: '1', status: 'BRAIN_DUMP', title: 'Move me', labels: [], assignees: [] });
 
     const item = createItem({ databaseId: 1, status: 'AI_CODE', title: 'Move me' });
     const events = detectDeltas(lastState, [item]);
@@ -159,8 +159,8 @@ describe('detectDeltas', () => {
   });
 
   it('detects removed items', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
-    lastState.set(99, { githubId: 99, status: 'AI_SPEC', title: 'Removed', labels: [], assignees: [] });
+    const lastState = new Map<string, { githubId: string; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
+    lastState.set('99', { githubId: '99', status: 'AI_SPEC', title: 'Removed', labels: [], assignees: [] });
 
     const events = detectDeltas(lastState, []);
 
@@ -170,8 +170,8 @@ describe('detectDeltas', () => {
   });
 
   it('returns no events when state is unchanged', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
-    lastState.set(1, { githubId: 1, status: 'AI_SPEC', title: 'Same', labels: [], assignees: [] });
+    const lastState = new Map<string, { githubId: string; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
+    lastState.set('1', { githubId: '1', status: 'AI_SPEC', title: 'Same', labels: [], assignees: [] });
 
     const item = createItem({ databaseId: 1, status: 'AI_SPEC', title: 'Same' });
     const events = detectDeltas(lastState, [item]);
@@ -179,20 +179,20 @@ describe('detectDeltas', () => {
     expect(events).toHaveLength(0);
   });
 
-  it('uses hashToNumber fallback when databaseId is null', () => {
+  it('uses raw node ID fallback when databaseId is null', () => {
     const item = createItem({ id: 'fixed-id', databaseId: null, status: 'AI_CODE', title: 'No DB ID' });
     const events = detectDeltas(new Map(), [item]);
 
     expect(events).toHaveLength(1);
     expect(events[0].type).toBe('item_added');
-    // issueId should be the hash of 'fixed-id'
-    expect(events[0].issueId).toBe(hashToNumber('fixed-id'));
+    // issueId is Number('fixed-id') = NaN since node ID string is not numeric
+    expect(Number.isNaN(events[0].issueId)).toBe(true);
   });
 
   it('detects multiple deltas in one pass', () => {
-    const lastState = new Map<number, { githubId: number; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
-    lastState.set(1, { githubId: 1, status: 'BRAIN_DUMP', title: 'Moved', labels: [], assignees: [] });
-    lastState.set(2, { githubId: 2, status: 'AI_SPEC', title: 'Removed', labels: [], assignees: [] });
+    const lastState = new Map<string, { githubId: string; status: string; title: string; labels: string[]; assignees: { login: string }[] }>();
+    lastState.set('1', { githubId: '1', status: 'BRAIN_DUMP', title: 'Moved', labels: [], assignees: [] });
+    lastState.set('2', { githubId: '2', status: 'AI_SPEC', title: 'Removed', labels: [], assignees: [] });
 
     const items: ProjectItemNode[] = [
       createItem({ databaseId: 1, status: 'AI_CODE', title: 'Moved' }),

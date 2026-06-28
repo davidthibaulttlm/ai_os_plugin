@@ -15,7 +15,8 @@ export interface DeltaEvent {
 
 /** Board item state for delta comparison */
 export interface BoardItemState {
-  githubId: number;
+  /** Stable identifier: databaseId (number as string) or raw node ID string */
+  githubId: string;
   status: string;
   title: string;
   labels: string[];
@@ -24,19 +25,33 @@ export interface BoardItemState {
 }
 
 /**
+ * Compare two string arrays for equality ignoring order.
+ * O(n) via Set, replaces JSON.stringify(sort()) pattern.
+ */
+function arraysEqualIgnoringOrder(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const setA = new Set(a);
+  for (const item of b) {
+    if (!setA.has(item)) return false;
+  }
+  return true;
+}
+
+/**
  * Detect deltas between last known state and current items.
  */
 export function detectDeltas(
-  lastState: Map<number, BoardItemState>,
+  lastState: Map<string, BoardItemState>,
   currentItems: ProjectItemNode[]
 ): DeltaEvent[] {
   logger.debug(`[delta.detectDeltas] Comparing ${currentItems.length} current items against ${lastState.size} last state entries`);
   const events: DeltaEvent[] = [];
 
-  const currentMap = new Map<number, BoardItemState>();
+  const currentMap = new Map<string, BoardItemState>();
 
   for (const item of currentItems) {
-    const githubId = item.databaseId ?? hashToNumber(item.id);
+    // Use databaseId as string key when available; fall back to raw node ID string (no hash collision risk)
+    const githubId = item.databaseId != null ? String(item.databaseId) : item.id;
     const status = extractStatus(item);
     const title = item.content?.title ?? 'Unknown';
     const labels = extractLabels(item);
@@ -49,7 +64,7 @@ export function detectDeltas(
       // New item
       logger.info(`[delta.detectDeltas] New item: #${githubId} "${title}" in ${status}`);
       events.push({
-        issueId: githubId,
+        issueId: Number(githubId),
         type: 'item_added',
         data: { status, title },
       });
@@ -58,29 +73,29 @@ export function detectDeltas(
       if (last.status !== status) {
         logger.info(`[delta.detectDeltas] Moved: #${githubId} "${title}" from ${last.status} -> ${status}`);
         events.push({
-          issueId: githubId,
+          issueId: Number(githubId),
           type: 'item_moved',
           data: { from: last.status, to: status },
         });
       }
 
-      // Assignees changed
-      const lastAssigneeLogins = last.assignees.map((a) => a.login).sort();
-      const currentAssigneeLogins = assignees.map((a) => a.login).sort();
-      if (JSON.stringify(lastAssigneeLogins) !== JSON.stringify(currentAssigneeLogins)) {
+      // Assignees changed — use set-based comparison (O(n))
+      const lastAssigneeLogins = last.assignees.map((a) => a.login);
+      const currentAssigneeLogins = assignees.map((a) => a.login);
+      if (!arraysEqualIgnoringOrder(lastAssigneeLogins, currentAssigneeLogins)) {
         logger.info(`[delta.detectDeltas] Assigned: #${githubId} "${title}" assignees changed`);
         events.push({
-          issueId: githubId,
+          issueId: Number(githubId),
           type: 'item_assigned',
           data: { assignees, status },
         });
       }
 
-      // Title or labels changed
-      if (last.title !== title || JSON.stringify(last.labels.sort()) !== JSON.stringify(labels.sort())) {
+      // Title or labels changed — use set-based comparison (O(n))
+      if (last.title !== title || !arraysEqualIgnoringOrder(last.labels, labels)) {
         logger.info(`[delta.detectDeltas] Updated: #${githubId} "${last.title}" -> "${title}" in ${status}`);
         events.push({
-          issueId: githubId,
+          issueId: Number(githubId),
           type: 'item_updated',
           data: { oldTitle: last.title, title, labels, status },
         });
@@ -93,7 +108,7 @@ export function detectDeltas(
     if (!currentMap.has(githubId)) {
       logger.info(`[delta.detectDeltas] Removed: #${githubId} "${last.title}" from ${last.status}`);
       events.push({
-        issueId: githubId,
+        issueId: Number(githubId),
         type: 'item_removed',
         data: { previousStatus: last.status },
       });
