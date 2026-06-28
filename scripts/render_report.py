@@ -9,7 +9,6 @@ Usage:
 import argparse
 import json
 import sys
-from datetime import datetime
 
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 DIMENSION_ORDER = ["correctness", "architecture", "performance", "security", "dependency-cve"]
